@@ -28,6 +28,7 @@
     <button id="muteBtn" aria-label="Mute">🔊</button>
     <div id="hint">Drag to look around · Tap the floor to walk · Click what glows</div>
     <button id="fwdBtn" aria-label="Walk forward">▲</button>
+    <div id="joy" aria-label="Move"><div id="joyKnob"></div></div>
     <div id="caption"><span id="capText"></span></div>
     <div id="label"></div>
   </div>
@@ -131,6 +132,19 @@
       color: var(--gold); font-size: 18px; cursor: pointer; backdrop-filter: blur(2px);
     }
     #fwdBtn:active { background: rgba(246,178,60,0.25); }
+    /* ---- mobile thumb-stick ---- */
+    #joy {
+      position: absolute; left: 22px; bottom: 86px; width: 118px; height: 118px;
+      border-radius: 50%; background: rgba(18,11,4,0.45);
+      border: 1px solid rgba(246,178,60,0.35); backdrop-filter: blur(2px);
+      pointer-events: auto; touch-action: none; display: none;
+    }
+    #joyKnob {
+      position: absolute; left: 50%; top: 50%; width: 52px; height: 52px;
+      border-radius: 50%; transform: translate(-50%, -50%);
+      background: radial-gradient(circle at 38% 34%, rgba(255,211,122,0.85), rgba(176,124,37,0.85));
+      box-shadow: 0 2px 12px rgba(0,0,0,0.55), 0 0 16px rgba(246,178,60,0.25);
+    }
     #caption {
       position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 20px;
       text-align: center; pointer-events: none;
@@ -1386,6 +1400,40 @@
     });
     document.getElementById('fwdBtn').addEventListener('click', () => stepForward(1.3));
 
+    /* ---- mobile thumb-stick: hold + push to glide, other finger drags to look ---- */
+    const IS_TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    const joyEl = document.getElementById('joy');
+    const joyKnob = document.getElementById('joyKnob');
+    const joyVec = { x: 0, y: 0 };
+    if (IS_TOUCH) {
+      joyEl.style.display = 'block';
+      document.getElementById('fwdBtn').style.display = 'none';   // the stick replaces it
+      hintEl.textContent = 'Push the gold stick to walk · drag to look · tap what glows';
+      hintEl.style.display = 'block';
+      let joyId = null;
+      const JR = 42;                                              // knob travel radius (px)
+      function setKnob(e) {
+        const r = joyEl.getBoundingClientRect();
+        let dx = e.clientX - (r.left + r.width / 2);
+        let dy = e.clientY - (r.top + r.height / 2);
+        const d = Math.hypot(dx, dy);
+        if (d > JR) { dx = dx / d * JR; dy = dy / d * JR; }
+        joyVec.x = dx / JR; joyVec.y = dy / JR;
+        joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      }
+      function resetKnob() {
+        joyId = null; joyVec.x = 0; joyVec.y = 0;
+        joyKnob.style.transform = 'translate(-50%, -50%)';
+      }
+      joyEl.addEventListener('pointerdown', (e) => {
+        joyId = e.pointerId; joyEl.setPointerCapture(joyId); setKnob(e);
+        e.stopPropagation(); e.preventDefault();
+      });
+      joyEl.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) { setKnob(e); e.stopPropagation(); } });
+      joyEl.addEventListener('pointerup', resetKnob);
+      joyEl.addEventListener('pointercancel', resetKnob);
+    }
+
     /* ---- rewards (one panel, three gifts) ---- */
     const REWARDS = {
       I: {
@@ -1655,6 +1703,8 @@
       get door3Open() { return door3Open; },
       forceDoor: (n) => openVaultDoor(n === 3 ? 'door3' : 'door2'), // test-only client force (reveals no words)
       setWord: (w) => wbSet(w),
+      setJoy: (x, y) => { joyVec.x = x; joyVec.y = y; },  // test hook for the thumb-stick
+      get yaw() { return yaw; }, set yaw(v) { yaw = v; },
       info: () => renderer.info,
       step: (dt, n = 1) => { for (let i = 0; i < n; i++) tick(dt); }, // manual frame-step (headless verification)
     };
@@ -1683,7 +1733,17 @@
       simT += dt;
       const t = simT;
 
-      // glide toward target
+      // thumb-stick drive (mobile): direct glide, relative to where you're looking
+      if (Math.abs(joyVec.x) + Math.abs(joyVec.y) > 0.1 && !overlayOpen()) {
+        const spd = 2.7 * dt;
+        const s = Math.sin(yaw), c = Math.cos(yaw);
+        player.pos.x += (-s * -joyVec.y + c * joyVec.x) * spd;   // forward + strafe
+        player.pos.z += (-c * -joyVec.y + -s * joyVec.x) * spd;
+        clampPos(player.pos);
+        player.target.copy(player.pos);                          // cancel any tap-glide
+        pendingAction = null;
+      }
+      // glide toward target (tap-to-walk / desktop)
       const k = REDUCED ? 1 : Math.min(1, dt * 2.4);
       player.pos.lerp(player.target, k);
       clampPos(player.pos);
