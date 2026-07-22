@@ -53,10 +53,20 @@ them all). The three words are **CLEVER / SOLVERS / TRIUMPH**; the hidden 4th is
 
 ---
 
-### ✅ GENERATED 2026-07-22 (overnight vault-crawl build) — 12 new lines, all with the locked recipe
+### ⚠️ RECIPE CORRECTION (2026-07-22, forensically verified — supersedes "0.65×" everywhere below)
 
-All produced with the LOCAL Kokoro script (am_michael, 0.65×) + automated ~0.4s sentence-boundary
-pause insertion (numpy port of recipe step 7 — silence runs ≥0.28s get +0.4s). Live in
+**The TRUE locked speed is 0.8×, not 0.65×.** The Dan-approved `vo_scene0_entry.wav` measures
+10.46s — exactly a raw speed=0.8 Kokoro render (a true 0.65× render of that line is 13.0s).
+The "0.65×" in the notes below never actually shipped. Dan's ear confirmed it 2026-07-22: lines
+generated at true 0.65× sounded wrong ("different voice"); regenerated at **0.8×** they match.
+**Every future line: `am_michael`, `speed=0.8`, + ~0.35s inserted sentence-boundary pauses.**
+(One deliberate exception: `vo_fourth.wav` — the lantern riddle — at 0.68× w/ pacing ellipses
+for gravitas; all lines verified 83–99% articulation match vs the reference, mean 94%.)
+
+### ✅ GENERATED 2026-07-22 (overnight vault-crawl build) — 12 new lines
+
+All produced with the LOCAL Kokoro script (am_michael, **0.8×** per the correction above) +
+automated sentence-boundary pause insertion. Live in
 `site/public/audio/vo/` and wired into `/vault` (vault.astro `VO` map) + the landing's
 `keeperAudioFiles`: `vo_vault1_entry`, `vo_vault1_reward`, `vo_vault2_door`, `vo_lib_entry`,
 `vo_vault2_reward`, `vo_vault3_door`, `vo_v3_entry`, `vo_vault3_finale`, `vo_fourth`,
