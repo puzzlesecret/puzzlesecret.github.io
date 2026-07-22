@@ -1240,20 +1240,35 @@
       clearTimeout(capTimer);
       capTimer = setTimeout(() => capText.classList.remove('show'), holdMs);
     }
+    // ONE voice only — the Keeper's recorded lines, preloaded and unlocked on the
+    // first real tap so mobile autoplay rules can never block them. If a file
+    // truly can't play, the caption carries the line in silence: NEVER a
+    // browser-TTS impostor voice (that mismatch is exactly what Dan rejected).
+    const VO_PLAYERS = {};
+    for (const [k, line] of Object.entries(VO)) {
+      const a = new Audio(line.file + '?v=2');
+      a.preload = 'auto'; a.volume = 0.95;
+      VO_PLAYERS[k] = a;
+    }
+    let voUnlocked = false;
+    function unlockVO() {          // must be called from inside a genuine user gesture
+      if (voUnlocked) return; voUnlocked = true;
+      Object.values(VO_PLAYERS).forEach((a) => {
+        a.muted = true;
+        const p = a.play();
+        if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
+                          .catch(() => { a.muted = false; });
+        else a.muted = false;
+      });
+    }
+    renderer.domElement.addEventListener('pointerdown', unlockVO, { once: true });
     function keeper(key) {
       const line = VO[key]; if (!line) return;
       showCaption(line.text, 6500);
       if (muted) return;
-      const a = new Audio(line.file + '?v=2');  // ?v busts stale cached takes on phones
-      a.volume = 0.95;
-      a.play().then(() => { currentVO = a; }).catch(() => {
-        if ('speechSynthesis' in window) {
-          speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(line.text.replace(/…/g, '...'));
-          u.rate = 0.75; u.pitch = 0.6; u.volume = 0.9;
-          speechSynthesis.speak(u);
-        }
-      });
+      const a = VO_PLAYERS[key];
+      try { a.currentTime = 0; } catch (e) {}
+      a.play().then(() => { currentVO = a; }).catch(() => { /* caption carries it */ });
     }
     function silenceAll() {
       try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
@@ -1662,7 +1677,7 @@
       }
       setTimeout(() => { hintEl.style.opacity = '1'; }, 2500);
     }
-    document.getElementById('enterBtn').addEventListener('click', () => begin(true));
+    document.getElementById('enterBtn').addEventListener('click', () => { unlockVO(); begin(true); });
 
     if (DEBUG_CAM) {
       const [cx, cz, cyaw, cpitch] = DEBUG_CAM.split(',').map(Number);

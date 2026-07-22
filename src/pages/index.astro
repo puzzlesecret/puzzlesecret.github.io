@@ -314,7 +314,29 @@ const ghosts = [
         'That is not the word I sealed it with.': '/audio/vo/vo_fail_1.wav',
         'Close… or not close at all. I will never tell.': '/audio/vo/vo_fail_2.wav',
         'Stubborn. Good — but perhaps you need my hints.': '/audio/vo/vo_fail_3.wav',
+        'The fire took my second plate — but you read my letter anyway. Enter.': '/audio/vo/vo_landing_success2.wav',
+        'Three words, three doors… and you spoke them all. The vault is yours.': '/audio/vo/vo_landing_success3.wav',
+        'So — you heard the whole of it.': '/audio/vo/vo_landing_success4.wav',
       };
+      // Preload + unlock every Keeper line on the first tap, so mobile autoplay
+      // rules can never block a later line and force a fallback.
+      const keeperPlayers = {};
+      for (const [txt, src] of Object.entries(keeperAudioFiles)) {
+        const a = new Audio(src + '?v=2'); a.preload = 'auto'; a.volume = 1;
+        keeperPlayers[txt] = a;
+      }
+      let keeperUnlocked = false;
+      function unlockKeeperAudio() {
+        if (keeperUnlocked) return; keeperUnlocked = true;
+        Object.values(keeperPlayers).forEach((a) => {
+          a.muted = true;
+          const p = a.play();
+          if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
+                            .catch(() => { a.muted = false; });
+          else a.muted = false;
+        });
+      }
+      document.addEventListener('pointerdown', unlockKeeperAudio, { once: true });
       let keeperVoice = null;
       function pickKeeperVoice() {
         if (!('speechSynthesis' in window)) return null;
@@ -333,29 +355,18 @@ const ghosts = [
       // Returns the playing <audio> element when a real recorded line exists (so the
       // caller can sync caption timing to its actual duration), or null when it fell
       // back to browser speech (or was muted).
+      // ONE voice only: the Keeper's recorded lines. If a line has no recording
+      // (or can't play), the caption carries it in SILENCE — never browser TTS,
+      // whose mismatched voice is exactly what Dan rejected.
       function speakKeeper(text) {
         if (currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} currentKeeperAudio = null; }
         if (muted) return null;
-        const src = keeperAudioFiles[text];
-        if (src) {
-          try {
-            const a = new Audio(src + '?v=2');  // ?v busts stale cached takes on phones
-            a.volume = 1;
-            a.play().catch(() => {});
-            currentKeeperAudio = a;
-            return a;
-          } catch (e) { /* fall through to browser speech */ }
-        }
-        if (!('speechSynthesis' in window)) return null;
-        try {
-          speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(text.replace(/…/g, '... '));
-          if (!keeperVoice) keeperVoice = pickKeeperVoice();
-          if (keeperVoice) u.voice = keeperVoice;
-          u.rate = 0.82; u.pitch = 0.5; u.volume = 1;
-          speechSynthesis.speak(u);
-        } catch (e) { /* ignore */ }
-        return null;
+        const a = keeperPlayers[text];
+        if (!a) return null;
+        try { a.currentTime = 0; } catch (e) {}
+        a.play().catch(() => {});
+        currentKeeperAudio = a;
+        return a;
       }
 
       let typeTimer = null;
