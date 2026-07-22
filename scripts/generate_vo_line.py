@@ -32,8 +32,10 @@ def main():
     parser = argparse.ArgumentParser(description="Generate one Keeper VO line locally with Kokoro.")
     parser.add_argument("text", help="The line to speak, exactly as it should be captioned.")
     parser.add_argument("out_wav", help="Output .wav path.")
-    parser.add_argument("--voice", default="am_michael", help="Kokoro voice id (default: am_michael, the locked Keeper voice).")
-    parser.add_argument("--speed", type=float, default=0.65, help="Speed multiplier (default: 0.65, the locked pace).")
+    # CORRECTED 2026-07-22: fingerprint analysis proved the Dan-approved reference is
+    # bm_george @ 0.8 — the old am_michael/0.65 defaults were mis-recorded lore.
+    parser.add_argument("--voice", default="bm_george", help="Kokoro voice id (default: bm_george, the TRUE locked Keeper voice).")
+    parser.add_argument("--speed", type=float, default=0.8, help="Speed multiplier (default: 0.8, the locked pace).")
     args = parser.parse_args()
 
     pipeline = KPipeline(lang_code="a")  # 'a' = American English

@@ -1343,7 +1343,7 @@
     // browser-TTS impostor voice (that mismatch is exactly what Dan rejected).
     const VO_PLAYERS = {};
     for (const [k, line] of Object.entries(VO)) {
-      const a = new Audio(line.file + '?v=2');
+      const a = new Audio(line.file + '?v=3');   // v3 = the true reference voice (bm_george)
       a.preload = 'auto'; a.volume = 0.95;
       VO_PLAYERS[k] = a;
     }

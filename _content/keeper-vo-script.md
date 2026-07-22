@@ -53,7 +53,18 @@ them all). The three words are **CLEVER / SOLVERS / TRIUMPH**; the hidden 4th is
 
 ---
 
-### ⚠️ RECIPE CORRECTION (2026-07-22, forensically verified — supersedes "0.65×" everywhere below)
+### 🔒 THE TRUE LOCKED VOICE (2026-07-22, fingerprint-verified — supersedes EVERYTHING below)
+
+**Kokoro voice `bm_george` (British "George") at speed 0.8 — NOT "am_michael", NOT 0.65×.**
+Acoustic fingerprinting of the Dan-approved `vo_scene0_entry.wav` against all 13 Kokoro male
+voices: bm_george distance 0.54 (same-voice floor 3.97, 7× margin; pitch 141Hz vs ref 140Hz) —
+am_michael scored 5.88, i.e. audibly a different man. The 2026-07-21 notes recorded the wrong
+voice name AND the wrong speed. All 15 site lines regenerated as bm_george@0.8 on 2026-07-22
+(lantern riddle at 0.68), every line verified within the same-voice floor (worst 2.75).
+Generation: local Kokoro, `KPipeline(lang_code="a")`, `voice="bm_george"`, `speed=0.8`,
++0.35s sentence-boundary pause insertion. Cache-bust `?v=3`.
+
+### ⚠️ (superseded) earlier speed correction 2026-07-22
 
 **The TRUE locked speed is 0.8×, not 0.65×.** The Dan-approved `vo_scene0_entry.wav` measures
 10.46s — exactly a raw speed=0.8 Kokoro render (a true 0.65× render of that line is 13.0s).

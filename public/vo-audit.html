@@ -36,7 +36,7 @@
   </div>
 
   <h2>2 · Same words, four recipes — which matches?</h2>
-  <div class="card"><b>A — speed 0.8</b> <span class="note">(the recipe now used in all vaults)</span>
+  <div class="card"><b>A — GEORGE, speed 0.8</b> <span class="note">(fingerprint-identified reference voice — now used everywhere)</span>
     <audio controls preload="metadata" src="/audio/vo/audit/candidate_A_speed08.wav"></audio>
     <a class="dl" href="/audio/vo/audit/candidate_A_speed08.wav" download>⬇ open in your player</a></div>
   <div class="card"><b>B — speed 0.65</b> <span class="note">(the first overnight batch — slower, drawlier)</span>
@@ -68,7 +68,7 @@
     ];
     document.getElementById('lines').innerHTML = files.map(([f, label]) =>
       `<div class="card"><b>${label}</b><audio controls preload="metadata" src="/audio/vo/${f}.wav?v=2"></audio>
-       <a class="dl" href="/audio/vo/${f}.wav" download>⬇ open in your player</a></div>`
+       <a class="dl" href="/audio/vo/${f}.wav" download>⬇ open in your player</a></div>`.replace('.wav?v=2', '.wav?v=3')
     ).join('');
   </script>
 </body>

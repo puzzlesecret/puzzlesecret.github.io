@@ -322,7 +322,7 @@ const ghosts = [
       // rules can never block a later line and force a fallback.
       const keeperPlayers = {};
       for (const [txt, src] of Object.entries(keeperAudioFiles)) {
-        const a = new Audio(src + '?v=2'); a.preload = 'auto'; a.volume = 1;
+        const a = new Audio(src + '?v=3'); a.preload = 'auto'; a.volume = 1;  // v3 = true reference voice (bm_george)
         keeperPlayers[txt] = a;
       }
       let keeperUnlocked = false;
