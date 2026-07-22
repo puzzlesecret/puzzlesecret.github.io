@@ -339,7 +339,7 @@ const ghosts = [
         const src = keeperAudioFiles[text];
         if (src) {
           try {
-            const a = new Audio(src);
+            const a = new Audio(src + '?v=2');  // ?v busts stale cached takes on phones
             a.volume = 1;
             a.play().catch(() => {});
             currentKeeperAudio = a;

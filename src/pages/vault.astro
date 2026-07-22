@@ -28,7 +28,6 @@
     <button id="muteBtn" aria-label="Mute">🔊</button>
     <div id="hint">Drag to look around · Tap the floor to walk · Click what glows</div>
     <button id="fwdBtn" aria-label="Walk forward">▲</button>
-    <div id="joy" aria-label="Move"><div id="joyKnob"></div></div>
     <div id="caption"><span id="capText"></span></div>
     <div id="label"></div>
   </div>
@@ -96,7 +95,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; overflow: hidden; background: var(--ink); }
     body { font-family: 'Cormorant Garamond', serif; color: var(--parchment); }
-    #stage, #stage canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #stage, #stage canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
     #stage::after { /* candlelit vignette — pulls every room toward the concept-art mood */
       content: ''; position: absolute; inset: 0; pointer-events: none;
       background: radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(8,3,0,0.5) 100%);
@@ -132,19 +131,6 @@
       color: var(--gold); font-size: 18px; cursor: pointer; backdrop-filter: blur(2px);
     }
     #fwdBtn:active { background: rgba(246,178,60,0.25); }
-    /* ---- mobile thumb-stick ---- */
-    #joy {
-      position: absolute; left: 22px; bottom: 86px; width: 118px; height: 118px;
-      border-radius: 50%; background: rgba(18,11,4,0.45);
-      border: 1px solid rgba(246,178,60,0.35); backdrop-filter: blur(2px);
-      pointer-events: auto; touch-action: none; display: none;
-    }
-    #joyKnob {
-      position: absolute; left: 50%; top: 50%; width: 52px; height: 52px;
-      border-radius: 50%; transform: translate(-50%, -50%);
-      background: radial-gradient(circle at 38% 34%, rgba(255,211,122,0.85), rgba(176,124,37,0.85));
-      box-shadow: 0 2px 12px rgba(0,0,0,0.55), 0 0 16px rgba(246,178,60,0.25);
-    }
     #caption {
       position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 20px;
       text-align: center; pointer-events: none;
@@ -1258,7 +1244,7 @@
       const line = VO[key]; if (!line) return;
       showCaption(line.text, 6500);
       if (muted) return;
-      const a = new Audio(line.file);
+      const a = new Audio(line.file + '?v=2');  // ?v busts stale cached takes on phones
       a.volume = 0.95;
       a.play().then(() => { currentVO = a; }).catch(() => {
         if ('speechSynthesis' in window) {
@@ -1351,13 +1337,19 @@
     }
     renderer.domElement.addEventListener('pointerdown', (e) => {
       down = { x: e.clientX, y: e.clientY, t: performance.now(), yaw, pitch };
-      dragging = false;
+      dragging = false; holdWalk = false;
       renderer.domElement.setPointerCapture(e.pointerId);
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {           // held still → start walking toward the finger
+        if (down && !dragging) { holdWalk = true; walkToward(down.lastX ?? down.x, down.lastY ?? down.y); }
+      }, 240);
     });
     renderer.domElement.addEventListener('pointermove', (e) => {
       if (down) {
+        down.lastX = e.clientX; down.lastY = e.clientY;
+        if (holdWalk) { walkToward(e.clientX, e.clientY); return; }  // finger steers the destination
         const dx = e.clientX - down.x, dy = e.clientY - down.y;
-        if (Math.hypot(dx, dy) > 7) dragging = true;
+        if (Math.hypot(dx, dy) > 9) dragging = true;
         if (dragging) {
           yaw = down.yaw - dx * 0.0034;
           pitch = THREE.MathUtils.clamp(down.pitch - dy * 0.0026, -0.75, 0.6);
@@ -1379,6 +1371,8 @@
       }
     });
     renderer.domElement.addEventListener('pointerup', (e) => {
+      clearTimeout(holdTimer);
+      if (holdWalk) { holdWalk = false; walkRing.visible = false; down = null; dragging = false; return; }
       const wasDrag = dragging || !down || (performance.now() - down.t) > 500;
       down = null; dragging = false;
       if (wasDrag) return;
@@ -1400,38 +1394,28 @@
     });
     document.getElementById('fwdBtn').addEventListener('click', () => stepForward(1.3));
 
-    /* ---- mobile thumb-stick: hold + push to glide, other finger drags to look ---- */
+    /* ---- press-and-hold to walk: hold the floor and you glide toward your finger,
+       and keep following it as it slides. A quick swipe still looks around. ---- */
     const IS_TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-    const joyEl = document.getElementById('joy');
-    const joyKnob = document.getElementById('joyKnob');
-    const joyVec = { x: 0, y: 0 };
     if (IS_TOUCH) {
-      joyEl.style.display = 'block';
-      document.getElementById('fwdBtn').style.display = 'none';   // the stick replaces it
-      hintEl.textContent = 'Push the gold stick to walk · drag to look · tap what glows';
+      hintEl.textContent = 'Drag to look · hold the floor to walk · tap what glows';
       hintEl.style.display = 'block';
-      let joyId = null;
-      const JR = 42;                                              // knob travel radius (px)
-      function setKnob(e) {
-        const r = joyEl.getBoundingClientRect();
-        let dx = e.clientX - (r.left + r.width / 2);
-        let dy = e.clientY - (r.top + r.height / 2);
-        const d = Math.hypot(dx, dy);
-        if (d > JR) { dx = dx / d * JR; dy = dy / d * JR; }
-        joyVec.x = dx / JR; joyVec.y = dy / JR;
-        joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    }
+    // glowing destination ring on the floor while holding
+    const walkRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.14, 0.2, 24),
+      new THREE.MeshBasicMaterial({ color: 0xf6b23c, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    walkRing.rotation.x = -Math.PI / 2; walkRing.position.y = 0.02; walkRing.visible = false;
+    scene.add(walkRing);
+    let holdWalk = false, holdTimer = null;
+    function walkToward(cx, cy) {
+      const fhits = pick(cx, cy, [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
+      if (fhits.length) {
+        moveTo(fhits[0].point.x, fhits[0].point.z);
+        walkRing.position.set(player.target.x, 0.02, player.target.z);
+        walkRing.visible = true;
       }
-      function resetKnob() {
-        joyId = null; joyVec.x = 0; joyVec.y = 0;
-        joyKnob.style.transform = 'translate(-50%, -50%)';
-      }
-      joyEl.addEventListener('pointerdown', (e) => {
-        joyId = e.pointerId; joyEl.setPointerCapture(joyId); setKnob(e);
-        e.stopPropagation(); e.preventDefault();
-      });
-      joyEl.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) { setKnob(e); e.stopPropagation(); } });
-      joyEl.addEventListener('pointerup', resetKnob);
-      joyEl.addEventListener('pointercancel', resetKnob);
     }
 
     /* ---- rewards (one panel, three gifts) ---- */
@@ -1703,7 +1687,7 @@
       get door3Open() { return door3Open; },
       forceDoor: (n) => openVaultDoor(n === 3 ? 'door3' : 'door2'), // test-only client force (reveals no words)
       setWord: (w) => wbSet(w),
-      setJoy: (x, y) => { joyVec.x = x; joyVec.y = y; },  // test hook for the thumb-stick
+      walkToward, get holdWalk() { return holdWalk; },     // test hooks for hold-to-walk
       get yaw() { return yaw; }, set yaw(v) { yaw = v; },
       info: () => renderer.info,
       step: (dt, n = 1) => { for (let i = 0; i < n; i++) tick(dt); }, // manual frame-step (headless verification)
@@ -1733,17 +1717,13 @@
       simT += dt;
       const t = simT;
 
-      // thumb-stick drive (mobile): direct glide, relative to where you're looking
-      if (Math.abs(joyVec.x) + Math.abs(joyVec.y) > 0.1 && !overlayOpen()) {
-        const spd = 2.7 * dt;
-        const s = Math.sin(yaw), c = Math.cos(yaw);
-        player.pos.x += (-s * -joyVec.y + c * joyVec.x) * spd;   // forward + strafe
-        player.pos.z += (-c * -joyVec.y + -s * joyVec.x) * spd;
-        clampPos(player.pos);
-        player.target.copy(player.pos);                          // cancel any tap-glide
-        pendingAction = null;
+      // destination ring breathes while holding
+      if (walkRing.visible) {
+        const rs = 1 + 0.18 * Math.sin(t * 6);
+        walkRing.scale.set(rs, rs, rs);
+        walkRing.material.opacity = 0.65 + 0.25 * Math.sin(t * 6);
       }
-      // glide toward target (tap-to-walk / desktop)
+      // glide toward target (tap / hold-to-walk)
       const k = REDUCED ? 1 : Math.min(1, dt * 2.4);
       player.pos.lerp(player.target, k);
       clampPos(player.pos);
