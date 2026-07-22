@@ -18,6 +18,7 @@
     audio { width:100%; }
     .ref { border-color:#f6b23c; box-shadow:0 0 18px rgba(246,178,60,0.15); }
     .note { font-size:14px; color:rgba(232,213,174,0.65); }
+    .dl { display:inline-block; margin-top:6px; font-size:13px; color:#f6b23c; }
   </style>
 </head>
 <body>
@@ -30,18 +31,23 @@
   <div class="card ref">
     <b>REFERENCE — vo_scene0_entry.wav</b> <span class="note">(untouched original, 2026-07-21)</span>
     <p>"Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening."</p>
-    <audio controls preload="none" src="/audio/vo/audit/reference_scene0.wav"></audio>
+    <audio controls preload="metadata" src="/audio/vo/audit/reference_scene0.wav"></audio>
+    <a class="dl" href="/audio/vo/audit/reference_scene0.wav" download>⬇ open in your player</a>
   </div>
 
   <h2>2 · Same words, four recipes — which matches?</h2>
   <div class="card"><b>A — speed 0.8</b> <span class="note">(the recipe now used in all vaults)</span>
-    <audio controls preload="none" src="/audio/vo/audit/candidate_A_speed08.wav"></audio></div>
+    <audio controls preload="metadata" src="/audio/vo/audit/candidate_A_speed08.wav"></audio>
+    <a class="dl" href="/audio/vo/audit/candidate_A_speed08.wav" download>⬇ open in your player</a></div>
   <div class="card"><b>B — speed 0.65</b> <span class="note">(the first overnight batch — slower, drawlier)</span>
-    <audio controls preload="none" src="/audio/vo/audit/candidate_B_speed065.wav"></audio></div>
+    <audio controls preload="metadata" src="/audio/vo/audit/candidate_B_speed065.wav"></audio>
+    <a class="dl" href="/audio/vo/audit/candidate_B_speed065.wav" download>⬇ open in your player</a></div>
   <div class="card"><b>C — 0.8 render slowed to 0.65</b> <span class="note">(the "documented workaround" — crisp but stretched)</span>
-    <audio controls preload="none" src="/audio/vo/audit/candidate_C_08_slowed.wav"></audio></div>
+    <audio controls preload="metadata" src="/audio/vo/audit/candidate_C_08_slowed.wav"></audio>
+    <a class="dl" href="/audio/vo/audit/candidate_C_08_slowed.wav" download>⬇ open in your player</a></div>
   <div class="card"><b>D — speed 0.72</b> <span class="note">(middle ground)</span>
-    <audio controls preload="none" src="/audio/vo/audit/candidate_D_speed072.wav"></audio></div>
+    <audio controls preload="metadata" src="/audio/vo/audit/candidate_D_speed072.wav"></audio>
+    <a class="dl" href="/audio/vo/audit/candidate_D_speed072.wav" download>⬇ open in your player</a></div>
 
   <h2>3 · Every line currently live in the vaults (recipe A)</h2>
   <div id="lines"></div>
@@ -61,7 +67,8 @@
       ['vo_landing_success4', 'Landing success IV'],
     ];
     document.getElementById('lines').innerHTML = files.map(([f, label]) =>
-      `<div class="card"><b>${label}</b><audio controls preload="none" src="/audio/vo/${f}.wav?v=2"></audio></div>`
+      `<div class="card"><b>${label}</b><audio controls preload="metadata" src="/audio/vo/${f}.wav?v=2"></audio>
+       <a class="dl" href="/audio/vo/${f}.wav" download>⬇ open in your player</a></div>`
     ).join('');
   </script>
 </body>
