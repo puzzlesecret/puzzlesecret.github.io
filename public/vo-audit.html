@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- TEMPORARY internal page for Dan: A/B the Keeper voice takes by ear. Not linked anywhere. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Keeper Voice Audit</title>
+  <style>
+    body { background:#0b0704; color:#e8d5ae; font-family:Georgia,serif; max-width:680px;
+           margin:0 auto; padding:28px 18px 60px; line-height:1.45; }
+    h1 { color:#f6b23c; font-size:26px; letter-spacing:0.06em; }
+    h2 { color:#f6b23c; font-size:18px; margin-top:34px; border-bottom:1px solid rgba(246,178,60,0.3); padding-bottom:6px; }
+    .card { background:#171009; border:1px solid rgba(246,178,60,0.25); border-radius:8px;
+            padding:14px 16px; margin:12px 0; }
+    .card b { color:#ffd37a; }
+    .card p { margin:6px 0 10px; font-size:14px; color:rgba(232,213,174,0.75); font-style:italic; }
+    audio { width:100%; }
+    .ref { border-color:#f6b23c; box-shadow:0 0 18px rgba(246,178,60,0.15); }
+    .note { font-size:14px; color:rgba(232,213,174,0.65); }
+  </style>
+</head>
+<body>
+  <h1>🎙 The Keeper — voice audit</h1>
+  <p class="note">Dan: section 1 is the voice you love. Section 2 is the <b>same sentence</b> rendered four
+  different ways — tell Claude which letter matches the reference (or is best). Section 3 is every line
+  currently live in the vaults, all using recipe <b>A</b>.</p>
+
+  <h2>1 · The reference (the "perfect" landing intro)</h2>
+  <div class="card ref">
+    <b>REFERENCE — vo_scene0_entry.wav</b> <span class="note">(untouched original, 2026-07-21)</span>
+    <p>"Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening."</p>
+    <audio controls preload="none" src="/audio/vo/audit/reference_scene0.wav"></audio>
+  </div>
+
+  <h2>2 · Same words, four recipes — which matches?</h2>
+  <div class="card"><b>A — speed 0.8</b> <span class="note">(the recipe now used in all vaults)</span>
+    <audio controls preload="none" src="/audio/vo/audit/candidate_A_speed08.wav"></audio></div>
+  <div class="card"><b>B — speed 0.65</b> <span class="note">(the first overnight batch — slower, drawlier)</span>
+    <audio controls preload="none" src="/audio/vo/audit/candidate_B_speed065.wav"></audio></div>
+  <div class="card"><b>C — 0.8 render slowed to 0.65</b> <span class="note">(the "documented workaround" — crisp but stretched)</span>
+    <audio controls preload="none" src="/audio/vo/audit/candidate_C_08_slowed.wav"></audio></div>
+  <div class="card"><b>D — speed 0.72</b> <span class="note">(middle ground)</span>
+    <audio controls preload="none" src="/audio/vo/audit/candidate_D_speed072.wav"></audio></div>
+
+  <h2>3 · Every line currently live in the vaults (recipe A)</h2>
+  <div id="lines"></div>
+  <script>
+    const files = [
+      ['vo_vault1_entry',  'Vault I entry — "So… you found my first word…"'],
+      ['vo_vault1_reward', 'Vault I reward — "Fifty puzzles, yours…"'],
+      ['vo_vault2_door',   'Door II — "The fire took my second plate…"'],
+      ['vo_lib_entry',     'Library entry — "My library…"'],
+      ['vo_vault2_reward', 'Vault II reward — "One hundred more…"'],
+      ['vo_vault3_door',   'Door III — "Step back three…"'],
+      ['vo_v3_entry',      'Treasure entry — "The heart of my vault…"'],
+      ['vo_vault3_finale', 'Finale — "Three words, three doors…"'],
+      ['vo_fourth',        'The lantern riddle — "What flickers…" (0.68 for gravitas)'],
+      ['vo_fail_1', 'Fail 1'], ['vo_fail_2', 'Fail 2'], ['vo_fail_3', 'Fail 3'],
+      ['vo_landing_success2', 'Landing success II'], ['vo_landing_success3', 'Landing success III'],
+      ['vo_landing_success4', 'Landing success IV'],
+    ];
+    document.getElementById('lines').innerHTML = files.map(([f, label]) =>
+      `<div class="card"><b>${label}</b><audio controls preload="none" src="/audio/vo/${f}.wav?v=2"></audio></div>`
+    ).join('');
+  </script>
+</body>
+</html>
