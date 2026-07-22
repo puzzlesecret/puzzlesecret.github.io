@@ -1,0 +1,8 @@
+# never line-ending-convert binary assets
+*.pdf binary
+*.wav binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary

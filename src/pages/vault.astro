@@ -1,0 +1,1770 @@
+---
+// VAULT I — THE WRITER'S STUDY. First-person walkable 3D room (Three.js r155).
+// Look reference: assets/vault_concepts/vault1_writers_study_v4.jpg (Dan-approved).
+// Movement: drag to look, tap floor to walk, W/▲/scroll glides forward (no free WASD).
+// Interactables: glowing puzzle stack (50-puzzle reward PDF), secret bookcase → passage
+// to the sealed Vault II door. Audio/SFX ported from the landing (Web Audio, no files).
+// Debug/screenshot params: ?cam=x,z,yaw,pitch (skips gate, no audio) ?open=1 ?panel=1
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>The Keeper's Vaults · PuzzleSecret</title>
+  <meta name="description" content="Step inside the Keeper's vaults. Three doors, three words, three rewards." />
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;1,500;1,600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="stage"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="brand">PUZZLESECRET · <span id="roomName">VAULT I — THE WRITER'S STUDY</span></div>
+    <a id="backlink" href="/">◄ the landing</a>
+    <button id="muteBtn" aria-label="Mute">🔊</button>
+    <div id="hint">Drag to look around · Tap the floor to walk · Click what glows</div>
+    <button id="fwdBtn" aria-label="Walk forward">▲</button>
+    <div id="caption"><span id="capText"></span></div>
+    <div id="label"></div>
+  </div>
+
+  <!-- Entry gate (enables audio) -->
+  <div id="gate">
+    <div class="gate-inner">
+      <div class="gate-kicker">THE WORD WAS TRUE</div>
+      <h1>THE&nbsp;VAULTS</h1>
+      <div class="gate-sub">I · The Writer's Study</div>
+      <p class="gate-line">The first door stands open. Two more wait in the dark — each sealed with a word.</p>
+      <button id="enterBtn">⟡ &nbsp;Step inside</button>
+    </div>
+  </div>
+
+  <!-- Reward panel (dynamic — serves all three vaults) -->
+  <div id="reward" hidden>
+    <div class="reward-card">
+      <div class="reward-kicker" id="rwKicker">THE KEEPER'S FIRST GIFT</div>
+      <h2 id="rwTitle">FIFTY PUZZLES, YOURS</h2>
+      <p id="rwText">No word, no name, no price. Fifty easy puzzles from the Keeper's own desk —
+         the first door is open.</p>
+      <a class="gold-btn" id="rwBtn" href="/rewards/PuzzleSecret-Vault-I-50-Easy.pdf" download>Download the 50 puzzles (PDF)</a>
+      <button id="rewardClose" class="ghost-btn">Keep exploring →</button>
+    </div>
+  </div>
+
+  <!-- Word entry (sealed doors — server-checked, words never in this page) -->
+  <div id="wordbox" hidden>
+    <div class="reward-card word-card">
+      <div class="reward-kicker" id="wbKicker">THE SECOND DOOR</div>
+      <p class="word-line" id="wbLine">Say the word.</p>
+      <div id="tiles"></div>
+      <input id="wbInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" aria-label="The secret word" />
+      <div class="word-actions">
+        <button id="speakBtn" class="ghost-btn">🎙 &nbsp;Speak the word</button>
+        <button id="wbSubmit" class="gold-btn">Open the door</button>
+        <button id="wbCancel" class="ghost-btn">Step back</button>
+      </div>
+      <div id="wbMsg"></div>
+    </div>
+  </div>
+
+  <!-- WebGL fallback -->
+  <div id="fallback" hidden>
+    <div class="reward-card">
+      <div class="reward-kicker">THE STUDY IS SEALED… FOR NOW</div>
+      <h2>YOUR DEVICE CAN'T OPEN THE 3D VAULT</h2>
+      <p>A lighter version of the vault is on its way. The Keeper's gift is still yours:</p>
+      <a class="gold-btn" href="/rewards/PuzzleSecret-Vault-I-50-Easy.pdf" download>Download the 50 puzzles (PDF)</a>
+      <a class="ghost-btn" href="/">← back to the landing</a>
+    </div>
+  </div>
+
+  <canvas id="confetti"></canvas>
+  <div id="fade"></div>
+
+  <style is:global>
+    :root {
+      --gold: #f6b23c;
+      --gold-dim: #b07c25;
+      --parchment: #e8d5ae;
+      --ink: #0b0704;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: var(--ink); }
+    body { font-family: 'Cormorant Garamond', serif; color: var(--parchment); }
+    #stage, #stage canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #stage::after { /* candlelit vignette — pulls every room toward the concept-art mood */
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(8,3,0,0.5) 100%);
+    }
+
+    /* ---- HUD ---- */
+    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+    #brand {
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+      font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.32em;
+      color: rgba(232,213,174,0.6); white-space: nowrap;
+    }
+    #brand span { color: var(--gold); }
+    #backlink {
+      position: absolute; top: 12px; left: 14px; pointer-events: auto;
+      font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.2em;
+      color: rgba(232,213,174,0.55); text-decoration: none;
+    }
+    #backlink:hover { color: var(--gold); }
+    #muteBtn {
+      position: absolute; top: 8px; right: 12px; pointer-events: auto;
+      background: none; border: 1px solid rgba(246,178,60,0.25); border-radius: 50%;
+      width: 34px; height: 34px; color: var(--parchment); font-size: 14px; cursor: pointer;
+    }
+    #hint {
+      position: absolute; bottom: 12px; right: 16px; font-style: italic;
+      font-size: 14px; color: rgba(232,213,174,0.45); text-align: right;
+    }
+    #fwdBtn {
+      position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
+      pointer-events: auto; width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(20,12,4,0.55); border: 1px solid rgba(246,178,60,0.4);
+      color: var(--gold); font-size: 18px; cursor: pointer; backdrop-filter: blur(2px);
+    }
+    #fwdBtn:active { background: rgba(246,178,60,0.25); }
+    #caption {
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 16px 20px 20px;
+      text-align: center; pointer-events: none;
+      background: linear-gradient(transparent, rgba(5,3,1,0.85));
+    }
+    #capText {
+      font-size: clamp(17px, 2.4vw, 23px); font-style: italic; font-weight: 600;
+      color: var(--parchment); text-shadow: 0 1px 8px #000;
+      opacity: 0; transition: opacity 0.8s;
+    }
+    #capText.show { opacity: 1; }
+    #label {
+      position: absolute; padding: 4px 10px; font-family: Cinzel, serif;
+      font-size: 11px; letter-spacing: 0.14em; color: var(--gold);
+      background: rgba(10,6,2,0.78); border: 1px solid rgba(246,178,60,0.35);
+      border-radius: 3px; white-space: nowrap; display: none;
+      transform: translate(-50%, -160%);
+    }
+
+    /* ---- gate / panels ---- */
+    #gate {
+      position: fixed; inset: 0; z-index: 20; display: flex; align-items: center;
+      justify-content: center; background: radial-gradient(ellipse at 50% 60%, #1a0f04 0%, #070402 70%);
+      transition: opacity 1.4s; text-align: center;
+    }
+    #gate.gone { opacity: 0; pointer-events: none; }
+    .gate-kicker { font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.4em; color: var(--gold-dim); margin-bottom: 18px; }
+    #gate h1 { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(44px, 9vw, 84px); letter-spacing: 0.18em; color: var(--gold); text-shadow: 0 0 40px rgba(246,178,60,0.35); }
+    .gate-sub { font-family: Cinzel, serif; font-size: clamp(14px, 2.4vw, 20px); letter-spacing: 0.34em; color: var(--parchment); margin-top: 10px; }
+    .gate-line { font-style: italic; font-size: 17px; color: rgba(232,213,174,0.65); margin: 26px 0 30px; }
+    #enterBtn {
+      font-family: Cinzel, serif; font-size: 15px; letter-spacing: 0.22em; cursor: pointer;
+      color: var(--ink); background: linear-gradient(180deg, #ffd37a, #d99a2b);
+      border: none; border-radius: 4px; padding: 15px 38px;
+      box-shadow: 0 0 34px rgba(246,178,60,0.35);
+    }
+    #enterBtn:hover { filter: brightness(1.08); }
+
+    #reward, #fallback {
+      position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
+      justify-content: center; background: rgba(4,2,0,0.6); backdrop-filter: blur(3px);
+    }
+    #reward[hidden], #fallback[hidden] { display: none; }
+    .reward-card {
+      max-width: 430px; width: calc(100% - 40px); text-align: center;
+      background: linear-gradient(180deg, #1d1207, #120a04);
+      border: 1px solid rgba(246,178,60,0.45); border-radius: 8px;
+      padding: 34px 30px 28px; box-shadow: 0 0 60px rgba(246,178,60,0.18), 0 18px 50px rgba(0,0,0,0.7);
+    }
+    .reward-kicker { font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.38em; color: var(--gold-dim); margin-bottom: 12px; }
+    .reward-card h2 { font-family: Cinzel, serif; font-size: 24px; letter-spacing: 0.12em; color: var(--gold); margin-bottom: 12px; }
+    .reward-card p { font-size: 17px; font-style: italic; color: rgba(232,213,174,0.8); margin-bottom: 22px; line-height: 1.45; }
+    .gold-btn {
+      display: block; font-family: Cinzel, serif; font-size: 13px; letter-spacing: 0.16em;
+      color: var(--ink); background: linear-gradient(180deg, #ffd37a, #d99a2b);
+      border-radius: 4px; padding: 14px 10px; text-decoration: none; margin-bottom: 12px;
+      box-shadow: 0 0 24px rgba(246,178,60,0.3); border: none; cursor: pointer;
+    }
+    .ghost-btn {
+      display: block; width: 100%; font-family: Cinzel, serif; font-size: 12px;
+      letter-spacing: 0.16em; color: rgba(232,213,174,0.65); background: none;
+      border: 1px solid rgba(232,213,174,0.25); border-radius: 4px; padding: 11px 10px;
+      cursor: pointer; text-decoration: none;
+    }
+    .ghost-btn:hover { color: var(--gold); border-color: rgba(246,178,60,0.5); }
+
+    /* ---- word entry ---- */
+    #wordbox { position: fixed; inset: 0; z-index: 16; display: flex; align-items: center;
+      justify-content: center; background: rgba(4,2,0,0.65); backdrop-filter: blur(3px); }
+    #wordbox[hidden] { display: none; }
+    .word-card { max-width: 480px; }
+    .word-line { font-size: 18px; font-style: italic; color: rgba(232,213,174,0.85); margin-bottom: 20px; }
+    #tiles { display: flex; justify-content: center; gap: 8px; margin-bottom: 6px; }
+    .tile {
+      width: 46px; height: 56px; border: 1px solid rgba(246,178,60,0.45); border-radius: 5px;
+      background: rgba(20,12,4,0.7); display: flex; align-items: center; justify-content: center;
+      font-family: Cinzel, serif; font-size: 26px; font-weight: 700; color: var(--gold);
+      text-shadow: 0 0 12px rgba(246,178,60,0.5); transition: border-color .15s, background .15s;
+    }
+    .tile.filled { border-color: var(--gold); background: rgba(246,178,60,0.12); }
+    #wordbox.shake .word-card { animation: wbshake .45s; }
+    @keyframes wbshake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-9px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(4px)} }
+    #wbInput { position: absolute; opacity: 0.01; height: 1px; width: 1px; pointer-events: none; }
+    .word-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+    .word-actions .gold-btn, .word-actions .ghost-btn { margin-bottom: 0; }
+    #wbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
+    #speakBtn.listening { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
+    @media (max-width: 480px) { .tile { width: 38px; height: 48px; font-size: 21px; } }
+
+    #confetti { position: fixed; inset: 0; z-index: 18; pointer-events: none; }
+    #fade { position: fixed; inset: 0; z-index: 8; background: #000; opacity: 1; pointer-events: none; transition: opacity 2.2s; }
+    #fade.clear { opacity: 0; }
+
+    @media (max-width: 640px) {
+      #hint { display: none; }
+      #brand { font-size: 9px; letter-spacing: 0.22em; }
+    }
+  </style>
+
+  <script>
+    import * as THREE from 'three';
+
+    /* ================= setup / params ================= */
+    const qs = new URLSearchParams(location.search);
+    const DEBUG_CAM = qs.get('cam');            // "x,z,yaw,pitch" — skip gate, no audio
+    const FORCE_OPEN = qs.get('open') === '1';  // bookcase pre-opened (screenshots)
+    const FORCE_PANEL = qs.get('panel') === '1';
+    const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const stage = document.getElementById('stage');
+    const gate = document.getElementById('gate');
+    const fadeEl = document.getElementById('fade');
+    const capText = document.getElementById('capText');
+    const labelEl = document.getElementById('label');
+    const rewardEl = document.getElementById('reward');
+    const hintEl = document.getElementById('hint');
+
+    let renderer = null;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      if (!renderer.getContext()) throw new Error('no ctx');
+    } catch (e) {
+      document.getElementById('fallback').hidden = false;
+      gate.style.display = 'none';
+      fadeEl.classList.add('clear');
+      throw e;
+    }
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); // perf cap (§4B)
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+    stage.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0603);
+    scene.fog = new THREE.FogExp2(0x0e0803, 0.052);
+
+    const camera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, 0.05, 60);
+    camera.rotation.order = 'YXZ';
+
+    /* ================= procedural canvas textures ================= */
+    function canvasTex(w, h, draw, rx = 1, ry = 1) {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      draw(c.getContext('2d'), w, h);
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry);
+      t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+      return t;
+    }
+    const R = Math.random;
+
+    function speckle(g, w, h, n, a) {
+      for (let i = 0; i < n; i++) {
+        g.fillStyle = R() > 0.5 ? `rgba(0,0,0,${a})` : `rgba(255,240,210,${a * 0.7})`;
+        g.fillRect(R() * w, R() * h, 1 + R() * 2, 1 + R() * 2);
+      }
+    }
+    // Flagstone floor — big irregular warm-gray stones with dark mortar (matches concept)
+    function drawFloor(g, w, h) {
+      g.fillStyle = '#241a10'; g.fillRect(0, 0, w, h);
+      const rows = 5, cols = 5;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const off = (r % 2) * 0.5;
+        const x = ((c + off) % cols) * (w / cols), y = r * (h / rows);
+        const p = 4 + R() * 4;
+        const l = 24 + R() * 10;
+        g.fillStyle = `hsl(${26 + R() * 10}, ${16 + R() * 10}%, ${l}%)`;
+        g.beginPath();
+        g.roundRect(x + p, y + p, w / cols - p * 2, h / rows - p * 2, 8 + R() * 8);
+        g.fill();
+        g.strokeStyle = 'rgba(255,220,160,0.05)'; g.stroke();
+      }
+      speckle(g, w, h, 1200, 0.05);
+    }
+    // Coursed stone wall — warmer, candle-lit
+    function drawWall(g, w, h) {
+      g.fillStyle = '#20150b'; g.fillRect(0, 0, w, h);
+      const rows = 4;
+      for (let r = 0; r < rows; r++) {
+        const bw = 130 + R() * 70;
+        let x = -R() * 90;
+        while (x < w) {
+          const ww = bw * (0.7 + R() * 0.7);
+          g.fillStyle = `hsl(${26 + R() * 9}, ${17 + R() * 11}%, ${19 + R() * 8}%)`;
+          g.beginPath();
+          g.roundRect(x + 4, r * (h / rows) + 4, ww - 8, h / rows - 8, 9 + R() * 6);
+          g.fill();
+          g.strokeStyle = 'rgba(255,215,150,0.045)'; g.stroke();
+          x += ww;
+        }
+      }
+      speckle(g, w, h, 1100, 0.045);
+    }
+    function drawWood(g, w, h) {
+      g.fillStyle = '#57351a'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 46; i++) {
+        g.strokeStyle = `rgba(${20 + R() * 40},${10 + R() * 24},4,${0.25 + R() * 0.3})`;
+        g.lineWidth = 1 + R() * 2;
+        g.beginPath();
+        const y = R() * h;
+        g.moveTo(0, y);
+        g.bezierCurveTo(w * 0.3, y + (R() - 0.5) * 16, w * 0.7, y + (R() - 0.5) * 16, w, y + (R() - 0.5) * 10);
+        g.stroke();
+      }
+      // plank seams
+      for (let i = 1; i < 4; i++) {
+        g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(0, i * h / 4); g.lineTo(w, i * h / 4); g.stroke();
+      }
+      speckle(g, w, h, 400, 0.05);
+    }
+    // Book spines — muted leather colors + gold bands
+    function drawSpines(g, w, h) {
+      const pal = ['#5a2f22', '#74452a', '#3c2b4e', '#27422f', '#661f24', '#8a6a30', '#2f3f4e', '#4a3320'];
+      g.fillStyle = '#170e07'; g.fillRect(0, 0, w, h);
+      let x = 0;
+      while (x < w) {
+        const bw = 10 + R() * 18, bh = h * (0.86 + R() * 0.13);
+        g.fillStyle = pal[(R() * pal.length) | 0];
+        g.fillRect(x + 1, h - bh, bw - 2, bh);
+        g.fillStyle = 'rgba(246,178,60,0.55)';
+        g.fillRect(x + 3, h - bh + 6 + R() * 10, bw - 6, 2);
+        if (R() > 0.5) g.fillRect(x + 3, h - 14 - R() * 10, bw - 6, 2);
+        x += bw;
+      }
+      g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, w, 4);
+    }
+    // Handwritten puzzle page — faint grid + digits
+    function drawPaper(withGrid) {
+      return (g, w, h) => {
+        g.fillStyle = '#e6d7b4'; g.fillRect(0, 0, w, h);
+        g.strokeStyle = 'rgba(90,60,20,0.35)'; g.lineWidth = 1;
+        if (withGrid) {
+          const s = w * 0.62, ox = (w - s) / 2, oy = h * 0.16;
+          for (let i = 0; i <= 9; i++) {
+            g.lineWidth = i % 3 === 0 ? 2 : 1;
+            g.beginPath(); g.moveTo(ox + i * s / 9, oy); g.lineTo(ox + i * s / 9, oy + s); g.stroke();
+            g.beginPath(); g.moveTo(ox, oy + i * s / 9); g.lineTo(ox + s, oy + i * s / 9); g.stroke();
+          }
+          g.fillStyle = 'rgba(60,40,15,0.75)'; g.font = `${(s / 12) | 0}px serif`;
+          for (let i = 0; i < 14; i++)
+            g.fillText(String(1 + (R() * 9) | 0), ox + ((R() * 9) | 0) * s / 9 + s / 27, oy + ((R() * 9) | 0) * s / 9 + s / 11);
+        }
+        g.strokeStyle = 'rgba(70,45,15,0.4)';
+        for (let i = 0; i < 5; i++) {
+          const y = h * 0.78 + i * h * 0.04;
+          g.beginPath(); g.moveTo(w * 0.12, y);
+          g.bezierCurveTo(w * 0.4, y + 2, w * 0.6, y - 2, w * 0.88, y + 1); g.stroke();
+        }
+      };
+    }
+    // Cork pinboard with pinned notes & mini grids (back wall, per concept)
+    function drawBoard(g, w, h) {
+      g.fillStyle = '#7d5a35'; g.fillRect(0, 0, w, h);
+      speckle(g, w, h, 700, 0.08);
+      for (let i = 0; i < 8; i++) {
+        const nw = 60 + R() * 40, nh = 70 + R() * 40;
+        const x = 14 + R() * (w - nw - 28), y = 12 + R() * (h - nh - 24);
+        g.save(); g.translate(x + nw / 2, y + nh / 2); g.rotate((R() - 0.5) * 0.16);
+        g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(-nw / 2 + 3, -nh / 2 + 4, nw, nh);
+        g.fillStyle = i % 3 === 2 ? '#efe3c0' : '#e9dcbc'; g.fillRect(-nw / 2, -nh / 2, nw, nh);
+        g.strokeStyle = 'rgba(80,50,15,0.5)'; g.lineWidth = 1;
+        if (i % 2 === 0) { // mini grid
+          const s = nw * 0.62, ox = -s / 2, oy = -nh / 2 + 10;
+          for (let k = 0; k <= 4; k++) {
+            g.beginPath(); g.moveTo(ox + k * s / 4, oy); g.lineTo(ox + k * s / 4, oy + s); g.stroke();
+            g.beginPath(); g.moveTo(ox, oy + k * s / 4); g.lineTo(ox + s, oy + k * s / 4); g.stroke();
+          }
+        } else {
+          for (let k = 0; k < 4; k++) {
+            g.beginPath(); g.moveTo(-nw / 2 + 8, -nh / 2 + 16 + k * 12);
+            g.lineTo(nw / 2 - 8, -nh / 2 + 16 + k * 12); g.stroke();
+          }
+        }
+        g.fillStyle = '#8a1f1f';
+        g.beginPath(); g.arc(0, -nh / 2 + 5, 3.4, 0, 7); g.fill();
+        g.restore();
+      }
+    }
+    function glowTexture() {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const gr = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+      gr.addColorStop(0, 'rgba(255,214,130,1)');
+      gr.addColorStop(0.35, 'rgba(255,178,70,0.55)');
+      gr.addColorStop(1, 'rgba(255,150,40,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+    }
+
+    // Library parquet — warm diagonal tiles w/ dark border band (concept v3 floor)
+    function drawParquet(g, w, h) {
+      g.fillStyle = '#33220f'; g.fillRect(0, 0, w, h);
+      const s = w / 3;   // big warm stone tiles set on the diagonal (concept v3 floor)
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+        g.save(); g.translate(c * s + s / 2, r * s + s / 2); g.rotate(Math.PI / 4);
+        const d = s * 0.66;
+        g.fillStyle = `hsl(${25 + R() * 7}, ${22 + R() * 8}%, ${17 + R() * 5}%)`;
+        g.fillRect(-d / 2, -d / 2, d, d);
+        g.strokeStyle = 'rgba(220,170,90,0.1)'; g.lineWidth = 2; g.strokeRect(-d / 2, -d / 2, d, d);
+        g.restore();
+      }
+      speckle(g, w, h, 600, 0.045);
+    }
+    // Carved stone frieze — vault III walls (relief bands per concept)
+    function drawFrieze(g, w, h) {
+      drawWall(g, w, h);
+      // two horizontal carved relief bands
+      [0.3, 0.72].forEach(fy => {
+        const y = h * fy, bh = h * 0.09;
+        g.fillStyle = 'rgba(15,9,4,0.55)'; g.fillRect(0, y, w, bh);
+        g.strokeStyle = 'rgba(230,180,110,0.28)'; g.lineWidth = 2;
+        g.strokeRect(1, y + 1, w - 2, bh - 2);
+        // plain recessed groove lines — carved, elegant, and unreadable as text
+        g.strokeStyle = 'rgba(230,180,110,0.16)'; g.lineWidth = 1.4;
+        g.beginPath(); g.moveTo(0, y + bh * 0.32); g.lineTo(w, y + bh * 0.32); g.stroke();
+        g.beginPath(); g.moveTo(0, y + bh * 0.68); g.lineTo(w, y + bh * 0.68); g.stroke();
+        g.strokeStyle = 'rgba(10,6,3,0.5)'; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(0, y + bh * 0.5); g.lineTo(w, y + bh * 0.5); g.stroke();
+      });
+    }
+    function drawChecker(g, w, h) {
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+        g.fillStyle = (r + c) % 2 ? '#2b1a0d' : '#c8a86a';
+        g.fillRect(c * w / 8, r * h / 8, w / 8, h / 8);
+      }
+    }
+    // Enigma-machine face — rows of round keys + lamp board
+    function drawEnigma(g, w, h) {
+      g.fillStyle = '#241a10'; g.fillRect(0, 0, w, h);
+      g.strokeStyle = 'rgba(210,170,110,0.5)'; g.strokeRect(3, 3, w - 6, h - 6);
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 8; c++) {
+        const x = w * 0.1 + c * w * 0.108, y = h * 0.3 + r * h * 0.24;
+        g.fillStyle = r === 0 ? '#d9b46a' : '#3c2d1a';
+        g.beginPath(); g.arc(x, y, w * 0.036, 0, 7); g.fill();
+        g.strokeStyle = 'rgba(240,200,140,0.6)'; g.stroke();
+      }
+      g.fillStyle = '#845f2e'; g.fillRect(w * 0.08, h * 0.06, w * 0.84, h * 0.12); // rotor slots
+      g.fillStyle = '#1a120a';
+      for (let i = 0; i < 4; i++) g.fillRect(w * (0.14 + i * 0.2), h * 0.075, w * 0.1, h * 0.09);
+    }
+    // Series seal glyph — glowing arcane emblem in a volume color (vault III back wall)
+    function sealTexture(colA, colB) {
+      const c = document.createElement('canvas'); c.width = 128; c.height = 170;
+      const g = c.getContext('2d');
+      g.fillStyle = '#0c0704'; g.fillRect(0, 0, 128, 170);
+      const cx = 64, cy = 85;
+      const grad = g.createRadialGradient(cx, cy, 4, cx, cy, 70);
+      grad.addColorStop(0, colA); grad.addColorStop(0.55, colB); grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 128, 170);
+      g.strokeStyle = colA; g.lineWidth = 2.4; g.shadowColor = colA; g.shadowBlur = 9;
+      g.beginPath(); g.arc(cx, cy, 34, 0, 7); g.stroke();
+      g.beginPath(); // diamond
+      g.moveTo(cx, cy - 46); g.lineTo(cx + 30, cy); g.lineTo(cx, cy + 46); g.lineTo(cx - 30, cy); g.closePath(); g.stroke();
+      g.beginPath(); g.arc(cx, cy, 12, 0, 7); g.stroke();
+      [0, 1, 2, 3].forEach(i => { const a = i * Math.PI / 2 + Math.PI / 4;
+        g.beginPath(); g.moveTo(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18);
+        g.lineTo(cx + Math.cos(a) * 30, cy + Math.sin(a) * 30); g.stroke(); });
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+    }
+
+    const floorTex = canvasTex(512, 512, drawFloor, 3, 3);
+    const parquetTex = canvasTex(512, 512, drawParquet, 3, 3);
+    const friezeTex = canvasTex(512, 256, drawFrieze, 2.2, 1.35);
+    const checkerTex = canvasTex(128, 128, drawChecker);
+    const enigmaTex = canvasTex(256, 192, drawEnigma);
+    const wallTex = canvasTex(512, 256, drawWall, 2.2, 1.35);
+    const woodTex = canvasTex(256, 256, drawWood, 1, 1);
+    const spineTex = canvasTex(256, 64, drawSpines, 1, 1);
+    const paperTexA = canvasTex(128, 170, drawPaper(true));
+    const paperTexB = canvasTex(128, 170, drawPaper(false));
+    const boardTex = canvasTex(512, 340, drawBoard);
+    const glowTex = glowTexture();
+
+    /* ================= materials ================= */
+    const M = {
+      floor: new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.92 }),
+      wall: new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.95 }),
+      wood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.8 }),
+      woodDark: new THREE.MeshStandardMaterial({ map: woodTex, color: 0x8a6a48, roughness: 0.85 }),
+      gold: new THREE.MeshStandardMaterial({ color: 0xc9973f, metalness: 0.85, roughness: 0.35 }),
+      goldGlow: new THREE.MeshStandardMaterial({ color: 0xd7a44a, metalness: 0.7, roughness: 0.3, emissive: 0xa06a14, emissiveIntensity: 0.35 }),
+      iron: new THREE.MeshStandardMaterial({ color: 0x2c2620, metalness: 0.6, roughness: 0.6 }),
+      paperA: new THREE.MeshStandardMaterial({ map: paperTexA, roughness: 0.9 }),
+      paperB: new THREE.MeshStandardMaterial({ map: paperTexB, roughness: 0.9 }),
+      spines: new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.85 }),
+      candle: new THREE.MeshStandardMaterial({ color: 0xe9e2ce, roughness: 0.6 }),
+      flame: new THREE.MeshStandardMaterial({ color: 0xffc060, emissive: 0xff9a30, emissiveIntensity: 1.5 }),
+      stack: new THREE.MeshStandardMaterial({ color: 0xcaa24e, emissive: 0xffb43c, emissiveIntensity: 0.8, roughness: 0.45, metalness: 0.25 }),
+      dark: new THREE.MeshStandardMaterial({ color: 0x0a0705, roughness: 1 }),
+      parquet: new THREE.MeshStandardMaterial({ map: parquetTex, roughness: 0.75 }),
+      frieze: new THREE.MeshStandardMaterial({ map: friezeTex, roughness: 0.95 }),
+      checker: new THREE.MeshStandardMaterial({ map: checkerTex, roughness: 0.7 }),
+      enigma: new THREE.MeshStandardMaterial({ map: enigmaTex, roughness: 0.65 }),
+      brass: new THREE.MeshStandardMaterial({ color: 0x9a7434, metalness: 0.9, roughness: 0.4 }),
+      coin: new THREE.MeshStandardMaterial({ color: 0xd9a940, metalness: 0.95, roughness: 0.3, emissive: 0x442a08, emissiveIntensity: 0.3 }),
+      stonePed: new THREE.MeshStandardMaterial({ color: 0x6a5843, roughness: 0.9 }),
+      chestWood: new THREE.MeshStandardMaterial({ color: 0x4a2c16, roughness: 0.8 }),
+      chestWood2: new THREE.MeshStandardMaterial({ color: 0x5e3018, roughness: 0.8 }),
+      glowStrip: new THREE.MeshStandardMaterial({ color: 0xffcf7a, emissive: 0xffb84a, emissiveIntensity: 1.6 }),
+    };
+    const GEMS = [0x2aa864, 0xc06a86, 0x2aa8bc, 0xc07d22].map(c =>
+      new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.22, roughness: 0.25, metalness: 0.1 }));
+    // series seal colors: V2 emerald / V3 rose / V4 cyan / V5 amber
+    const SEALS = [
+      { a: 'rgba(53,207,127,1)', b: 'rgba(20,90,55,0.55)', light: 0x35cf7f },
+      { a: 'rgba(231,138,166,1)', b: 'rgba(110,45,66,0.55)', light: 0xe78aa6 },
+      { a: 'rgba(51,208,230,1)', b: 'rgba(20,90,105,0.55)', light: 0x33d0e6 },
+      { a: 'rgba(239,154,43,1)', b: 'rgba(115,70,15,0.55)', light: 0xef9a2b },
+    ];
+
+    function box(w, h, d, mat, x, y, z, ry = 0, parent = scene) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m;
+    }
+    function sprite(scale, x, y, z, parent = scene, opacity = 0.85) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+      s.scale.setScalar(scale); s.position.set(x, y, z); parent.add(s); return s;
+    }
+
+    /* ================= the room ================= */
+    // Room: x -4..4, z -4..4, ceiling 4. Player enters at +z looking toward -z.
+    const WALL_H = 4;
+
+    // floor & ceiling
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 8.4), M.floor);
+    floor.rotation.x = -Math.PI / 2; scene.add(floor);
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 8.4), new THREE.MeshStandardMaterial({ map: woodTex, color: 0x6a4a2c, roughness: 0.95 }));
+    ceil.rotation.x = Math.PI / 2; ceil.position.y = WALL_H; scene.add(ceil);
+    [-2.4, 0, 2.4].forEach(z => box(8.4, 0.26, 0.24, M.woodDark, 0, WALL_H - 0.13, z));
+
+    // walls — back wall (z=-4) has the secret-passage opening (x -2.35..-0.65, h 2.5)
+    box(1.65, WALL_H, 0.2, M.wall, -3.175, WALL_H / 2, -4);           // back-left of opening
+    box(4.65, WALL_H, 0.2, M.wall, 1.675, WALL_H / 2, -4);            // back-right of opening
+    box(1.7, WALL_H - 2.5, 0.2, M.wall, -1.5, 2.5 + (WALL_H - 2.5) / 2, -4); // above opening
+    box(0.2, WALL_H, 8.4, M.wall, -4.1, WALL_H / 2, 0);               // left
+    box(0.2, WALL_H, 8.4, M.wall, 4.1, WALL_H / 2, 0);                // right
+    // front wall (z=+4) with the grand entrance opening (x -1.2..1.2, h 3.2)
+    box(2.8, WALL_H, 0.2, M.wall, -2.6, WALL_H / 2, 4);
+    box(2.8, WALL_H, 0.2, M.wall, 2.6, WALL_H / 2, 4);
+    box(2.4, WALL_H - 3.2, 0.2, M.wall, 0, 3.2 + (WALL_H - 3.2) / 2, 4);
+
+    // grand engraved-gold entrance frame (behind the player) + darkness beyond
+    box(0.34, 3.5, 0.42, M.goldGlow, -1.34, 1.75, 4);
+    box(0.34, 3.5, 0.42, M.goldGlow, 1.34, 1.75, 4);
+    box(3.05, 0.36, 0.42, M.goldGlow, 0, 3.36, 4);
+    box(0.07, 3.3, 0.46, M.gold, -1.17, 1.65, 4);                 // inner engraved ridge
+    box(0.07, 3.3, 0.46, M.gold, 1.17, 1.65, 4);
+    box(2.42, 0.08, 0.46, M.gold, 0, 3.2, 4);
+    [0.6, 1.4, 2.2, 3.0].forEach(y => [-1.34, 1.34].forEach(x => { // rivets down the jambs
+      const rv = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), M.gold);
+      rv.position.set(x, y, 3.77); scene.add(rv);
+    }));
+    box(3.0, 0.08, 0.5, M.gold, 0, 0.04, 4);                      // gold threshold
+    box(4, 4.6, 0.1, M.dark, 0, 2.2, 5.6);                        // darkness beyond
+    sprite(2.4, 0, 1.4, 4.35, scene, 0.4);                        // faint glow in the doorway
+
+    /* ---- desk group (diagonal, chair behind — concept v4) ---- */
+    const desk = new THREE.Group();
+    desk.position.set(0.5, 0, -0.4); desk.rotation.y = 0.42; scene.add(desk);
+    box(1.95, 0.09, 0.98, M.wood, 0, 0.78, 0, 0, desk);           // top
+    box(2.02, 0.035, 1.04, M.woodDark, 0, 0.725, 0, 0, desk);     // moulded edge band
+    box(1.72, 0.16, 0.8, M.woodDark, 0, 0.655, 0, 0, desk);       // apron
+    box(1.6, 0.05, 0.72, M.gold, 0, 0.585, 0, 0, desk);           // thin gold inlay line under the apron
+    [[-0.86, 0.42], [0.86, 0.42], [-0.86, -0.42], [0.86, -0.42]].forEach(([x, z]) => {
+      // turned legs — foot, swell, shaft, collar (the "fancier desk" Dan wanted)
+      const leg = new THREE.Group(); leg.position.set(x, 0, z); desk.add(leg);
+      const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.07, 10), M.woodDark); foot.position.y = 0.035; leg.add(foot);
+      const swell = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), M.woodDark); swell.position.y = 0.13; leg.add(swell);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.05, 0.38, 10), M.woodDark); shaft.position.y = 0.38; leg.add(shaft);
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.09, 10), M.woodDark); collar.position.y = 0.615; leg.add(collar);
+    });
+    // chair behind the desk (local -z), facing the desk
+    const chair = new THREE.Group(); chair.position.set(0.1, 0, -0.92); desk.add(chair);
+    box(0.46, 0.06, 0.44, M.wood, 0, 0.46, 0, 0, chair);
+    [[-0.19, 0.18], [0.19, 0.18], [-0.19, -0.18], [0.19, -0.18]].forEach(([x, z]) =>
+      box(0.05, 0.46, 0.05, M.woodDark, x, 0.23, z, 0, chair));
+    box(0.05, 0.62, 0.05, M.woodDark, -0.19, 0.8, -0.2, 0, chair);
+    box(0.05, 0.62, 0.05, M.woodDark, 0.19, 0.8, -0.2, 0, chair);
+    [0.72, 0.9, 1.06].forEach(y => box(0.42, 0.07, 0.03, M.wood, 0, y, -0.2, 0, chair));
+
+    // ✦ THE REWARD — glowing puzzle stack, center of the desk (clickable)
+    const stack = new THREE.Group();
+    stack.position.set(0.02, 0.825, 0.05); desk.add(stack);
+    stack.userData = { kind: 'stack', label: "Take the Keeper's gift" };
+    [0, 1, 2, 3].forEach(i =>
+      box(0.44 - i * 0.02, 0.08, 0.33 - i * 0.015, M.stack, (R() - 0.5) * 0.03, 0.04 + i * 0.082, (R() - 0.5) * 0.03, (R() - 0.5) * 0.3, stack));
+    const stackGlow = sprite(1.5, 0, 0.28, 0, stack, 0.95);
+    const stackLight = new THREE.PointLight(0xffb84a, 30, 7, 2);
+    stackLight.position.set(0, 0.55, 0); stack.add(stackLight);
+
+    // candle (right of desk) with flicker
+    const candle = new THREE.Group(); candle.position.set(0.74, 0.825, 0.18); desk.add(candle);
+    const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.025, 16), M.gold);
+    holder.position.y = 0.012; candle.add(holder);
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.17, 12), M.candle);
+    stick.position.y = 0.1; candle.add(stick);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.07, 10), M.flame);
+    flame.position.y = 0.22; candle.add(flame);
+    sprite(0.5, 0, 0.24, 0, candle);
+    const candleLight = new THREE.PointLight(0xffab4a, 24, 8, 2);
+    candleLight.position.set(0, 0.4, 0); candle.add(candleLight);
+
+    // inkwell + quill (left of desk)
+    const ink = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0x181310, roughness: 0.4, metalness: 0.3 }));
+    ink.position.set(-0.72, 0.87, 0.12); desk.add(ink);
+    const quill = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.34), new THREE.MeshStandardMaterial({ color: 0xe8e2d2, side: THREE.DoubleSide, roughness: 0.8 }));
+    quill.position.set(-0.72, 1.02, 0.12); quill.rotation.set(0.5, 0.4, 0.9); desk.add(quill);
+
+    // scattered pages on the desk
+    [[-0.45, 0.28, 0.5, M.paperA], [0.5, -0.25, -0.4, M.paperB], [-0.15, -0.3, 1.2, M.paperB], [0.42, 0.3, 2.4, M.paperA]].forEach(([x, z, r, mt]) => {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.4), mt);
+      p.rotation.x = -Math.PI / 2; p.rotation.z = r; p.position.set(x, 0.828, z); desk.add(p);
+    });
+    // soft contact shadow under the desk
+    const shadowTex = (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const gr = g.createRadialGradient(64, 64, 6, 64, 64, 62);
+      gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    })();
+    const deskShadow = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.9), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    deskShadow.rotation.x = -Math.PI / 2; deskShadow.position.set(0, 0.012, -0.35); desk.add(deskShadow);
+
+    // a couple of crumpled rejects near the walls (floor mostly CLEAR — Dan's note)
+    [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z]) => {
+      const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), M.paperB);
+      w.position.set(x, 0.06, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
+    });
+
+    /* ---- pinboard of sudoku sheets (back wall, right — per concept) ---- */
+    box(2.1, 1.5, 0.06, M.woodDark, 1.9, 2.15, -3.94);
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(1.94, 1.34), new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.95 }));
+    board.position.set(1.9, 2.15, -3.86); scene.add(board);
+
+    /* ---- bookcases (left & right walls) ---- */
+    function makeBookcase(w, h, d) {
+      const g = new THREE.Group();
+      box(w, h, d * 0.35, M.woodDark, 0, h / 2, -d * 0.3, 0, g);           // back panel
+      box(0.08, h, d, M.wood, -w / 2 + 0.04, h / 2, 0, 0, g);
+      box(0.08, h, d, M.wood, w / 2 - 0.04, h / 2, 0, 0, g);
+      box(w, 0.09, d, M.wood, 0, h - 0.045, 0, 0, g);
+      box(w, 0.09, d, M.wood, 0, 0.05, 0, 0, g);
+      const shelves = 4, gap = (h - 0.5) / shelves;
+      for (let i = 0; i < shelves; i++) {
+        const y = 0.14 + i * gap;
+        if (i > 0) box(w - 0.12, 0.05, d - 0.04, M.wood, 0, y, 0, 0, g);
+        const books = new THREE.Mesh(new THREE.BoxGeometry(w - 0.2, gap * 0.74, d - 0.14),
+          [M.woodDark, M.woodDark, M.woodDark, M.woodDark, M.spines, M.woodDark]);
+        books.position.set(0, y + gap * 0.42, 0.02); g.add(books);
+      }
+      return g;
+    }
+    [[-3.82, -1.6, Math.PI / 2], [-3.82, 1.4, Math.PI / 2], [3.82, -1.2, -Math.PI / 2], [3.82, 1.7, -Math.PI / 2]].forEach(([x, z, ry]) => {
+      const bc = makeBookcase(1.9, 2.5, 0.4);
+      bc.position.set(x, 0, z); bc.rotation.y = ry; scene.add(bc);
+    });
+
+    // wall sconce with flame (left wall, near the entrance — per concept)
+    const sconce = new THREE.Group(); sconce.position.set(-3.88, 2.3, 1.9); scene.add(sconce);
+    box(0.1, 0.34, 0.1, M.iron, 0, -0.12, 0, 0, sconce);
+    const sconceCup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.045, 0.1, 10), M.gold);
+    sconceCup.position.set(0.12, 0.02, 0); sconce.add(sconceCup);
+    const sflame = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 10), M.flame);
+    sflame.position.set(0.12, 0.14, 0); sconce.add(sflame);
+    sprite(0.75, 0.12, 0.16, 0, sconce);
+    const sconceLight = new THREE.PointLight(0xff9a3a, 28, 9, 2);
+    sconceLight.position.set(0.25, 0.2, 0); sconce.add(sconceLight);
+
+    /* ---- THE SECRET BOOKCASE (hinged over the passage opening) ---- */
+    const hinge = new THREE.Group();
+    hinge.position.set(-2.35, 0, -3.85); scene.add(hinge);
+    const bookdoor = makeBookcase(1.74, 2.44, 0.34);
+    bookdoor.position.set(0.87, 0, 0); hinge.add(bookdoor);
+    bookdoor.traverse(o => { o.userData.kindParent = 'bookcase'; });
+    hinge.userData = { kind: 'bookcase', label: 'A bookcase… slightly ajar' };
+    let doorAmt = 0;                       // 0 closed → 1 open (rotY 0 → -1.62)
+    let doorAnim = null;                   // {from,to,start,dur}
+    const DOOR_AJAR = 0.07;
+    hinge.rotation.y = -DOOR_AJAR;
+
+    /* ---- the passage + sealed Vault II door ---- */
+    const CORR = { minX: -2.2, maxX: -0.8, endZ: -6.95 };
+    const corrFloor = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 3.6), M.floor);
+    corrFloor.rotation.x = -Math.PI / 2; corrFloor.position.set(-1.5, 0.001, -5.7); scene.add(corrFloor);
+    box(0.18, 2.6, 3.6, M.wall, -2.48, 1.3, -5.7);
+    box(0.18, 2.6, 3.6, M.wall, -0.52, 1.3, -5.7);
+    box(2.1, 0.2, 3.6, M.wall, -1.5, 2.6, -5.7);
+    // torch in the passage
+    const torch = new THREE.Group(); torch.position.set(-2.36, 1.85, -5.3); scene.add(torch);
+    const tflame = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 10), M.flame);
+    tflame.position.set(0.1, 0.1, 0); torch.add(tflame);
+    box(0.07, 0.3, 0.07, M.iron, 0.06, -0.08, 0, 0.3, torch);
+    sprite(0.55, 0.1, 0.12, 0, torch, 0.6);
+    const torchLight = new THREE.PointLight(0xff8f35, 14, 9, 2);
+    torchLight.position.set(0.2, 0.15, 0); torch.add(torchLight);
+    /* ================= THE DEEPER WORLD — Vaults II & III ================= */
+    const AX = -1.5;   // the deep axis: corridor → library aisle → treasure room all line up on it
+
+    // sealed circular vault door, hinged to swing open when its word is spoken
+    function makeVaultDoor(z, kind, label) {
+      const hg = new THREE.Group(); hg.position.set(AX - 1.02, 1.32, z); scene.add(hg);
+      const d = new THREE.Group(); d.position.set(1.02, 0, 0); hg.add(d);
+      const slab = new THREE.Mesh(new THREE.CylinderGeometry(0.98, 0.98, 0.2, 40), M.iron);
+      slab.rotation.x = Math.PI / 2; d.add(slab);
+      d.add(new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.075, 12, 48), M.goldGlow));
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.04, 10, 32), M.gold);
+      wheel.position.z = 0.16; d.add(wheel);
+      for (let i = 0; i < 5; i++) {
+        const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.6, 8), M.gold);
+        sp.position.z = 0.16; sp.rotation.z = i * Math.PI / 2.5; d.add(sp);
+      }
+      const hub = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), M.gold);
+      hub.position.z = 0.18; d.add(hub);
+      hg.userData = { kind, label };
+      return hg;
+    }
+    const door2 = makeVaultDoor(-7.45, 'door2', 'The second door — sealed with a word');
+    const door3 = makeVaultDoor(-19.55, 'door3', 'The third door — sealed with a word');
+
+    /* ---- VAULT II — THE LIBRARY OF PUZZLES (z -7.6 … -16.9, x -6.5 … 3.5, H 5) ---- */
+    const LIB = { minX: AX - 5, maxX: AX + 5, minZ: -16.9, maxZ: -7.6, H: 5 };
+    // front wall (holds Door II), doorway opening w1.8 h2.6 on the axis
+    box(4.1, LIB.H, 0.2, M.wall, AX - 2.95, LIB.H / 2, -7.6);
+    box(4.1, LIB.H, 0.2, M.wall, AX + 2.95, LIB.H / 2, -7.6);
+    box(1.8, LIB.H - 2.6, 0.2, M.wall, AX, 2.6 + (LIB.H - 2.6) / 2, -7.6);
+    // gold frame around Door II
+    box(0.26, 2.8, 0.3, M.goldGlow, AX - 1.02, 1.4, -7.58);
+    box(0.26, 2.8, 0.3, M.goldGlow, AX + 1.02, 1.4, -7.58);
+    box(2.3, 0.26, 0.3, M.goldGlow, AX, 2.72, -7.58);
+    // floor / ceiling
+    const libFloor = new THREE.Mesh(new THREE.PlaneGeometry(10.2, 9.5), M.parquet);
+    libFloor.rotation.x = -Math.PI / 2; libFloor.position.set(AX, 0.001, -12.25); scene.add(libFloor);
+    const libCeil = new THREE.Mesh(new THREE.PlaneGeometry(10.2, 9.5), new THREE.MeshStandardMaterial({ map: woodTex, color: 0x5a3c22, roughness: 0.95 }));
+    libCeil.rotation.x = Math.PI / 2; libCeil.position.set(AX, LIB.H, -12.25); scene.add(libCeil);
+    [-9.5, -12.25, -15].forEach(z => box(10.2, 0.3, 0.26, M.woodDark, AX, LIB.H - 0.15, z));
+    box(0.26, 0.3, 9.5, M.woodDark, AX, LIB.H - 0.15, -12.25, 0);
+    // side walls + back wall (doorway to the deeper corridor, w1.6 h2.4)
+    box(0.2, LIB.H, 9.5, M.wall, LIB.minX - 0.1, LIB.H / 2, -12.25);
+    box(0.2, LIB.H, 9.5, M.wall, LIB.maxX + 0.1, LIB.H / 2, -12.25);
+    box(4.2, LIB.H, 0.2, M.wall, AX - 2.9, LIB.H / 2, -16.9);
+    box(4.2, LIB.H, 0.2, M.wall, AX + 2.9, LIB.H / 2, -16.9);
+    box(1.6, LIB.H - 2.4, 0.2, M.wall, AX, 2.4 + (LIB.H - 2.4) / 2, -16.9);
+    // glowing back doorway (the pull toward Vault III)
+    box(0.24, 2.6, 0.28, M.goldGlow, AX - 0.92, 1.3, -16.88);
+    box(0.24, 2.6, 0.28, M.goldGlow, AX + 0.92, 1.3, -16.88);
+    box(2.1, 0.24, 0.28, M.goldGlow, AX, 2.6, -16.88);
+    sprite(2.2, AX, 1.3, -16.55, scene, 0.5);
+
+    /* puzzle-treasure props (procedural, engraved-gold) */
+    function propCipherDisc() {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.17, 0.035, 24), M.brass); g.add(base);
+      const mid = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.12, 0.055, 24), M.gold); mid.position.y = 0.04; g.add(mid);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.07, 16), M.brass); top.position.y = 0.09; g.add(top);
+      return g;
+    }
+    function propCryptex() {
+      const g = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.075, 16), i % 2 ? M.brass : M.gold);
+        seg.rotation.z = Math.PI / 2; seg.position.x = -0.16 + i * 0.08; g.add(seg);
+      }
+      [-0.23, 0.23].forEach(x => {
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.082, 0.05, 16), M.woodDark);
+        cap.rotation.z = Math.PI / 2; cap.position.x = x; g.add(cap);
+      });
+      g.position.y = 0.082; return g;
+    }
+    function propPuzzleChest(mat = M.chestWood) {
+      const g = new THREE.Group();
+      box(0.36, 0.2, 0.24, mat, 0, 0.1, 0, 0, g);
+      const lid = box(0.36, 0.09, 0.24, mat, 0, 0.245, 0, 0, g);
+      lid.rotation.z = 0;
+      [-0.11, 0.11].forEach(x => box(0.045, 0.31, 0.26, M.gold, x, 0.155, 0, 0, g));
+      const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 14), M.gold);
+      dial.rotation.x = Math.PI / 2; dial.position.set(0, 0.12, 0.13); g.add(dial);
+      return g;
+    }
+    function propChess() {
+      const g = new THREE.Group();
+      box(0.4, 0.03, 0.4, M.checker, 0, 0.015, 0, 0, g);
+      [[-0.1, -0.05], [0.05, 0.1], [0.14, -0.12]].forEach(([x, z], i) => {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.032, 0.09, 10), i % 2 ? M.brass : M.iron);
+        p.position.set(x, 0.075, z); g.add(p);
+        const h = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), i % 2 ? M.brass : M.iron);
+        h.position.set(x, 0.13, z); g.add(h);
+      });
+      return g;
+    }
+    function propEnigma() {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.3),
+        [M.woodDark, M.woodDark, M.enigma, M.woodDark, M.woodDark, M.woodDark]); // enigma face on top
+      body.position.y = 0.12; g.add(body);
+      return g;
+    }
+    function propSphere() {
+      const g = new THREE.Group();
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.13, 18, 14), M.brass); s.position.y = 0.16; g.add(s);
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.018, 8, 28), M.gold); r.position.y = 0.16; r.rotation.x = 0.6; g.add(r);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.06, 12), M.woodDark); st.position.y = 0.03; g.add(st);
+      return g;
+    }
+    const PROPS = [propCipherDisc, propCryptex, propPuzzleChest, propChess, propEnigma, propSphere];
+
+    // tall gold-pilastered treasure shelves along both library walls
+    function makeTreasureShelf(w, h, d) {
+      const g = new THREE.Group();
+      box(w, h, d * 0.3, M.woodDark, 0, h / 2, -d * 0.32, 0, g);
+      box(0.1, h, d, M.wood, -w / 2 + 0.05, h / 2, 0, 0, g);
+      box(0.1, h, d, M.wood, w / 2 - 0.05, h / 2, 0, 0, g);
+      box(w, 0.1, d, M.wood, 0, h - 0.05, 0, 0, g);
+      box(w, 0.14, d + 0.06, M.wood, 0, 0.07, 0, 0, g);
+      const shelves = 4, gap = (h - 0.65) / shelves;
+      for (let i = 0; i < shelves; i++) {
+        const y = 0.2 + i * gap;
+        if (i > 0) box(w - 0.16, 0.055, d - 0.05, M.wood, 0, y, 0, 0, g);
+        // warm under-shelf glow strip (emissive only — no light cost)
+        box(w - 0.2, 0.025, 0.03, M.glowStrip, 0, y + gap - 0.09, d / 2 - 0.05, 0, g);
+        if (i % 2 === 0) { // books row
+          const books = new THREE.Mesh(new THREE.BoxGeometry(w - 0.24, gap * 0.62, d - 0.16),
+            [M.woodDark, M.woodDark, M.woodDark, M.woodDark, M.spines, M.woodDark]);
+          books.position.set(0, y + gap * 0.36, 0.02); g.add(books);
+        } else {           // treasures row
+          const n = 2 + (R() * 2 | 0);
+          for (let k = 0; k < n; k++) {
+            const p = PROPS[(R() * PROPS.length) | 0]();
+            p.position.set(-w / 2 + 0.35 + k * (w - 0.7) / Math.max(1, n - 1) + (R() - 0.5) * 0.06, y + 0.03, 0.02);
+            p.rotation.y = (R() - 0.5) * 0.8; g.add(p);
+          }
+        }
+      }
+      return g;
+    }
+    [[LIB.minX + 0.33, -9.3, Math.PI / 2], [LIB.minX + 0.33, -12.25, Math.PI / 2], [LIB.minX + 0.33, -15.2, Math.PI / 2],
+     [LIB.maxX - 0.33, -9.3, -Math.PI / 2], [LIB.maxX - 0.33, -12.25, -Math.PI / 2], [LIB.maxX - 0.33, -15.2, -Math.PI / 2]].forEach(([x, z, ry]) => {
+      const s = makeTreasureShelf(2.6, 4.3, 0.5);
+      s.position.set(x, 0, z); s.rotation.y = ry; scene.add(s);
+    });
+    // gold pilasters between shelf bays + cornice and baseboards (the engraved-gold trim)
+    [-10.78, -13.73].forEach(z => {
+      box(0.34, LIB.H, 0.34, M.goldGlow, LIB.minX + 0.17, LIB.H / 2, z);
+      box(0.34, LIB.H, 0.34, M.goldGlow, LIB.maxX - 0.17, LIB.H / 2, z);
+    });
+    box(0.14, 0.2, 9.5, M.gold, LIB.minX + 0.07, LIB.H - 0.32, -12.25);   // cornice rails
+    box(0.14, 0.2, 9.5, M.gold, LIB.maxX - 0.07, LIB.H - 0.32, -12.25);
+    box(10.2, 0.2, 0.14, M.gold, AX, LIB.H - 0.32, -16.82);
+    box(0.16, 0.24, 9.5, M.woodDark, LIB.minX + 0.08, 0.12, -12.25);      // baseboards
+    box(0.16, 0.24, 9.5, M.woodDark, LIB.maxX - 0.08, 0.12, -12.25);
+    // freestanding stacks flanking the aisle (gives the concept's "walking a corridor of shelves")
+    [[AX - 1.95, -10.7, Math.PI / 2], [AX + 1.95, -13.9, -Math.PI / 2]].forEach(([x, z, ry]) => {
+      const st = makeTreasureShelf(2.2, 2.5, 0.5);
+      st.position.set(x, 0, z); st.rotation.y = ry; scene.add(st); // both faces turned toward the aisle
+    });
+    // low display counters flanking the entrance (like the concept's foreground cabinets)
+    [[AX - 2.2, -8.6], [AX + 2.2, -8.6]].forEach(([x, z]) => {
+      box(1.7, 0.95, 0.6, M.woodDark, x, 0.475, z);
+      box(1.8, 0.06, 0.68, M.wood, x, 0.98, z);
+      const p = PROPS[(R() * PROPS.length) | 0]();
+      p.position.set(x, 1.01, z); p.rotation.y = R() * 6.3; scene.add(p);
+    });
+
+    // gold-framed puzzle pages on the blank wall stretches (front + back walls)
+    [[AX - 3.3, 2.7, -7.74, Math.PI], [AX + 3.3, 2.7, -7.74, Math.PI],
+     [AX - 3.5, 2.7, -16.76, 0], [AX + 3.5, 2.7, -16.76, 0]].forEach(([x, y, z, ry]) => {
+      const fr = new THREE.Group(); fr.position.set(x, y, z); fr.rotation.y = ry; scene.add(fr);
+      box(0.74, 0.94, 0.05, M.gold, 0, 0, 0, 0, fr);
+      const pg = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), M.paperA);
+      pg.position.z = 0.032; fr.add(pg);
+    });
+
+    // ✦ THE VAULT II REWARD — a glowing tome on a reading lectern, beside the aisle
+    const lectern = new THREE.Group(); lectern.position.set(AX + 1.7, 0, -11.6); lectern.rotation.y = -0.5; scene.add(lectern);
+    lectern.userData = { kind: 'tome', label: "The Keeper's second gift" };
+    box(0.16, 1.05, 0.16, M.wood, 0, 0.52, 0, 0, lectern);
+    box(0.55, 0.06, 0.28, M.woodDark, 0, 0.09, 0, 0, lectern);
+    const deskTop = box(0.62, 0.05, 0.5, M.wood, 0, 1.12, 0, 0, lectern);
+    deskTop.rotation.x = -0.42;
+    const tomeStack = new THREE.Group(); tomeStack.position.set(0, 1.19, -0.04); tomeStack.rotation.x = -0.42; lectern.add(tomeStack);
+    [0, 1, 2].forEach(i =>
+      box(0.4 - i * 0.02, 0.07, 0.3 - i * 0.012, M.stack, (R() - 0.5) * 0.02, i * 0.072, (R() - 0.5) * 0.02, (R() - 0.5) * 0.2, tomeStack));
+    const tomeGlow = sprite(1.2, 0, 0.25, 0, tomeStack, 0.9);
+    const tomeLight = new THREE.PointLight(0xffb84a, 16, 6, 2);
+    tomeLight.position.set(0, 0.6, 0.2); lectern.add(tomeLight);
+
+    // aisle lanterns (hanging) — the library's main light
+    const libLights = [];
+    [-9.4, -12.2, -15].forEach((z) => {
+      const lamp = new THREE.Group(); lamp.position.set(AX, LIB.H - 0.9, z); scene.add(lamp);
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.0, 6), M.iron);
+      cable.position.y = 0.45; lamp.add(cable);
+      const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 0.2, 12), M.brass);
+      shade.position.y = -0.12; lamp.add(shade);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), M.flame);
+      bulb.position.y = -0.26; lamp.add(bulb);
+      sprite(0.85, 0, -0.3, 0, lamp, 0.7);
+      const L = new THREE.PointLight(0xffbb55, 85, 14, 2);
+      L.position.set(0, -0.55, 0); lamp.add(L);
+      libLights.push(L);
+    });
+
+    /* ---- corridor II→III (z -16.9 … -19.7, on the axis) ---- */
+    const corr2Floor = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 3.0), M.floor);
+    corr2Floor.rotation.x = -Math.PI / 2; corr2Floor.position.set(AX, 0.001, -18.3); scene.add(corr2Floor);
+    box(0.18, 2.7, 3.0, M.wall, AX - 0.98, 1.35, -18.3);
+    box(0.18, 2.7, 3.0, M.wall, AX + 0.98, 1.35, -18.3);
+    box(2.1, 0.2, 3.0, M.wall, AX, 2.7, -18.3);
+    const torch2 = new THREE.Group(); torch2.position.set(AX + 0.86, 1.9, -18.1); scene.add(torch2);
+    const t2flame = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 10), M.flame);
+    t2flame.position.set(-0.1, 0.1, 0); torch2.add(t2flame);
+    box(0.07, 0.3, 0.07, M.iron, -0.06, -0.08, 0, -0.3, torch2);
+    sprite(0.55, -0.1, 0.12, 0, torch2, 0.6);
+    const torch2Light = new THREE.PointLight(0xff8f35, 12, 8, 2);
+    torch2Light.position.set(-0.2, 0.15, 0); torch2.add(torch2Light);
+
+    /* ---- VAULT III — THE GRAND TREASURE (z -19.7 … -25.9, x AX±3.7, H 4.3) ---- */
+    const V3 = { minX: AX - 3.7, maxX: AX + 3.7, minZ: -25.9, maxZ: -19.7, H: 4.3 };
+    // front wall around Door III
+    box(2.75, V3.H, 0.2, M.frieze, AX - 2.32, V3.H / 2, -19.7);
+    box(2.75, V3.H, 0.2, M.frieze, AX + 2.32, V3.H / 2, -19.7);
+    box(1.9, V3.H - 2.6, 0.2, M.frieze, AX, 2.6 + (V3.H - 2.6) / 2, -19.7);
+    box(0.26, 2.8, 0.3, M.goldGlow, AX - 1.02, 1.4, -19.68);
+    box(0.26, 2.8, 0.3, M.goldGlow, AX + 1.02, 1.4, -19.68);
+    box(2.3, 0.26, 0.3, M.goldGlow, AX, 2.72, -19.68);
+    // floor / ceiling / walls (carved frieze stone)
+    const v3Floor = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 6.6), M.floor);
+    v3Floor.rotation.x = -Math.PI / 2; v3Floor.position.set(AX, 0.001, -22.8); scene.add(v3Floor);
+    const v3Ceil = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 6.6), new THREE.MeshStandardMaterial({ map: wallTex, color: 0x5a4630, roughness: 1 }));
+    v3Ceil.rotation.x = Math.PI / 2; v3Ceil.position.set(AX, V3.H, -22.8); scene.add(v3Ceil);
+    box(0.2, V3.H, 6.6, M.frieze, V3.minX - 0.1, V3.H / 2, -22.8);
+    box(0.2, V3.H, 6.6, M.frieze, V3.maxX + 0.1, V3.H / 2, -22.8);
+    box(7.8, V3.H, 0.2, M.frieze, AX, V3.H / 2, -25.9);
+    // stone pilasters
+    [[V3.minX + 0.22, -21.4], [V3.minX + 0.22, -24.3], [V3.maxX - 0.22, -21.4], [V3.maxX - 0.22, -24.3],
+     [AX - 2.9, -25.75], [AX + 2.9, -25.75]].forEach(([x, z]) => {
+      box(0.42, V3.H, 0.42, M.stonePed, x, V3.H / 2, z);
+      box(0.56, 0.16, 0.56, M.stonePed, x, V3.H - 0.08, z);  // capital
+      box(0.56, 0.18, 0.56, M.stonePed, x, 0.09, z);         // base
+      box(0.5, 0.05, 0.5, M.gold, x, V3.H - 0.2, z);         // gold collar
+    });
+    // torch sconces (two lights for the whole room)
+    [[V3.minX + 0.45, -21.6, 1], [V3.maxX - 0.45, -21.6, -1]].forEach(([x, z, side]) => {
+      const tg = new THREE.Group(); tg.position.set(x, 2.35, z); scene.add(tg);
+      box(0.08, 0.34, 0.08, M.iron, 0, -0.12, 0, 0, tg);
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 10), M.flame);
+      fl.position.set(side * 0.1, 0.12, 0); tg.add(fl);
+      sprite(0.6, side * 0.1, 0.14, 0, tg, 0.6);
+    });
+    const v3LightA = new THREE.PointLight(0xff9a3a, 26, 11, 2); v3LightA.position.set(V3.minX + 0.7, 2.5, -21.6); scene.add(v3LightA);
+    const v3LightB = new THREE.PointLight(0xff9a3a, 26, 11, 2); v3LightB.position.set(V3.maxX - 0.7, 2.5, -21.6); scene.add(v3LightB);
+    // unlit sconce pair deeper in (dressing only)
+    [[V3.minX + 0.45, -24.6, 1], [V3.maxX - 0.45, -24.6, -1]].forEach(([x, z, side]) => {
+      const tg = new THREE.Group(); tg.position.set(x, 2.35, z); scene.add(tg);
+      box(0.08, 0.34, 0.08, M.iron, 0, -0.12, 0, 0, tg);
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 10), M.flame);
+      fl.position.set(side * 0.1, 0.12, 0); tg.add(fl);
+      sprite(0.5, side * 0.1, 0.13, 0, tg, 0.5);
+    });
+
+    // ✦ THE SERIES SEALS — 4 glowing jewel emblems on the back wall (V2–V5 tease)
+    const sealPulse = [];
+    SEALS.forEach((s, i) => {
+      const x = AX - 2.25 + i * 1.5;
+      box(0.78, 1.06, 0.07, M.woodDark, x, 2.25, -25.84);
+      box(0.84, 0.07, 0.09, M.gold, x, 2.79, -25.84);
+      box(0.84, 0.07, 0.09, M.gold, x, 1.71, -25.84);
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.88),
+        new THREE.MeshBasicMaterial({ map: sealTexture(s.a, s.b), transparent: false }));
+      plane.position.set(x, 2.25, -25.79);
+      plane.userData = { kind: 'seals', label: 'Four more secrets — the hunt continues' };
+      scene.add(plane); sealPulse.push(plane);
+      const gs = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: s.light, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+      gs.scale.setScalar(1.15); gs.position.set(x, 2.25, -25.65); scene.add(gs); sealPulse.push(gs);
+    });
+    const sealsWall = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 2.2), new THREE.MeshBasicMaterial({ visible: false }));
+    sealsWall.position.set(AX, 2.25, -25.78); scene.add(sealsWall);
+    sealsWall.userData = { kind: 'seals', label: 'Four more secrets — the hunt continues' };
+
+    // stone pedestals: manuscripts + a small cracked puzzle-chest with cryptex
+    function pedestal(x, z) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+      box(0.62, 0.12, 0.62, M.stonePed, 0, 0.06, 0, 0, g);
+      box(0.46, 0.85, 0.46, M.stonePed, 0, 0.545, 0, 0, g);
+      box(0.58, 0.08, 0.58, M.stonePed, 0, 1.0, 0, 0, g);
+      return g;
+    }
+    const pedA = pedestal(AX - 1.15, -22.2);
+    [0, 1, 2].forEach(i => box(0.4 - i * 0.03, 0.075, 0.3 - i * 0.02, i === 2 ? M.chestWood2 : M.woodDark, (R() - 0.5) * 0.03, 1.08 + i * 0.076, 0, (R() - 0.5) * 0.3, pedA));
+    const pedB = pedestal(AX + 1.15, -22.7);
+    const pbChest = propPuzzleChest(M.chestWood2); pbChest.scale.setScalar(1.15); pbChest.position.y = 1.04; pedB.add(pbChest);
+
+    // ✦ THE GRAND REWARD — the great cracked-open chest, center back (clickable)
+    const chestG = new THREE.Group(); chestG.position.set(AX, 0, -24.5); scene.add(chestG);
+    chestG.userData = { kind: 'chest', label: 'The Grand Vault — claim it all' };
+    box(0.95, 0.5, 0.6, M.chestWood, 0, 0.25, 0, 0, chestG);
+    [-0.3, 0, 0.3].forEach(x => box(0.07, 0.54, 0.64, M.gold, x, 0.27, 0, 0, chestG));
+    const lid3 = new THREE.Group(); lid3.position.set(0, 0.5, -0.3); lid3.rotation.x = -1.9; chestG.add(lid3);
+    box(0.95, 0.16, 0.6, M.chestWood, 0, 0.08, 0.3, 0, lid3);
+    [-0.3, 0, 0.3].forEach(x => box(0.07, 0.18, 0.64, M.gold, x, 0.09, 0.3, 0, lid3));
+    const hoardMat = new THREE.MeshStandardMaterial({ color: 0xd9a940, emissive: 0xcf8a20, emissiveIntensity: 1.0, roughness: 0.5 });
+    const chestInner = box(0.85, 0.1, 0.5, hoardMat, 0, 0.48, 0, 0, chestG); // glowing hoard
+    const chestGlow = sprite(1.35, 0, 0.7, 0, chestG, 0.7);
+    const chestLight = new THREE.PointLight(0xffc25a, 22, 8, 2);
+    chestLight.position.set(0, 1.0, 0.2); chestG.add(chestLight);
+    // combination dial on the chest front — the "puzzle-locked" cue
+    const cdial = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 18), M.gold);
+    cdial.rotation.x = Math.PI / 2; cdial.position.set(0, 0.28, 0.33); chestG.add(cdial);
+
+    // two smaller cracked chests + scattered coins & gems (restrained, per Dan's note)
+    [[AX - 1.9, -23.6, 0.5, M.chestWood], [AX + 1.75, -23.9, -0.7, M.chestWood2]].forEach(([x, z, ry, mat]) => {
+      const c = new THREE.Group(); c.position.set(x, 0, z); c.rotation.y = ry; scene.add(c);
+      box(0.6, 0.34, 0.4, mat, 0, 0.17, 0, 0, c);
+      [-0.19, 0.19].forEach(bx => box(0.05, 0.38, 0.44, M.gold, bx, 0.19, 0, 0, c));
+      const lid = new THREE.Group(); lid.position.set(0, 0.34, -0.2); lid.rotation.x = -1.2; c.add(lid);
+      box(0.6, 0.1, 0.4, mat, 0, 0.05, 0.2, 0, lid);
+      box(0.5, 0.05, 0.3, M.glowStrip, 0, 0.31, 0.02, 0, c);
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 14), M.gold);
+      d.rotation.x = Math.PI / 2; d.position.set(0, 0.17, 0.22); c.add(d);
+    });
+    // coins (instanced)
+    const coinGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.014, 12);
+    const coins = new THREE.InstancedMesh(coinGeo, M.coin, 90);
+    const cm = new THREE.Matrix4(), ce = new THREE.Euler(), cq = new THREE.Quaternion(), cs = new THREE.Vector3(1, 1, 1);
+    const coinSpots = [[AX, -24.1, 1.1], [AX - 1.9, -23.3, 0.55], [AX + 1.75, -23.6, 0.55]];
+    for (let i = 0; i < 90; i++) {
+      const [sx, sz, sr] = coinSpots[i % coinSpots.length];
+      const a = R() * 6.3, r = Math.sqrt(R()) * sr;
+      ce.set((R() - 0.5) * 0.7, R() * 6.3, (R() - 0.5) * 0.7); cq.setFromEuler(ce);
+      cm.compose(new THREE.Vector3(sx + Math.cos(a) * r, 0.012 + R() * 0.02, sz + Math.sin(a) * r * 0.8), cq, cs);
+      coins.setMatrixAt(i, cm);
+    }
+    scene.add(coins);
+    // gems in the four series colors
+    for (let i = 0; i < 16; i++) {
+      const gm = new THREE.Mesh(new THREE.IcosahedronGeometry(0.028 + R() * 0.022, 0), GEMS[i % 4]);
+      const [sx, sz, sr] = coinSpots[i % coinSpots.length];
+      const a = R() * 6.3, r = Math.sqrt(R()) * (sr + 0.25);
+      gm.position.set(sx + Math.cos(a) * r, 0.05, sz + Math.sin(a) * r * 0.8);
+      gm.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(gm);
+    }
+    // a fallen cryptex by the great chest
+    const fallenCx = propCryptex(); fallenCx.position.set(AX + 0.75, 0, -24.15); fallenCx.rotation.y = 1.1; scene.add(fallenCx);
+
+    // the unlit lantern — the hidden fourth door's keyhole (Phase-2 payoff, wired to the word box)
+    const lantern = new THREE.Group(); lantern.position.set(V3.minX + 0.55, 0, -25.3); lantern.rotation.y = 0.7; scene.add(lantern);
+    lantern.userData = { kind: 'fourth', label: 'Something unlit… waiting' };
+    box(0.16, 0.02, 0.16, M.iron, 0, 0.01, 0, 0, lantern);
+    [[-0.065, -0.065], [0.065, -0.065], [-0.065, 0.065], [0.065, 0.065]].forEach(([x, z]) => box(0.016, 0.24, 0.016, M.iron, x, 0.14, z, 0, lantern));
+    box(0.17, 0.03, 0.17, M.iron, 0, 0.26, 0, 0, lantern);
+    const lringM = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.008, 6, 14), M.iron);
+    lringM.position.y = 0.3; lantern.add(lringM);
+    const lglass = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.2, 0.11), new THREE.MeshStandardMaterial({ color: 0x18130c, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.85 }));
+    lglass.position.y = 0.14; lantern.add(lglass);
+    const lanternGlim = sprite(0.22, 0, 0.14, 0, lantern, 0.0); // dark until noticed… then the faintest breath of light
+
+    /* ---- dust motes ---- */
+    const dustN = REDUCED ? 0 : 280;
+    let dust = null;
+    if (dustN) {
+      const pos = new Float32Array(dustN * 3);
+      for (let i = 0; i < dustN; i++) { // motes across all three rooms
+        pos[i * 3] = -6.3 + R() * 10; pos[i * 3 + 1] = 0.2 + R() * 3.2; pos[i * 3 + 2] = -25.5 + R() * 29;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xd9a860, size: 0.012, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false }));
+      scene.add(dust);
+    }
+
+    /* ---- lights ---- */
+    scene.add(new THREE.AmbientLight(0x4a2e12, 1.15));
+    const hemi = new THREE.HemisphereLight(0x8a5c2c, 0x120a04, 0.62);
+    scene.add(hemi);
+    const doorwayLight = new THREE.PointLight(0xffc060, 22, 9, 2); // glow spilling from the entrance
+    doorwayLight.position.set(0, 2.2, 3.6); scene.add(doorwayLight);
+
+    /* ================= audio (ported from the landing) ================= */
+    let actx = null, master = null, ambient = null, audioReady = false, muted = false;
+    function initAudio() {
+      if (audioReady) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = new AC();
+      master = actx.createGain(); master.gain.value = muted ? 0 : 0.9;
+      master.connect(actx.destination);
+      audioReady = true;
+    }
+    function makeNoise() {
+      const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = actx.createBufferSource(); src.buffer = buf; src.loop = true; return src;
+    }
+    function startAmbient() {
+      if (!audioReady || ambient) return;
+      const bus = actx.createGain(); bus.gain.value = 0; bus.connect(master);
+      const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300; lp.Q.value = 0.7; lp.connect(bus);
+      const o1 = actx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 55;
+      const o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 41; o2.detune.value = 5;
+      const g1 = actx.createGain(); g1.gain.value = 0.07; o1.connect(g1).connect(lp);
+      const g2 = actx.createGain(); g2.gain.value = 0.12; o2.connect(g2).connect(lp);
+      const lfo = actx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.06;
+      const lfoG = actx.createGain(); lfoG.gain.value = 80; lfo.connect(lfoG).connect(lp.frequency);
+      const noise = makeNoise(); const nf = actx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1100; nf.Q.value = 0.5;
+      const ng = actx.createGain(); ng.gain.value = 0.005; noise.connect(nf).connect(ng).connect(bus);
+      o1.start(); o2.start(); lfo.start(); noise.start();
+      bus.gain.linearRampToValueAtTime(0.8, actx.currentTime + 2.5);
+      ambient = { bus };
+    }
+    function playBoom(gain = 1) {
+      if (!audioReady || muted) return;
+      const t = actx.currentTime;
+      const o = actx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+      const og = actx.createGain();
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.7 * gain, t + 0.02); og.gain.exponentialRampToValueAtTime(0.0006, t + 0.9);
+      o.connect(og).connect(master); o.start(t); o.stop(t + 1.0);
+      const crackLen = actx.sampleRate * 0.25;
+      const cbuf = actx.createBuffer(1, crackLen, actx.sampleRate); const cd = cbuf.getChannelData(0);
+      for (let i = 0; i < crackLen; i++) cd[i] = (Math.random() * 2 - 1) * (1 - i / crackLen);
+      const csrc = actx.createBufferSource(); csrc.buffer = cbuf;
+      const cf = actx.createBiquadFilter(); cf.type = 'bandpass'; cf.frequency.value = 900; cf.Q.value = 0.9;
+      const cg = actx.createGain(); cg.gain.setValueAtTime(0.5 * gain, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      csrc.connect(cf).connect(cg).connect(master); csrc.start(t);
+      [740, 1180, 1980].forEach((f, i) => {
+        const ro = actx.createOscillator(); ro.type = 'triangle'; ro.frequency.value = f;
+        const rg = actx.createGain();
+        rg.gain.setValueAtTime(0.0001, t + 0.01); rg.gain.exponentialRampToValueAtTime(0.06 * gain / (i + 1), t + 0.03); rg.gain.exponentialRampToValueAtTime(0.0005, t + 0.5 + i * 0.08);
+        ro.connect(rg).connect(master); ro.start(t + 0.01); ro.stop(t + 0.7);
+      });
+    }
+    function playUnlock() {
+      if (!audioReady || muted) return;
+      const t = actx.currentTime;
+      const o = actx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(46, t + 0.5);
+      const og = actx.createGain();
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.5, t + 0.03); og.gain.exponentialRampToValueAtTime(0.0008, t + 1.3);
+      o.connect(og).connect(master); o.start(t); o.stop(t + 1.4);
+      [130.81, 196.0, 261.63].forEach((f) => {
+        const osc = actx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = f;
+        const g = actx.createGain();
+        g.gain.setValueAtTime(0.0001, t + 0.05); g.gain.linearRampToValueAtTime(0.07, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0008, t + 2.3);
+        osc.connect(g).connect(master); osc.start(t + 0.05); osc.stop(t + 2.4);
+      });
+    }
+    // stone-on-stone groan for the bookcase swing
+    function playCreak() {
+      if (!audioReady || muted) return;
+      const t = actx.currentTime;
+      const noise = makeNoise();
+      const bf = actx.createBiquadFilter(); bf.type = 'bandpass'; bf.Q.value = 6;
+      bf.frequency.setValueAtTime(160, t); bf.frequency.linearRampToValueAtTime(90, t + 1.4);
+      const g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.15);
+      g.gain.linearRampToValueAtTime(0.1, t + 1.1); g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+      noise.connect(bf).connect(g).connect(master); noise.start(t); noise.stop(t + 1.7);
+      const o = actx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(48, t); o.frequency.linearRampToValueAtTime(32, t + 1.4);
+      const og = actx.createGain();
+      og.gain.setValueAtTime(0.0001, t); og.gain.linearRampToValueAtTime(0.08, t + 0.2); og.gain.exponentialRampToValueAtTime(0.0008, t + 1.6);
+      o.connect(og).connect(master); o.start(t); o.stop(t + 1.7);
+    }
+    function playThud() { // locked door
+      if (!audioReady || muted) return;
+      const t = actx.currentTime;
+      const o = actx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.18);
+      const g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.015); g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      o.connect(g).connect(master); o.start(t); o.stop(t + 0.45);
+    }
+    function setMuted(m) {
+      muted = m;
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      if (currentVO) { try { currentVO.pause(); } catch (e) {} }
+      if (master && actx) master.gain.setTargetAtTime(m ? 0 : 0.9, actx.currentTime, 0.03);
+      if (actx) { if (m) actx.suspend(); else actx.resume(); }
+      document.getElementById('muteBtn').textContent = m ? '🔇' : '🔊';
+    }
+    document.getElementById('muteBtn').addEventListener('click', () => setMuted(!muted));
+
+    /* ---- the Keeper (captions + VO files w/ browser-TTS fallback, landing pattern) ---- */
+    // NOTE: none of these lines may ever contain a secret word — this text ships to every
+    // visitor's view-source. (The canon "Clever. Yes…" lines live only in the book/VO doc.)
+    const VO = {
+      entry:   { file: '/audio/vo/vo_vault1_entry.wav',   text: 'So… you found my first word. Take what the first door guarded.' },
+      reward1: { file: '/audio/vo/vo_vault1_reward.wav',  text: 'Fifty puzzles, yours — no word, no name, no price. The first door is open.' },
+      door2:   { file: '/audio/vo/vo_vault2_door.wav',    text: "The fire took my second plate. But you read my letter anyway… didn't you? Say the word." },
+      libentry:{ file: '/audio/vo/vo_lib_entry.wav',      text: 'My library. Every puzzle I ever loved… and a hundred more, waiting at the stand.' },
+      reward2: { file: '/audio/vo/vo_vault2_reward.wav',  text: 'One hundred more. My letter chose its reader well.' },
+      door3:   { file: '/audio/vo/vo_vault3_door.wav',    text: 'Step back three… and step inside.' },
+      v3entry: { file: '/audio/vo/vo_v3_entry.wav',       text: 'The heart of my vault. Everything here was locked by a puzzle… and opened by one.' },
+      finale:  { file: '/audio/vo/vo_vault3_finale.wav',  text: 'Three words, three doors — and you spoke them all. The vault is yours… but a Keeper always keeps one secret more.' },
+      fourth:  { file: '/audio/vo/vo_fourth.wav',         text: 'What flickers at the start of every thought?' },
+      fail1:   { file: '/audio/vo/vo_fail_1.wav',         text: 'That is not the word I sealed it with.' },
+      fail2:   { file: '/audio/vo/vo_fail_2.wav',         text: 'Close… or not close at all. I will never tell.' },
+      fail3:   { file: '/audio/vo/vo_fail_3.wav',         text: 'Stubborn. Good — but perhaps you need my hints.' },
+    };
+    let currentVO = null, capTimer = null;
+    function showCaption(text, holdMs = 5200) {
+      capText.textContent = text;
+      capText.classList.add('show');
+      clearTimeout(capTimer);
+      capTimer = setTimeout(() => capText.classList.remove('show'), holdMs);
+    }
+    function keeper(key) {
+      const line = VO[key]; if (!line) return;
+      showCaption(line.text, 6500);
+      if (muted) return;
+      const a = new Audio(line.file);
+      a.volume = 0.95;
+      a.play().then(() => { currentVO = a; }).catch(() => {
+        if ('speechSynthesis' in window) {
+          speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(line.text.replace(/…/g, '...'));
+          u.rate = 0.75; u.pitch = 0.6; u.volume = 0.9;
+          speechSynthesis.speak(u);
+        }
+      });
+    }
+    function silenceAll() {
+      try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+      try { if (currentVO) currentVO.pause(); } catch (e) {}
+      try { if (actx && actx.state === 'running') actx.suspend(); } catch (e) {}
+    }
+    window.addEventListener('pagehide', silenceAll);
+    window.addEventListener('beforeunload', silenceAll);
+
+    /* ================= movement / interaction ================= */
+    const player = { pos: new THREE.Vector3(0, 0, 3.0), target: new THREE.Vector3(0, 0, 2.6) };
+    let yaw = 0, pitch = -0.02;
+    let pendingAction = null;      // fires when the glide arrives
+    let rewardGiven = false, doorOpened = false;
+    let door2Open = false, door3Open = false;
+    let seenLib = false, seenV3 = false;
+    const roomNameEl = document.getElementById('roomName');
+
+    // Walkable world = a union of zones, each gated by story progress.
+    const ZONES = [
+      { minX: -3.55, maxX: 3.55, minZ: -3.5, maxZ: 3.45, ok: () => true },                          // the study
+      { minX: CORR.minX, maxX: CORR.maxX, minZ: -6.95, maxZ: -3.5, ok: () => doorAmt > 0.85 },      // corridor I
+      { minX: AX - 0.5, maxX: AX + 0.5, minZ: -8.1, maxZ: -6.95, ok: () => door2Open },             // through Door II
+      { minX: LIB.minX + 0.75, maxX: LIB.maxX - 0.75, minZ: -16.55, maxZ: -8.1, ok: () => door2Open }, // the library
+      { minX: AX - 0.62, maxX: AX + 0.62, minZ: -19.15, maxZ: -16.55, ok: () => door2Open },        // corridor II
+      { minX: AX - 0.5, maxX: AX + 0.5, minZ: -20.3, maxZ: -19.15, ok: () => door3Open },           // through Door III
+      { minX: V3.minX + 0.45, maxX: V3.maxX - 0.45, minZ: -25.45, maxZ: -20.3, ok: () => door3Open }, // the treasure vault
+    ];
+    const OBSTACLES = [
+      { x: 0.5, z: -0.55, r: 1.55 },                                   // desk + chair
+      { x: AX + 1.7, z: -11.6, r: 0.72 },                              // lectern
+      { x: AX - 2.2, z: -8.6, r: 1.0 }, { x: AX + 2.2, z: -8.6, r: 1.0 }, // library counters
+      { x: AX - 1.95, z: -10.7, r: 1.25 }, { x: AX + 1.95, z: -13.9, r: 1.25 }, // aisle stacks
+      { x: AX - 1.15, z: -22.2, r: 0.55 }, { x: AX + 1.15, z: -22.7, r: 0.55 }, // pedestals
+      { x: AX, z: -24.5, r: 0.88 },                                    // the grand chest
+      { x: AX - 1.9, z: -23.6, r: 0.62 }, { x: AX + 1.75, z: -23.9, r: 0.62 }, // side chests
+    ];
+    function clampPos(p) {
+      let bx = 0, bz = 0, bd = Infinity;
+      for (const z of ZONES) {
+        if (!z.ok()) continue;
+        const cx = THREE.MathUtils.clamp(p.x, z.minX, z.maxX);
+        const cz = THREE.MathUtils.clamp(p.z, z.minZ, z.maxZ);
+        const d = (p.x - cx) * (p.x - cx) + (p.z - cz) * (p.z - cz);
+        if (d < bd) { bd = d; bx = cx; bz = cz; }
+      }
+      p.x = bx; p.z = bz;
+      for (const o of OBSTACLES) {
+        const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz);
+        if (d < o.r && d > 1e-4) { p.x = o.x + dx / d * o.r; p.z = o.z + dz / d * o.r; }
+      }
+      return p;
+    }
+    function moveTo(x, z, action = null) {
+      player.target.set(x, 0, z); clampPos(player.target);
+      pendingAction = action;
+    }
+    function stepForward(dist) {
+      const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+      dir.y = 0; dir.normalize();
+      moveTo(player.pos.x + dir.x * dist, player.pos.z + dir.z * dist);
+    }
+
+    /* ---- pointer: drag = look, tap = interact/walk ---- */
+    const ray = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const interactables = [stack, hinge, door2, door3, lectern, chestG, sealsWall, lantern,
+      ...sealPulse.filter(o => o.isMesh)];
+    let down = null, dragging = false;
+    const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden;
+
+    function pick(clientX, clientY, targets) {
+      ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      return ray.intersectObjects(targets, true);
+    }
+    function findKind(obj) {
+      let o = obj;
+      while (o) { if (o.userData && o.userData.kind) return o; o = o.parent; }
+      return null;
+    }
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      down = { x: e.clientX, y: e.clientY, t: performance.now(), yaw, pitch };
+      dragging = false;
+      renderer.domElement.setPointerCapture(e.pointerId);
+    });
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (down) {
+        const dx = e.clientX - down.x, dy = e.clientY - down.y;
+        if (Math.hypot(dx, dy) > 7) dragging = true;
+        if (dragging) {
+          yaw = down.yaw - dx * 0.0034;
+          pitch = THREE.MathUtils.clamp(down.pitch - dy * 0.0026, -0.75, 0.6);
+        }
+        return;
+      }
+      // hover highlight
+      const hits = pick(e.clientX, e.clientY, interactables);
+      const hit = hits.length ? findKind(hits[0].object) : null;
+      if (hit) {
+        labelEl.textContent = hit.userData.label;
+        labelEl.style.display = 'block';
+        labelEl.style.left = e.clientX + 'px';
+        labelEl.style.top = e.clientY + 'px';
+        document.body.style.cursor = 'pointer';
+      } else {
+        labelEl.style.display = 'none';
+        document.body.style.cursor = '';
+      }
+    });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      const wasDrag = dragging || !down || (performance.now() - down.t) > 500;
+      down = null; dragging = false;
+      if (wasDrag) return;
+      // 1) interactables first
+      const hits = pick(e.clientX, e.clientY, interactables);
+      const hit = hits.length ? findKind(hits[0].object) : null;
+      if (hit) { activate(hit.userData.kind); return; }
+      // 2) otherwise walk to the tapped floor point
+      const fhits = pick(e.clientX, e.clientY, [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
+      if (fhits.length) moveTo(fhits[0].point.x, fhits[0].point.z);
+    });
+    addEventListener('wheel', (e) => { if (!overlayOpen()) stepForward(e.deltaY < 0 ? 1.3 : -1.0); }, { passive: true });
+    addEventListener('keydown', (e) => {
+      if (overlayOpen()) return;   // typing a word must never walk the player
+      if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') stepForward(1.3);
+      if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') stepForward(-1.0);
+      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') yaw += 0.22;
+      if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') yaw -= 0.22;
+    });
+    document.getElementById('fwdBtn').addEventListener('click', () => stepForward(1.3));
+
+    /* ---- rewards (one panel, three gifts) ---- */
+    const REWARDS = {
+      I: {
+        kicker: "THE KEEPER'S FIRST GIFT", title: 'FIFTY PUZZLES, YOURS',
+        text: "No word, no name, no price. Fifty easy puzzles from the Keeper's own desk — the first door is open.",
+        btn: 'Download the 50 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf', vo: 'reward1',
+      },
+      II: {
+        kicker: 'THE SECOND GIFT', title: 'ONE HUNDRED MORE',
+        text: 'A hundred medium puzzles, bound for the readers of my letter. The library approves of you.',
+        btn: 'Download the 100 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf', vo: 'reward2',
+      },
+      III: {
+        kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON',
+        text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.',
+        btn: 'Download the 200 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf', vo: 'finale',
+      },
+    };
+    const rewardsGiven = {};
+    let sealFlareT = -99;
+    function openReward(act) {
+      const RW = REWARDS[act];
+      document.getElementById('rwKicker').textContent = RW.kicker;
+      document.getElementById('rwTitle').textContent = RW.title;
+      document.getElementById('rwText').textContent = RW.text;
+      const b = document.getElementById('rwBtn'); b.href = RW.file; b.textContent = RW.btn;
+      rewardEl.hidden = false;
+      burstConfetti();
+      playUnlock();
+      if (!rewardsGiven[act]) { keeper(RW.vo); rewardsGiven[act] = true; }
+      if (act === 'III') sealFlareT = simT; // the series wall flares with the finale
+    }
+    document.getElementById('rewardClose').addEventListener('click', () => {
+      rewardEl.hidden = true;
+      if (!door2Open) showCaption('Something in the far shelves is… not quite shut.', 5200);
+    });
+
+    /* ---- sealed doors + the word box ---- */
+    const DOORS = {
+      door2: { act: 'II', stand: { x: AX, z: -6.35 }, inside: { x: AX, z: -8.9 },
+               kicker: 'THE SECOND DOOR', vo: 'door2', isOpen: () => door2Open, setOpen: () => { door2Open = true; }, obj: door2 },
+      door3: { act: 'III', stand: { x: AX, z: -18.55 }, inside: { x: AX, z: -21.0 },
+               kicker: 'THE THIRD DOOR', vo: 'door3', isOpen: () => door3Open, setOpen: () => { door3Open = true; }, obj: door3 },
+      fourth: { act: 'IV', kicker: 'THE FOURTH SECRET', vo: 'fourth' },
+    };
+    const doorAnims = [];
+    function openVaultDoor(key) {
+      const D = DOORS[key];
+      D.setOpen();
+      playBoom();
+      doorAnims.push({ hg: D.obj, from: D.obj.rotation.y, to: 2.05, start: simT, dur: 2.3 }); // swings away, into the next room
+      D.obj.userData.kind = null; // no longer interactable
+      setTimeout(() => moveTo(D.inside.x, D.inside.z), 900); // walk through as it swings
+    }
+
+    const wordboxEl = document.getElementById('wordbox');
+    const tilesEl = document.getElementById('tiles');
+    const wbInput = document.getElementById('wbInput');
+    const wbMsg = document.getElementById('wbMsg');
+    const wbSubmit = document.getElementById('wbSubmit');
+    const WORD_LEN = 7;                      // every deep word is seven letters
+    let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
+    function renderTiles() {
+      tilesEl.innerHTML = '';
+      for (let i = 0; i < WORD_LEN; i++) {
+        const t = document.createElement('div');
+        t.className = 'tile' + (wbWord[i] ? ' filled' : '');
+        t.textContent = wbWord[i] || '';
+        tilesEl.appendChild(t);
+      }
+    }
+    function openWordbox(key) {
+      wbTarget = key; wbWord = ''; wbBusy = false;
+      document.getElementById('wbKicker').textContent = DOORS[key].kicker;
+      document.getElementById('wbLine').textContent = VO[DOORS[key].vo].text;
+      wbMsg.textContent = ''; renderTiles();
+      wordboxEl.hidden = false;
+      wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; wbInput.focus();
+      keeper(DOORS[key].vo);
+    }
+    function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
+    document.getElementById('wbCancel').addEventListener('click', closeWordbox);
+    function wbSet(w) {
+      wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, WORD_LEN);
+      renderTiles();
+    }
+    wbInput.addEventListener('input', () => wbSet(wbInput.value));
+    addEventListener('keydown', (e) => {
+      if (wordboxEl.hidden) return;
+      if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
+      else if (e.key === 'Escape') closeWordbox();
+      else if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
+      else if (/^[a-zA-Z]$/.test(e.key)) { wbSet(wbWord + e.key); wbInput.value = wbWord; }
+      e.stopPropagation();
+    }, true);
+    async function submitWord() {
+      if (wbBusy || !wbTarget) return;
+      if (wbWord.length < 4) {
+        wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
+        return;
+      }
+      wbBusy = true; wbSubmit.textContent = 'The vault is listening…';
+      let j = null;
+      try {
+        const r = await fetch('/api/unlock', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ word: wbWord }),
+        });
+        j = await r.json();
+      } catch (e) { /* offline / static preview */ }
+      wbBusy = false; wbSubmit.textContent = 'Open the door';
+      if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
+      const D = DOORS[wbTarget];
+      if (j.ok && j.act === D.act) {
+        const key = wbTarget;
+        closeWordbox();
+        if (key === 'fourth') lanternSuccess();
+        else openVaultDoor(key);
+      } else if (j.ok) {
+        playThud();
+        wbMsg.textContent = 'A true word… but it belongs to a different door.';
+        wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
+      } else {
+        wbFails++;
+        playThud();
+        const failKey = 'fail' + Math.min(wbFails, 3);
+        keeper(failKey);
+        wbMsg.innerHTML = wbFails >= 3
+          ? 'Perhaps you need <a href="/hints" style="color:var(--gold)">the Keeper’s hints</a>.'
+          : VO[failKey].text;
+        wbSet('');
+        wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
+      }
+    }
+    wbSubmit.addEventListener('click', submitWord);
+    // 🎙 the vault listens — same Web Speech trick as the landing
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const speakBtn = document.getElementById('speakBtn');
+    if (!SR) speakBtn.style.display = 'none';
+    else speakBtn.addEventListener('click', () => {
+      try {
+        const rec = new SR();
+        rec.lang = 'en-US'; rec.maxAlternatives = 1;
+        speakBtn.classList.add('listening'); speakBtn.textContent = '🎙  Listening…';
+        rec.onresult = (e) => {
+          const said = (e.results[0][0].transcript || '');
+          wbSet(said);
+          if (wbWord.length >= 4) submitWord();
+        };
+        rec.onend = () => { speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; };
+        rec.onerror = rec.onend;
+        rec.start();
+      } catch (e) { /* ignore */ }
+    });
+    function lanternSuccess() {
+      lanternGlim.material.opacity = 0.9;
+      playUnlock(); burstConfetti();
+      showCaption('So. You heard the whole of it. The fourth vault is being carved… return when it opens.', 8000);
+    }
+
+    /* ---- what clicking things does ---- */
+    function goThen(x, z, fn) {
+      const d = Math.hypot(player.pos.x - x, player.pos.z - z);
+      if (d > 1.2) moveTo(x, z, fn); else fn();
+    }
+    function stackWorldPos() { const v = new THREE.Vector3(); stack.getWorldPosition(v); return v; }
+    function activate(kind) {
+      if (kind === 'stack') {
+        const sp = stackWorldPos();
+        const d = Math.hypot(player.pos.x - sp.x, player.pos.z - sp.z);
+        if (d > 2.4) {
+          const dirx = (player.pos.x - sp.x) / d, dirz = (player.pos.z - sp.z) / d;
+          moveTo(sp.x + dirx * 1.9, sp.z + dirz * 1.9, () => openReward('I'));
+        } else openReward('I');
+      } else if (kind === 'tome') {
+        goThen(AX + 0.85, -11.3, () => openReward('II'));
+      } else if (kind === 'chest') {
+        goThen(AX, -23.4, () => openReward('III'));
+      } else if (kind === 'bookcase') {
+        if (doorAnim || doorAmt > 0.5) return;
+        openBookcase();
+      } else if (kind === 'door2' || kind === 'door3') {
+        const D = DOORS[kind];
+        if (D.isOpen()) return;
+        goThen(D.stand.x, D.stand.z, () => openWordbox(kind));
+      } else if (kind === 'seals') {
+        showCaption('Four seals. Four secrets still to come — the hunt continues beyond this vault.', 6200);
+      } else if (kind === 'fourth') {
+        lanternGlim.material.opacity = 0.3;
+        goThen(V3.minX + 1.3, -24.8, () => openWordbox('fourth'));
+      }
+    }
+    function openBookcase() {
+      if (doorAnim || doorAmt >= 1) return;
+      doorAnim = { from: hinge.rotation.y, to: -1.62, start: performance.now(), dur: 1700 };
+      playCreak();
+      setTimeout(() => playBoom(0.5), 1400);
+      showCaption('The shelves swing wide — a passage, kept from every map.', 5600);
+      hinge.userData.label = 'The way lies open';
+      doorOpened = true;
+    }
+
+    /* ---- confetti (gold, hand-rolled, no library) ---- */
+    const conf = document.getElementById('confetti');
+    const cg = conf.getContext('2d');
+    let confParts = [];
+    function burstConfetti() {
+      conf.width = innerWidth; conf.height = innerHeight;
+      confParts = [];
+      for (let i = 0; i < 130; i++) {
+        confParts.push({
+          x: innerWidth / 2, y: innerHeight * 0.45,
+          vx: (Math.random() - 0.5) * 13, vy: -4 - Math.random() * 9,
+          s: 3 + Math.random() * 5, r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.3,
+          c: ['#f6b23c', '#ffd37a', '#c9973f', '#fff1cf'][(Math.random() * 4) | 0], life: 1,
+        });
+      }
+    }
+    function tickConfetti(dt) {
+      if (!confParts.length) return;
+      cg.clearRect(0, 0, conf.width, conf.height);
+      confParts.forEach(p => {
+        p.vy += 18 * dt; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= dt * 0.4;
+        cg.save(); cg.translate(p.x, p.y); cg.rotate(p.r);
+        cg.globalAlpha = Math.max(0, p.life);
+        cg.fillStyle = p.c; cg.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
+        cg.restore();
+      });
+      confParts = confParts.filter(p => p.life > 0 && p.y < conf.height + 30);
+      if (!confParts.length) cg.clearRect(0, 0, conf.width, conf.height);
+    }
+
+    /* ================= entry / gate ================= */
+    function begin(withAudio) {
+      gate.classList.add('gone');
+      fadeEl.classList.add('clear');
+      if (withAudio) {
+        initAudio(); startAmbient(); playBoom();
+        setTimeout(() => keeper('entry'), 1300);
+      } else {
+        showCaption(VO.entry.text, 6500);
+      }
+      setTimeout(() => { hintEl.style.opacity = '1'; }, 2500);
+    }
+    document.getElementById('enterBtn').addEventListener('click', () => begin(true));
+
+    if (DEBUG_CAM) {
+      const [cx, cz, cyaw, cpitch] = DEBUG_CAM.split(',').map(Number);
+      player.pos.set(cx || 0, 0, cz || 3);
+      player.target.copy(player.pos);
+      yaw = cyaw || 0; pitch = cpitch || 0;
+      gate.style.display = 'none';
+      fadeEl.style.transition = 'none'; fadeEl.style.display = 'none'; // instant — no transition race in headless captures
+    }
+    if (FORCE_OPEN) { hinge.rotation.y = -1.62; doorAmt = 1; doorOpened = true; }
+    if (qs.get('d2') === '1') { door2Open = true; door2.rotation.y = 2.05; door2.userData.kind = null; }
+    if (qs.get('d3') === '1') { door3Open = true; door3.rotation.y = 2.05; door3.userData.kind = null; }
+    if (FORCE_PANEL) rewardEl.hidden = false;
+    if (qs.get('wb') === '1') openWordbox(qs.get('wbk') || 'door2');
+
+    /* ================= debug hooks (headless verification) ================= */
+    window.__vault = {
+      scene, camera, renderer,
+      player, moveTo, openBookcase, openReward, activate, openWordbox, submitWord,
+      get doorAmt() { return doorAmt; },
+      get door2Open() { return door2Open; },
+      get door3Open() { return door3Open; },
+      forceDoor: (n) => openVaultDoor(n === 3 ? 'door3' : 'door2'), // test-only client force (reveals no words)
+      setWord: (w) => wbSet(w),
+      info: () => renderer.info,
+      step: (dt, n = 1) => { for (let i = 0; i < n; i++) tick(dt); }, // manual frame-step (headless verification)
+    };
+
+    /* ================= main loop ================= */
+    const clock = new THREE.Clock();
+    let running = true;
+    document.addEventListener('visibilitychange', () => {
+      running = !document.hidden;                      // pause when hidden (§4B)
+      if (document.hidden) silenceAll();
+      else { if (!muted && actx && actx.state === 'suspended') actx.resume(); clock.getDelta(); loop(); }
+    });
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    function loop() {
+      if (!running) return;
+      requestAnimationFrame(loop);
+      tick(Math.min(clock.getDelta(), 0.1));
+    }
+    let simT = 0;
+    function tick(dt) {
+      simT += dt;
+      const t = simT;
+
+      // glide toward target
+      const k = REDUCED ? 1 : Math.min(1, dt * 2.4);
+      player.pos.lerp(player.target, k);
+      clampPos(player.pos);
+      if (pendingAction && player.pos.distanceTo(player.target) < 0.18) {
+        const a = pendingAction; pendingAction = null; a();
+      }
+      camera.position.set(player.pos.x, 1.6, player.pos.z);
+      camera.rotation.set(pitch, yaw, 0);
+
+      // auto-open the bookcase as you draw near
+      if (!doorOpened && !doorAnim && player.pos.distanceTo(new THREE.Vector3(-1.5, 0, -3.4)) < 2.0)
+        openBookcase();
+
+      // bookcase swing (sim-time driven so manual stepping works too)
+      if (doorAnim) {
+        if (doorAnim.simStart === undefined) doorAnim.simStart = simT - dt;
+        const p = Math.min(1, (simT - doorAnim.simStart) / (doorAnim.dur / 1000));
+        const e = 1 - Math.pow(1 - p, 3);
+        hinge.rotation.y = doorAnim.from + (doorAnim.to - doorAnim.from) * e;
+        doorAmt = Math.abs(hinge.rotation.y) / 1.62;
+        if (p >= 1) doorAnim = null;
+      }
+      // vault doors swinging open
+      for (let i = doorAnims.length - 1; i >= 0; i--) {
+        const a = doorAnims[i];
+        const p = Math.min(1, (simT - a.start) / a.dur);
+        const e = 1 - Math.pow(1 - p, 3);
+        a.hg.rotation.y = a.from + (a.to - a.from) * e;
+        if (p >= 1) doorAnims.splice(i, 1);
+      }
+
+      // flickers & pulses
+      const fl = 0.82 + 0.28 * (Math.sin(t * 11) * 0.35 + Math.sin(t * 23 + 1.7) * 0.3 + Math.sin(t * 5.1) * 0.35);
+      candleLight.intensity = 24 * fl;
+      sconceLight.intensity = 28 * (0.85 + 0.3 * Math.sin(t * 9.2 + 2));
+      torchLight.intensity = 14 * (0.85 + 0.3 * Math.sin(t * 8.1 + 4));
+      flame.scale.y = sflame.scale.y = tflame.scale.y = 0.9 + 0.2 * Math.sin(t * 13);
+      const pulse = 0.75 + 0.45 * Math.sin(t * 2.2);
+      M.stack.emissiveIntensity = pulse;
+      stackLight.intensity = 30 * (0.8 + 0.3 * Math.sin(t * 2.2));
+      stackGlow.scale.setScalar(1.4 + 0.25 * Math.sin(t * 2.2));
+      // the deeper rooms breathe too
+      libLights.forEach((L, i) => { L.intensity = 85 * (0.9 + 0.14 * Math.sin(t * 7.3 + i * 2.1)); });
+      torch2Light.intensity = 12 * (0.85 + 0.3 * Math.sin(t * 8.8 + 1));
+      t2flame.scale.y = 0.9 + 0.2 * Math.sin(t * 12.4);
+      v3LightA.intensity = 26 * (0.86 + 0.24 * Math.sin(t * 9.4 + 2.4));
+      v3LightB.intensity = 26 * (0.86 + 0.24 * Math.sin(t * 8.2 + 0.7));
+      tomeLight.intensity = 16 * (0.8 + 0.3 * Math.sin(t * 2.4));
+      tomeGlow.scale.setScalar(1.1 + 0.2 * Math.sin(t * 2.4));
+      chestLight.intensity = 22 * (0.82 + 0.28 * Math.sin(t * 2.0 + 1));
+      chestGlow.scale.setScalar(1.3 + 0.2 * Math.sin(t * 2.0));
+      // series seals breathe — and flare when the finale is claimed
+      const flareAmt = Math.max(0, 1 - (simT - sealFlareT) / 6) * 0.8;
+      sealPulse.forEach((o, i) => {
+        const b = 0.85 + 0.2 * Math.sin(t * 1.6 + i * 1.3) + flareAmt;
+        if (o.isSprite) o.material.opacity = Math.min(1, 0.4 * b);
+        else o.material.color.setScalar(Math.min(1.8, b));
+      });
+      // room label + first-entry lines
+      const zp = player.pos.z;
+      const label = zp > -7.2 ? "VAULT I — THE WRITER'S STUDY" : zp > -19.4 ? 'VAULT II — THE LIBRARY OF PUZZLES' : 'VAULT III — THE GRAND TREASURE VAULT';
+      if (roomNameEl.textContent !== label) roomNameEl.textContent = label;
+      if (!seenLib && zp < -8.0) { seenLib = true; keeper('libentry'); }
+      if (!seenV3 && zp < -20.2) { seenV3 = true; keeper('v3entry'); }
+
+      // dust drift
+      if (dust) {
+        const a = dust.geometry.attributes.position;
+        for (let i = 0; i < dustN; i++) {
+          let y = a.getY(i) + dt * 0.05;
+          if (y > 3.5) y = 0.2;
+          a.setY(i, y);
+          a.setX(i, a.getX(i) + Math.sin(t * 0.6 + i) * dt * 0.02);
+        }
+        a.needsUpdate = true;
+      }
+
+      tickConfetti(dt);
+      renderer.render(scene, camera);
+    }
+    loop();
+  </script>
+</body>
+</html>

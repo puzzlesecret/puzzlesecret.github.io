@@ -1,0 +1,13 @@
+# dependencies / build output
+node_modules/
+dist/
+.vercel/
+.astro/
+
+# local env & secrets — the unlock salt moves to a Vercel env var at deploy
+.env
+.env.*
+
+# OS noise
+Thumbs.db
+.DS_Store

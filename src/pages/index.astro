@@ -1,0 +1,815 @@
+---
+// PuzzleSecret — Landing scene (Scene 0). MILESTONE 1 mood build, series edition.
+// Two states on one page:
+//   PRE  (default) — the mysterious, series-level entry: dimmed door, the glowing
+//                    SEAM as hero, brand type, five-volume indicator, sound gate.
+//   LIVE (on Enter) — Volume I ignites to gold; Keeper speaks; word slot rises.
+// Gemini crack video + Keeper voice composite into LIVE in the next step.
+const keeperFirstLine =
+  "Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening.";
+const tiles = 6;
+const volumes = [
+  { rn: "I", c: "var(--v1)", rgb: "255,180,72", img: "/art/door-v10.webp", name: "The Keeper's Vault", active: true },
+  { rn: "II", c: "var(--v2)", rgb: "70,210,135", img: "/art/door-v2.webp", name: "The Corsair's Chart" },
+  { rn: "III", c: "var(--v3)", rgb: "236,142,172", img: "/art/door-v3.webp", name: "The Lost Love Letters" },
+  { rn: "IV", c: "var(--v4)", rgb: "70,205,230", img: "/art/door-v4.webp", name: "The Silent Signal" },
+  { rn: "V", c: "var(--v5)", rgb: "240,158,58", img: "/art/door-v5.webp", name: "The Hollow Oak" },
+];
+// mote colors: mostly gold, one of each series hue drifting through
+const moteColors = [
+  "var(--v1)","var(--v1)","var(--v1)","var(--v2)","var(--v1)","var(--v1)","var(--v3)",
+  "var(--v1)","var(--v1)","var(--v4)","var(--v1)","var(--v5)","var(--v1)","var(--v1)",
+];
+const ghosts = [
+  { d: "4", c: "var(--v1)" }, { d: "7", c: "var(--v1)" }, { d: "2", c: "var(--v2)" },
+  { d: "9", c: "var(--v4)" }, { d: "5", c: "var(--v1)" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sudoku with a Secret — The Keeper's Vault</title>
+    <meta name="description" content="You solved the book. Now crack the vault. Speak the words hidden in Sudoku with a Secret and open three vaults of treasure and free bonus puzzles." />
+    <meta property="og:title" content="Sudoku with a Secret — Crack the Keeper's Vault" />
+    <meta property="og:description" content="A series of secrets. Five books, five seals. Speak the words you found in the book." />
+    <meta property="og:image" content="/art/og-door.jpg" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0a0a0c" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet" />
+    <link rel="preload" as="image" href="/art/door-v10.webp" />
+  </head>
+
+  <body>
+    <header class="chrome" aria-label="Site controls">
+      <button class="chip muted" id="soundToggle" aria-pressed="false" title="Sound on/off">
+        <span class="ic" aria-hidden="true">○</span><span class="lbl">sound</span>
+      </button>
+      <a class="chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span></a>
+      <a class="chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span></a>
+      <button class="chip" id="menuBtn" title="Menu"><span class="ic" aria-hidden="true">≡</span></button>
+    </header>
+
+    <!-- ======================= HERO SCENE ======================= -->
+    <main class="scene" id="scene">
+      <div class="scene-bg" aria-hidden="true"></div>
+      <div class="dust" aria-hidden="true">
+        {moteColors.map((c, i) => <i style={`--n:${i}; --mc:${c}`}></i>)}
+      </div>
+
+      <div class="stage">
+        <figure class="door" aria-hidden="true">
+          <div class="door-inner">
+            {volumes.map((v, i) => (
+              <img class={`door-layer ${v.active ? "is-active" : ""}`} data-vol={i} src={v.img}
+                alt="" width="1200" height="1788"
+                fetchpriority={v.active ? "high" : undefined} loading={v.active ? "eager" : "lazy"} />
+            ))}
+            <div class="seam"></div>
+            <div class="flare" aria-hidden="true"></div>
+            <div class="burst" aria-hidden="true">
+              {Array.from({ length: 18 }).map((_, i) => <i style={`--b:${i}`}></i>)}
+            </div>
+            <div class="ghosts">
+              {ghosts.map((g, i) => <span style={`--g:${i}; --gc:${g.c}`}>{g.d}</span>)}
+            </div>
+          </div>
+        </figure>
+
+        <div class="console">
+          <p class="brandmark reveal" style="--d:.1s">
+            <span class="wm">PUZZLE<span>SECRET</span></span>
+            <span class="sep">·</span> a series of secrets
+          </p>
+
+          <div class="titlelock reveal" style="--d:.2s">
+            <h1><em>Sudoku</em> <span class="with">with a</span> <em class="sec">Secret</em></h1>
+          </div>
+
+          <!-- five-volume series selector (clickable) -->
+          <div class="series reveal" style="--d:.34s" aria-label="The five volumes">
+            <p class="series-lead">The series</p>
+            <div class="sv-row" role="list">
+              {volumes.map((v, i) => (
+                <button type="button" class={`sv ${v.active ? "active" : ""}`} role="listitem"
+                  style={`--c:${v.c}`} data-vol={i} data-rgb={v.rgb} data-name={v.name} data-rn={v.rn} data-active={v.active ? "1" : "0"}
+                  aria-label={`Volume ${v.rn} — ${v.name}${v.active ? "" : " (coming soon)"}`}>
+                  <span class="tick"></span>
+                  <span class="rn">{v.rn}</span>
+                </button>
+              ))}
+            </div>
+            <p class="series-cap" id="seriesCap"><em>Volume I</em> · The Keeper's Vault <span class="soon-note">— four more secrets to come</span></p>
+          </div>
+
+          <!-- PRE: the invitation + sound gate -->
+          <div class="enterblock pre-only reveal" style="--d:.5s">
+            <p class="tagline">One glowing seam. A different secret sealed in every book.</p>
+            <p class="soundcue">This experience <em>speaks.</em> Turn your sound up, and step to the door.</p>
+            <button class="enter" id="enterBtn">Enter Volume I</button>
+            <p class="g-mute">Prefer silence? <button class="linklike" id="enterMuted">Enter muted</button> — captions stay on.</p>
+          </div>
+
+          <!-- LIVE: the Keeper speaks + word slot -->
+          <div class="liveblock live-only">
+            <div class="caption" id="caption" role="status">
+              <span class="cc-tag">The Keeper</span>
+              <p id="capText"></p>
+            </div>
+            <div class="slot" id="slot">
+              <p class="prompt" id="prompt">Speak the first word</p>
+              <form class="entry" id="tileForm" autocomplete="off">
+                <div class="tiles">
+                  {Array.from({ length: tiles }).map((_, i) => (
+                    <input class="tile" maxlength="1" inputmode="latin" aria-label={`letter ${i + 1}`} data-i={i} />
+                  ))}
+                </div>
+                <button class="speak" type="button" id="micBtn" aria-label="Tap to speak the word using your microphone">
+                  <svg class="mic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                  <span class="speak-lbl">Speak</span>
+                </button>
+              </form>
+              <p class="entry-hint">Tap <em>Speak</em> and say the word aloud — or type it in the boxes.</p>
+            </div>
+          </div>
+
+          <p class="side reveal" style="--d:.62s">
+            <a href="#antechamber">I don't have the book yet</a>
+            <span>·</span>
+            <a href="/hints">I'm stuck</a>
+          </p>
+        </div>
+      </div>
+
+      <div class="veil" id="veil" aria-hidden="true"></div>
+    </main>
+
+    <!-- ======================= BELOW THE FOLD ======================= -->
+    <section class="below">
+      <div class="wrap">
+        <p class="eyebrow">What is this?</p>
+        <h2 class="h-serif">A book that hides a password. A vault that opens when you find it.</h2>
+        <p class="lede">
+          Every puzzle in <em>Sudoku with a Secret</em> is an honest sudoku — solvable with a
+          pencil. But twenty of them hide a shaded key. Decode the three words they spell, bring
+          them here, and three vaults swing open: treasure, lore, and free bonus puzzles —
+          <strong>50, then 100, then 200</strong>. No email required. Ever.
+        </p>
+
+        <div class="cards">
+          <article class="card">
+            <h3>Have the book?</h3>
+            <p>Speak your first word at the door above. Each vault you crack drops its rewards and stamps your passport.</p>
+            <a class="btn ghost" href="#top">To the door ↑</a>
+          </article>
+          <article class="card">
+            <h3>Don't have it yet?</h3>
+            <p>Earn a look. Solve one small puzzle at the grate and glimpse the treasure — then decide.</p>
+            <a class="btn" href="#antechamber">Peer inside</a>
+          </article>
+          <article class="card">
+            <h3>Ten free puzzles a month</h3>
+            <p>Join the Keeper's list for fresh puzzles and first word on the next volume. Optional, always.</p>
+            <a class="btn ghost" href="/newsletter">The Keeper's list</a>
+          </article>
+        </div>
+
+        <p class="eyebrow soon" id="soon-anchor">The vaults to come</p>
+        <div class="soonstrip">
+          <figure class="mini v2"><img src="/teasers/v2.webp" alt="Volume II — The Corsair's Chart" loading="lazy" /><figcaption>II · The Corsair's Chart</figcaption></figure>
+          <figure class="mini v3"><img src="/teasers/v3.webp" alt="Volume III — The Lost Love Letters" loading="lazy" /><figcaption>III · The Lost Love Letters</figcaption></figure>
+          <figure class="mini v4"><img src="/teasers/v4.webp" alt="Volume IV — The Silent Signal" loading="lazy" /><figcaption>IV · The Silent Signal</figcaption></figure>
+          <figure class="mini v5"><img src="/teasers/v5.webp" alt="Volume V — The Hollow Oak" loading="lazy" /><figcaption>V · The Hollow Oak</figcaption></figure>
+        </div>
+      </div>
+
+      <footer class="foot">
+        <span class="wordmark">PUZZLE<span>SECRET</span></span>
+        <nav>
+          <a href="/shop">Shop</a><a href="/hints">Hints</a><a href="/passport">Passport</a>
+          <a href="/the-keeper">The Keeper</a><a href="/faq">FAQ</a><a href="/privacy">Privacy</a>
+        </nav>
+        <p class="fine">Sudoku with a Secret · Volume 1 — the vaults are bonus treasure, not a prize of chance.</p>
+      </footer>
+    </section>
+
+    <script define:vars={{ keeperFirstLine }}>
+      const scene = document.getElementById('scene');
+      const slot = document.getElementById('slot');
+      const capText = document.getElementById('capText');
+
+      /* ---- ambient drone + SFX via Web Audio (no files) ---- */
+      let actx = null, master = null, ambient = null, audioReady = false, muted = false;
+      function initAudio() {
+        if (audioReady) return;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        actx = new AC();
+        master = actx.createGain();
+        master.gain.value = muted ? 0 : 0.9;
+        master.connect(actx.destination);
+        audioReady = true;
+      }
+      function resumeAudio() { if (actx && actx.state === 'suspended') actx.resume(); }
+      function makeNoise() {
+        const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        const src = actx.createBufferSource(); src.buffer = buf; src.loop = true; return src;
+      }
+      function startAmbient() {
+        if (!audioReady || ambient) return;
+        const bus = actx.createGain(); bus.gain.value = 0; bus.connect(master);
+        const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300; lp.Q.value = 0.7; lp.connect(bus);
+        const o1 = actx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 55;
+        const o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 41; o2.detune.value = 5;
+        const g1 = actx.createGain(); g1.gain.value = 0.09; o1.connect(g1).connect(lp);
+        const g2 = actx.createGain(); g2.gain.value = 0.15; o2.connect(g2).connect(lp);
+        const lfo = actx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.06;
+        const lfoG = actx.createGain(); lfoG.gain.value = 80; lfo.connect(lfoG).connect(lp.frequency);
+        const noise = makeNoise(); const nf = actx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1100; nf.Q.value = 0.5;
+        const ng = actx.createGain(); ng.gain.value = 0.006; noise.connect(nf).connect(ng).connect(bus);
+        o1.start(); o2.start(); lfo.start(); noise.start();
+        bus.gain.linearRampToValueAtTime(0.9, actx.currentTime + 2.5);
+        ambient = { bus };
+      }
+      // The crack-open BOOM — plays the instant a vault door ignites (first entry AND
+      // every subsequent vault crack). Layered: a low sine sweep (weight/body), a short
+      // filtered-noise transient (the "crack" itself), and a brief metallic ring (the
+      // riveted-steel character) so it reads as a door, not a generic explosion.
+      function playBoom() {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        // body: deep sweep down, like a heavy door punching forward
+        const o = actx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+        const og = actx.createGain();
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.7, t + 0.02); og.gain.exponentialRampToValueAtTime(0.0006, t + 0.9);
+        o.connect(og).connect(master); o.start(t); o.stop(t + 1.0);
+        // crack: short burst of filtered noise, the sharp transient
+        const crackLen = actx.sampleRate * 0.25;
+        const cbuf = actx.createBuffer(1, crackLen, actx.sampleRate); const cd = cbuf.getChannelData(0);
+        for (let i = 0; i < crackLen; i++) cd[i] = (Math.random() * 2 - 1) * (1 - i / crackLen);
+        const csrc = actx.createBufferSource(); csrc.buffer = cbuf;
+        const cf = actx.createBiquadFilter(); cf.type = 'bandpass'; cf.frequency.value = 900; cf.Q.value = 0.9;
+        const cg = actx.createGain(); cg.gain.setValueAtTime(0.5, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        csrc.connect(cf).connect(cg).connect(master); csrc.start(t);
+        // ring: brief metallic overtones (riveted steel), quick decay
+        [740, 1180, 1980].forEach((f, i) => {
+          const ro = actx.createOscillator(); ro.type = 'triangle'; ro.frequency.value = f;
+          const rg = actx.createGain();
+          rg.gain.setValueAtTime(0.0001, t + 0.01); rg.gain.exponentialRampToValueAtTime(0.06 / (i + 1), t + 0.03); rg.gain.exponentialRampToValueAtTime(0.0005, t + 0.5 + i * 0.08);
+          ro.connect(rg).connect(master); ro.start(t + 0.01); ro.stop(t + 0.7);
+        });
+      }
+      // Played only when a word is CORRECT — a deep resonant thud + a warm triumphant swell.
+      function playUnlock() {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        const o = actx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(46, t + 0.5);
+        const og = actx.createGain();
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.5, t + 0.03); og.gain.exponentialRampToValueAtTime(0.0008, t + 1.3);
+        o.connect(og).connect(master); o.start(t); o.stop(t + 1.4);
+        [130.81, 196.0, 261.63].forEach((f) => { // low C-major swell
+          const osc = actx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = f;
+          const g = actx.createGain();
+          g.gain.setValueAtTime(0.0001, t + 0.05); g.gain.linearRampToValueAtTime(0.07, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0008, t + 2.3);
+          osc.connect(g).connect(master); osc.start(t + 0.05); osc.stop(t + 2.4);
+        });
+      }
+      function setMuted(m) {
+        muted = m;
+        if ('speechSynthesis' in window) speechSynthesis.cancel();  // always stop the voice on toggle
+        if (currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} }
+        if (master && actx) master.gain.setTargetAtTime(m ? 0 : 0.9, actx.currentTime, 0.03);
+        if (actx) { if (m) actx.suspend(); else actx.resume(); }    // suspend = truly silent
+      }
+      // Never let sound outlive the page: kill the voice + suspend audio when hidden or closing.
+      function silenceAll() {
+        try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+        try { if (currentKeeperAudio) currentKeeperAudio.pause(); } catch (e) {}
+        try { if (actx && actx.state === 'running') actx.suspend(); } catch (e) {}
+      }
+      window.addEventListener('pagehide', silenceAll);
+      window.addEventListener('beforeunload', silenceAll);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) silenceAll();
+        else if (!muted && actx && actx.state === 'suspended') actx.resume();
+      });
+
+      /* The Keeper's VOICE — LOCKED 2026-07-21: Kokoro TTS "Michael," 0.65x, natural pitch,
+         inserted sentence-boundary pauses (see site/_content/keeper-vo-script.md for the
+         exact reproducible recipe). Real pre-baked lines live in /audio/vo/ and are looked
+         up here by their exact script text. Lines not yet recorded fall back to the
+         browser's built-in speech so nothing is silent while the rest of the script is
+         produced — replace fallback entries here as each new line is generated. */
+      const keeperAudioFiles = {
+        [keeperFirstLine]: '/audio/vo/vo_scene0_entry.wav',
+        'So… you found my first word. Take what the first door guarded.': '/audio/vo/vo_vault1_entry.wav',
+        'That is not the word I sealed it with.': '/audio/vo/vo_fail_1.wav',
+        'Close… or not close at all. I will never tell.': '/audio/vo/vo_fail_2.wav',
+        'Stubborn. Good — but perhaps you need my hints.': '/audio/vo/vo_fail_3.wav',
+      };
+      let keeperVoice = null;
+      function pickKeeperVoice() {
+        if (!('speechSynthesis' in window)) return null;
+        const vs = speechSynthesis.getVoices();
+        if (!vs.length) return null;
+        return vs.find((v) => /en/i.test(v.lang) && /george|arthur|daniel/i.test(v.name))
+          || vs.find((v) => /en-GB/i.test(v.lang))
+          || vs.find((v) => /en/i.test(v.lang) && /(david|mark|male)/i.test(v.name))
+          || vs.find((v) => /^en/i.test(v.lang)) || vs[0];
+      }
+      if ('speechSynthesis' in window) {
+        keeperVoice = pickKeeperVoice();
+        speechSynthesis.addEventListener('voiceschanged', () => { keeperVoice = pickKeeperVoice(); });
+      }
+      let currentKeeperAudio = null;
+      // Returns the playing <audio> element when a real recorded line exists (so the
+      // caller can sync caption timing to its actual duration), or null when it fell
+      // back to browser speech (or was muted).
+      function speakKeeper(text) {
+        if (currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} currentKeeperAudio = null; }
+        if (muted) return null;
+        const src = keeperAudioFiles[text];
+        if (src) {
+          try {
+            const a = new Audio(src);
+            a.volume = 1;
+            a.play().catch(() => {});
+            currentKeeperAudio = a;
+            return a;
+          } catch (e) { /* fall through to browser speech */ }
+        }
+        if (!('speechSynthesis' in window)) return null;
+        try {
+          speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text.replace(/…/g, '... '));
+          if (!keeperVoice) keeperVoice = pickKeeperVoice();
+          if (keeperVoice) u.voice = keeperVoice;
+          u.rate = 0.82; u.pitch = 0.5; u.volume = 1;
+          speechSynthesis.speak(u);
+        } catch (e) { /* ignore */ }
+        return null;
+      }
+
+      let typeTimer = null;
+      function typeCaption(text) {
+        const audioEl = speakKeeper(text);   // the Keeper speaks the line as it writes out
+        capText.textContent = '';
+        let i = 0;
+        clearInterval(typeTimer);
+        const startTyping = (totalMs) => {
+          const perChar = Math.max(18, totalMs / text.length);
+          typeTimer = setInterval(() => {
+            capText.textContent = text.slice(0, ++i);
+            if (i >= text.length) clearInterval(typeTimer);
+          }, perChar);
+        };
+        if (audioEl) {
+          // sync the typewriter reveal to the real recording's actual length
+          if (audioEl.readyState >= 1 && audioEl.duration) startTyping(audioEl.duration * 1000);
+          else {
+            audioEl.addEventListener('loadedmetadata', () => startTyping(audioEl.duration * 1000), { once: true });
+            setTimeout(() => { if (i === 0) startTyping(text.length * 34); }, 1200); // safety net
+          }
+        } else {
+          startTyping(text.length * 34);  // browser-speech fallback pacing
+        }
+      }
+
+      function beginExperience(withSound = true) {
+        initAudio(); resumeAudio();
+        if (withSound && !muted) startAmbient();
+        syncSoundIcon();
+        scene.classList.add('live');
+        scene.classList.add('igniting');      // crack-open: flash, widen, sparks, push-in
+        if (withSound) playBoom();            // the door punches forward — deep BOOM + crack + metal ring
+        setTimeout(() => scene.classList.remove('igniting'), 1500);
+        setTimeout(() => typeCaption(keeperFirstLine), 1150);
+        setTimeout(() => { const f = slot?.querySelector('.tile'); if (f) f.focus(); }, 1750);
+      }
+      document.getElementById('enterBtn')?.addEventListener('click', () => beginExperience(true));
+      document.getElementById('enterMuted')?.addEventListener('click', () => { muted = true; beginExperience(false); syncSoundIcon(); });
+
+      const q = new URLSearchParams(location.search);
+      if (q.get('scene') === 'live') {   // settled live state (no crack animation) — for review
+        scene.classList.add('live');
+        capText.textContent = keeperFirstLine;
+      }
+      if (q.get('ignite') === '1') beginExperience();  // trigger the crack-open (for capturing frames)
+
+      const st = document.getElementById('soundToggle');
+      function syncSoundIcon() {
+        if (!st) return;
+        st.setAttribute('aria-pressed', String(!muted));
+        st.querySelector('.ic').textContent = muted ? '○' : '◐';
+        st.classList.toggle('muted', muted);
+      }
+      st?.addEventListener('click', () => {
+        initAudio(); resumeAudio();
+        setMuted(!muted);
+        if (!muted) startAmbient();  // turning sound on starts the ambient bed
+        syncSoundIcon();
+      });
+
+      // five-volume selector: hover updates caption, crossfades the door art + seam hue; click acts
+      const seriesCap = document.getElementById('seriesCap');
+      const capDefault = seriesCap ? seriesCap.innerHTML : '';
+      const doorInner = document.querySelector('.door-inner');
+      const layers = [...document.querySelectorAll('.door-layer')];
+      const DEFAULT_SC = '255,178,72';
+      function showVolume(idx, rgb) {
+        layers.forEach((l, i) => l.classList.toggle('is-active', i === idx));
+        if (doorInner) doorInner.style.setProperty('--sc', rgb || DEFAULT_SC);
+      }
+      document.querySelectorAll('.sv').forEach((sv) => {
+        const nm = sv.dataset.name, rn = sv.dataset.rn, act = sv.dataset.active === '1';
+        const vol = parseInt(sv.dataset.vol, 10) || 0, rgb = sv.dataset.rgb;
+        sv.addEventListener('mouseenter', () => {
+          seriesCap.innerHTML = act
+            ? `<em>Volume ${rn}</em> · ${nm} <span class="soon-note">— open now</span>`
+            : `<em>Volume ${rn}</em> · ${nm} <span class="soon-note">— coming soon</span>`;
+          showVolume(vol, rgb);
+        });
+        sv.addEventListener('mouseleave', () => { seriesCap.innerHTML = capDefault; showVolume(0, DEFAULT_SC); });
+        sv.addEventListener('click', () => {
+          if (act) beginExperience();
+          else document.getElementById('soon-anchor')?.scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+      // preview hook: ?vol=N shows volume N's art (as if hovered) for capturing frames
+      const volParam = q.get('vol');
+      if (volParam) document.querySelector(`.sv[data-vol="${volParam}"]`)?.dispatchEvent(new Event('mouseenter'));
+
+      const tileEls = [...document.querySelectorAll('.tile')];
+      const micBtn = document.getElementById('micBtn');
+      const promptEl = document.getElementById('prompt');
+      const PROMPT_DEFAULT = promptEl ? promptEl.textContent : '';
+
+      function fillTiles(letters) { tileEls.forEach((t, i) => { t.value = letters[i] || ''; }); }
+
+      // Word-check is SERVER-SIDE (/api/unlock). The answers never live in this bundle.
+      let submitting = false;
+      let misses = 0;
+      const failLines = [
+        'That is not the word I sealed it with.',
+        'Close… or not close at all. I will never tell.',
+        'Stubborn. Good — but perhaps you need my hints.',
+      ];
+      // SECURITY: these lines ship in the page source — they must never contain a secret word.
+      // (The canon spoken lines with the words live only in the book and the VO recordings.)
+      const successLines = {
+        I: 'So… you found my first word. Take what the first door guarded.',
+        II: 'The fire took my second plate — but you read my letter anyway. Enter.',
+        III: 'Three words, three doors… and you spoke them all. The vault is yours.',
+        IV: 'So — you heard the whole of it.',
+      };
+      function onWrong() {
+        misses += 1;
+        scene.classList.remove('shudder'); void scene.offsetWidth; scene.classList.add('shudder');
+        typeCaption(failLines[Math.min(misses - 1, failLines.length - 1)]);
+        if (misses >= 3 && slot && !document.getElementById('hintLink')) {
+          const p = document.createElement('p');
+          p.id = 'hintLink'; p.className = 'entry-hint';
+          p.innerHTML = 'The Keeper offers <a href="/hints">a hint</a>.';
+          slot.appendChild(p);
+        }
+      }
+      function onCorrect(data) {
+        misses = 0;
+        playBoom();                  // this vault's door cracks open too
+        playUnlock();                // the deep thud + triumphant swell — only on a correct word
+        scene.classList.remove('igniting'); void scene.offsetWidth; scene.classList.add('igniting');
+        setTimeout(() => scene.classList.remove('igniting'), 1400);
+        typeCaption(successLines[data.act] || 'The vault opens.');
+        const form = document.getElementById('tileForm');
+        const hint = slot?.querySelector('.entry-hint');
+        if (form) form.style.display = 'none';
+        if (hint) hint.style.display = 'none';
+        let panel = document.getElementById('rewardPanel');
+        if (!panel && slot) { panel = document.createElement('div'); panel.id = 'rewardPanel'; panel.className = 'reward'; slot.appendChild(panel); }
+        if (panel) panel.innerHTML =
+          `<p class="r-tag">Vault ${data.act} — unlocked</p>` +
+          `<p class="r-body">The door swings wide. Step inside…</p>`;
+        setTimeout(() => { window.location.href = '/vault'; }, 2800); // walk into the 3D vault crawl
+      }
+      async function tryWord() {
+        if (submitting) return; submitting = true;
+        const word = tileEls.map((t) => t.value).join('');
+        try {
+          const res = await fetch('/api/unlock', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word }),
+          });
+          const data = await res.json();
+          if (data.ok) onCorrect(data); else onWrong();
+        } catch { onWrong(); }
+        setTimeout(() => { submitting = false; }, 900);
+      }
+
+      tileEls.forEach((t, i) => {
+        t.addEventListener('input', () => {
+          t.value = t.value.replace(/[^a-z]/gi, '').toUpperCase();
+          if (t.value && tileEls[i + 1]) tileEls[i + 1].focus();
+          if (tileEls.every((x) => x.value)) setTimeout(tryWord, 320); // auto-submit when full
+        });
+        t.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !t.value && tileEls[i - 1]) tileEls[i - 1].focus();
+          if (e.key === 'Enter') { e.preventDefault(); tryWord(); }
+        });
+      });
+      document.getElementById('tileForm')?.addEventListener('submit', (e) => { e.preventDefault(); tryWord(); });
+
+      // SPEAK = real voice input via the Web Speech API (Chrome/Edge). Falls back to typing.
+      micBtn?.addEventListener('click', () => {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { if (promptEl) promptEl.textContent = 'Type the first word'; tileEls[0]?.focus(); return; }
+        const rec = new SR();
+        rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
+        micBtn.classList.add('listening');
+        if (promptEl) promptEl.textContent = 'Listening…';
+        rec.onresult = (e) => {
+          const said = (e.results[0][0].transcript || '');
+          const letters = said.replace(/[^a-z]/gi, '').toUpperCase().slice(0, tileEls.length);
+          fillTiles(letters);
+          setTimeout(tryWord, 260);
+        };
+        rec.onerror = () => {};
+        rec.onend = () => { micBtn.classList.remove('listening'); if (promptEl) promptEl.textContent = PROMPT_DEFAULT; };
+        try { rec.start(); } catch (_) {}
+      });
+    </script>
+
+    <style is:global>
+      :root {
+        --void: #08080a;
+        --steel: #17181d;
+        --ivory: #f2e9d6;
+        --ash: #9a927f;
+        --ash-dim: #6d675b;
+        --gold: #f6b23c;
+        --gold-hi: #ffd47a;
+        --brass: #b98f52;
+        --brass-hi: #e6c184;
+        /* series colors */
+        --v1: #f6b23c; /* gold  — The Keeper's Vault */
+        --v2: #35cf7f; /* emerald — The Corsair's Chart */
+        --v3: #e78aa6; /* rose — The Lost Love Letters */
+        --v4: #33d0e6; /* cyan — The Silent Signal */
+        --v5: #ef9a2b; /* amber — The Hollow Oak */
+        --serif: 'Cormorant Garamond', Georgia, serif;
+        --display: 'Cinzel', 'Cormorant Garamond', serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body { background: var(--void); color: var(--ivory); font-family: var(--serif); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+      a { color: inherit; text-decoration: none; }
+      em { font-style: normal; }
+
+      /* chrome */
+      .chrome { position: fixed; top: 0; right: 0; z-index: 40; display: flex; gap: 8px; padding: 16px 18px; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 11px; border: 1px solid rgba(185,143,82,.28); border-radius: 999px; background: rgba(14,14,18,.55); backdrop-filter: blur(6px); color: var(--ash); cursor: pointer; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transition: color .3s, border-color .3s; }
+      .chip:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.5); }
+      .chip.muted { color: var(--ash-dim); border-color: rgba(154,146,127,.18); }
+      .chip .ic { font-size: 15px; line-height: 1; }
+      .chip .key { color: var(--brass-hi); }
+
+      /* scene shell */
+      .scene { position: relative; min-height: 100svh; overflow: hidden; }
+      .scene-bg {
+        position: absolute; inset: -2%; z-index: 0;
+        background:
+          radial-gradient(90% 80% at 78% 50%, rgba(255,150,40,.12), transparent 46%),
+          radial-gradient(60% 90% at 20% 60%, rgba(255,150,40,.05), transparent 60%),
+          radial-gradient(130% 120% at 50% 120%, transparent 40%, #000 100%),
+          linear-gradient(180deg, #101015 0%, #0a0a0c 55%, #060608 100%);
+      }
+      .scene-bg::after { content: ''; position: absolute; inset: 0; opacity: .45; mix-blend-mode: overlay; background-image: radial-gradient(rgba(255,255,255,.035) 1px, transparent 1px); background-size: 3px 3px; }
+
+      /* stage (mobile-first: door is full-bleed backdrop) */
+      .stage { position: relative; z-index: 2; min-height: 100svh; display: grid; animation: dawn 2.4s ease-out both; }
+      /* starts faded in the dark, then brightens over ~2.4s */
+      @keyframes dawn { from { filter: brightness(.5); } to { filter: brightness(1); } }
+      .door { position: absolute; inset: 0; z-index: 1; margin: 0; }
+      .door-inner { position: absolute; inset: 0; animation: doorIn 1.6s cubic-bezier(.2,.7,.2,1) both; --sc: 255,178,72; }
+      /* stacked per-volume layers; hovering a volume crossfades to that book's art */
+      .door-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 44%; opacity: 0; filter: brightness(.82) saturate(.99); transition: opacity .5s ease, filter 1.4s ease; }
+      .door-layer.is-active { opacity: 1; }
+      .scene.live .door-layer { filter: brightness(1.04) saturate(1.03); }
+      .door::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 60% at 50% 46%, transparent, rgba(6,6,9,.72)); transition: opacity 1.2s ease; }
+      .scene.live .door::after { opacity: .4; }
+      @keyframes doorIn { from { opacity: 0; transform: scale(1.03); } }
+
+      .seam { position: absolute; top: 0; bottom: 0; left: 50%; width: 26%; transform: translateX(-48%); background: radial-gradient(closest-side, rgba(var(--sc),.42), rgba(var(--sc),.14) 40%, transparent 72%); mix-blend-mode: screen; pointer-events: none; animation: breathe 5.5s ease-in-out infinite; }
+      /* in the dim PRE state the seam is the hero — glow harder. Seam hue follows the hovered volume (--sc). */
+      .scene:not(.live) .seam { width: 32%; background: radial-gradient(closest-side, rgba(var(--sc),.66), rgba(var(--sc),.2) 42%, transparent 76%); }
+      @keyframes breathe { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+      .ghosts { position: absolute; inset: 0; pointer-events: none; }
+      .ghosts span { position: absolute; left: calc(48% + (var(--g) - 2) * 5%); bottom: 26%; font-family: var(--display); font-weight: 600; color: var(--gc, var(--gold-hi)); opacity: 0; font-size: clamp(18px, 3vh, 32px); text-shadow: 0 0 18px currentColor; animation: rise 7s linear infinite; animation-delay: calc(var(--g) * 1.3s); }
+      @keyframes rise { 0% { opacity: 0; transform: translateY(0);} 14% { opacity: .75;} 70% { opacity: .2;} 100% { opacity: 0; transform: translateY(-24vh);} }
+
+      .dust { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+      .dust i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: var(--mc, #ffe1b4); box-shadow: 0 0 6px var(--mc, rgba(255,200,130,.6)); left: calc((var(--n) * 6.7%) + 3%); top: 100%; opacity: 0; animation: mote 16s linear infinite; animation-delay: calc(var(--n) * -1.6s); }
+      @keyframes mote { 0% { opacity: 0; transform: translateY(0);} 10% { opacity: .55;} 90% { opacity: .3;} 100% { opacity: 0; transform: translateY(-105svh);} }
+
+      /* ---------- code-built crack-open (ignite) ---------- */
+      .flare { position: absolute; z-index: 6; top: 0; bottom: 0; left: 50%; width: 62%; transform: translateX(-50%) scaleX(.5); pointer-events: none; opacity: 0; mix-blend-mode: screen;
+        background: radial-gradient(42% 58% at 50% 46%, rgba(255,244,214,.98), rgba(255,186,92,.55) 30%, rgba(255,150,50,.14) 52%, transparent 68%); }
+      .burst { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+      .burst i { position: absolute; left: 50%; top: 46%; width: 3px; height: 3px; border-radius: 50%; background: #ffe0aa; box-shadow: 0 0 9px 1px #ffb64a; opacity: 0; }
+
+      .scene.igniting { animation: rumble .55s ease-in-out; }
+      @keyframes rumble { 0%,100% { transform: translate(0,0);} 20% { transform: translate(-3px,2px);} 45% { transform: translate(3px,-2px);} 70% { transform: translate(-2px,1px);} 88% { transform: translate(1px,-1px);} }
+      .scene.igniting .door-inner { animation: crackjolt 1.4s cubic-bezier(.2,.8,.2,1); }
+      @keyframes crackjolt { 0% { transform: scale(1);} 12% { transform: scale(1.006);} 22% { transform: scale(1.055);} 45% { transform: scale(1.03);} 100% { transform: scale(1);} }
+      .scene.igniting .flare { animation: flare 1.4s ease-out forwards; }
+      @keyframes flare { 0% { opacity: 0; transform: translateX(-50%) scaleX(.45);} 16% { opacity: 1; transform: translateX(-50%) scaleX(1.18);} 45% { opacity: .55;} 100% { opacity: 0; transform: translateX(-50%) scaleX(1);} }
+      .scene.igniting .seam { animation: seamflare 1.4s ease-out; }
+      @keyframes seamflare { 0% { filter: brightness(1);} 16% { filter: brightness(2.1);} 100% { filter: brightness(1);} }
+      .scene.igniting .burst i { animation: spark 1.05s ease-out forwards; animation-delay: calc(var(--b) * 11ms); }
+      @keyframes spark { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.4);} 12% { opacity: 1;} 100% { opacity: 0; transform: translate(calc(-50% + (var(--b) - 8.5) * 15px), calc(-50% - 30px - var(--b) * 7px)) scale(.25);} }
+
+      /* veil — sealed/mysterious wash in PRE, lifts on LIVE */
+      .veil { position: absolute; inset: 0; z-index: 4; pointer-events: none; background: radial-gradient(80% 80% at 60% 50%, rgba(6,6,9,.05), rgba(4,4,6,.32)); transition: opacity 1.2s ease; }
+      .scene.live .veil { opacity: 0; }
+
+      /* console */
+      .console { position: relative; z-index: 5; min-height: 100svh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: clamp(30px, 6svh, 66px) 20px; gap: clamp(16px, 2.6svh, 26px); }
+      .brandmark { font-family: var(--display); font-size: 10.5px; letter-spacing: .32em; text-transform: uppercase; color: var(--ash-dim); }
+      .brandmark .wm { color: var(--ash); font-weight: 700; letter-spacing: .28em; }
+      .brandmark .wm span { color: var(--gold); }
+      .brandmark .sep { margin: 0 6px; opacity: .6; }
+
+      .titlelock h1 { font-family: var(--display); font-weight: 600; line-height: .98; font-size: clamp(34px, 7.4vw, 58px); letter-spacing: .02em; text-shadow: 0 2px 30px rgba(0,0,0,.85); }
+      .titlelock h1 .with { display: block; font-family: var(--serif); font-style: italic; font-weight: 500; font-size: .4em; letter-spacing: .18em; color: var(--ash); margin: .08em 0; }
+      .titlelock h1 .sec { color: var(--gold); text-shadow: 0 0 34px rgba(246,178,60,.55), 0 2px 30px rgba(0,0,0,.85); }
+
+      /* five-volume series selector (clickable) */
+      .series { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+      .series-lead { font-family: var(--display); font-size: 10px; letter-spacing: .36em; text-transform: uppercase; color: var(--ash-dim); }
+      /* wide, gapless hit areas so the volumes are easy to hover; ticks stay visually spaced via padding */
+      .sv-row { display: flex; align-items: flex-end; gap: 2px; }
+      .sv { display: flex; flex-direction: column; align-items: center; gap: 11px; cursor: pointer; background: none; border: none; padding: 10px clamp(18px, 1.8vw, 30px) 8px; border-radius: 10px; transition: background .25s; }
+      .sv:hover { background: rgba(255,240,210,.05); }
+      .sv .tick { width: 4px; height: 42px; border-radius: 3px; background: linear-gradient(180deg, transparent, var(--c), transparent); opacity: .4; box-shadow: 0 0 10px var(--c); transition: opacity .3s, height .3s, transform .3s; }
+      .sv .rn { font-family: var(--display); font-size: 15px; letter-spacing: .06em; color: var(--ash-dim); transition: color .3s; }
+      .sv.active .tick { opacity: 1; height: 66px; box-shadow: 0 0 20px var(--c), 0 0 44px var(--c); }
+      .sv.active .rn { color: var(--gold-hi); }
+      .sv:hover .tick { opacity: .96; height: 62px; transform: translateY(-2px); }
+      .sv.active:hover .tick { height: 70px; }
+      .sv:hover .rn { color: var(--ivory); }
+      .series-cap { font-style: italic; font-size: clamp(14px, 1.5vw, 17px); color: var(--ash); min-height: 1.5em; text-align: center; transition: color .3s; }
+      .series-cap em { color: var(--gold-hi); font-style: normal; }
+      .series-cap .soon-note { color: var(--ash-dim); }
+
+      /* PRE invitation */
+      .tagline { font-style: italic; font-size: clamp(16px, 2.1vw, 20px); line-height: 1.45; color: var(--ivory); max-width: 34ch; }
+      .soundcue { margin-top: 10px; font-style: italic; font-size: 14px; color: var(--ash-dim); max-width: 40ch; }
+      .soundcue em { color: var(--gold-hi); font-style: normal; }
+      .enter { margin-top: 16px; padding: 15px 40px; cursor: pointer; font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .22em; text-transform: uppercase; color: #1a1206; border: none; border-radius: 8px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); box-shadow: 0 10px 30px rgba(246,178,60,.28), inset 0 1px 0 rgba(255,255,255,.5); transition: transform .15s, box-shadow .3s; }
+      .enter:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(246,178,60,.42); }
+      .g-mute { margin-top: 11px; font-size: 13.5px; font-style: italic; color: var(--ash-dim); }
+      .linklike { background: none; border: none; color: var(--ash); font: inherit; cursor: pointer; border-bottom: 1px solid rgba(154,146,127,.35); }
+      .linklike:hover { color: var(--gold-hi); }
+
+      /* LIVE block */
+      .liveblock { display: none; flex-direction: column; align-items: center; gap: 22px; }
+      .scene.live .pre-only { display: none; }
+      .scene.live .liveblock { display: flex; animation: rise-in .9s cubic-bezier(.2,.7,.2,1) both; }
+      .caption { max-width: 40ch; min-height: 3em; }
+      .cc-tag { font-family: var(--display); font-size: 9.5px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold); opacity: .85; }
+      .caption p { margin-top: 8px; font-style: italic; font-size: clamp(16px, 2.2vw, 21px); color: var(--ivory); line-height: 1.42; text-shadow: 0 2px 20px #000; }
+      .slot { width: 100%; max-width: 560px; }
+      .slot .prompt { font-family: var(--display); font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+      .entry { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+      .tiles { display: flex; gap: 9px; }
+      .tile { width: 46px; height: 58px; text-align: center; font-family: var(--display); font-size: 26px; font-weight: 600; color: var(--gold-hi); background: linear-gradient(180deg, #202127, #101015); border: 1px solid rgba(185,143,82,.4); border-radius: 7px; outline: none; caret-color: var(--gold); box-shadow: inset 0 2px 6px rgba(0,0,0,.7), inset 0 -1px 0 rgba(255,255,255,.04); transition: border-color .25s, box-shadow .25s; }
+      .tile:focus { border-color: var(--gold); box-shadow: inset 0 2px 6px rgba(0,0,0,.7), 0 0 18px rgba(246,178,60,.35); }
+      .speak { display: inline-flex; align-items: center; gap: 9px; height: 58px; padding: 0 24px; font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; cursor: pointer; border: none; border-radius: 7px; background: linear-gradient(180deg, var(--brass-hi), var(--brass)); box-shadow: 0 6px 18px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4); transition: transform .15s, filter .25s, box-shadow .25s; }
+      .speak:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 9px 24px rgba(230,193,132,.4), inset 0 1px 0 rgba(255,255,255,.4); }
+      .speak .mic { flex: none; }
+      .speak.listening { animation: micpulse 1.1s ease-in-out infinite; }
+      @keyframes micpulse { 0%,100% { box-shadow: 0 0 0 0 rgba(230,193,132,.55), 0 6px 18px rgba(0,0,0,.5); } 50% { box-shadow: 0 0 0 13px rgba(230,193,132,0), 0 6px 18px rgba(0,0,0,.5); } }
+      .entry-hint { margin-top: 15px; font-style: italic; font-size: 14px; color: var(--ash-dim); }
+      .entry-hint em { color: var(--gold-hi); font-style: normal; }
+      .entry-hint a { color: var(--gold-hi); border-bottom: 1px solid rgba(246,178,60,.4); }
+      /* reward panel shown on a correct word */
+      .reward { margin-top: 4px; animation: rise-in .8s cubic-bezier(.2,.7,.2,1) both; }
+      .r-tag { font-family: var(--display); font-size: 12px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold-hi); text-shadow: 0 0 20px rgba(246,178,60,.5); }
+      .r-body { margin-top: 10px; font-size: clamp(17px, 1.5vw, 20px); color: var(--ivory); font-style: italic; }
+      .r-body strong { color: var(--gold-hi); font-weight: 600; font-style: normal; }
+      .r-soon { margin-top: 10px; font-size: 13.5px; font-style: italic; color: var(--ash-dim); }
+
+      .side { font-style: italic; color: var(--ash-dim); font-size: 14px; }
+      .side a { color: var(--ash); border-bottom: 1px solid rgba(154,146,127,.3); padding-bottom: 1px; transition: color .3s, border-color .3s; }
+      .side a:hover { color: var(--gold-hi); border-color: var(--gold); }
+      .side span { margin: 0 10px; opacity: .5; }
+
+      /* DESKTOP: door right, console in left negative space */
+      @media (min-width: 920px) {
+        .stage { grid-template-columns: 50% 50%; align-items: center; }
+        .door { position: relative; inset: auto; grid-column: 2; align-self: stretch; justify-self: stretch; display: block; overflow: hidden; }
+        .door-inner { position: absolute; inset: 0; height: 100%; width: 100%; display: block; }
+        .door::after { background: radial-gradient(72% 72% at 50% 48%, transparent 44%, rgba(6,6,9,.5)); }
+        /* door COVERS its half at any viewport width (never a gap) + left edge feathers into the console */
+        .door-layer { -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 100%); }
+        /* left half reads like the book cover: everything centered on the half's axis */
+        .console { grid-column: 1; grid-row: 1; min-height: auto; justify-content: center; align-items: center; text-align: center; padding: 4.5vh 5% 4.5vh 5%; gap: clamp(11px, 1.7vh, 22px); }
+        .brandmark { font-size: clamp(12px, 1vw, 15px); }
+        .titlelock h1 { font-size: clamp(44px, 5.5vw, 100px); }
+        .tagline { text-align: center; font-size: clamp(18px, 1.55vw, 25px); max-width: 32ch; }
+        .soundcue { font-size: 15px; }
+        .series { align-items: center; }
+        .sv-row { gap: 0; }
+        .sv { padding: 12px clamp(24px, 2.4vw, 44px) 8px; }
+        .series-cap { text-align: center; }
+        .enter { padding: 16px 48px; font-size: 15px; }
+        .liveblock { align-items: center; gap: 16px; }
+        .entry { justify-content: center; }
+        .tile { width: 50px; height: 62px; font-size: 28px; }
+        .speak { height: 62px; font-size: 14px; padding: 0 26px; }
+        .entry-hint { text-align: center; }
+        .caption { text-align: center; max-width: 46ch; }
+        .caption p { font-size: clamp(18px, 1.55vw, 23px); }
+        .console::before { content: ''; position: absolute; z-index: -1; left: 50%; transform: translateX(-50%); top: 8%; bottom: 8%; width: 85%; background: radial-gradient(closest-side, rgba(255,165,55,.14), transparent 72%); pointer-events: none; }
+      }
+
+      /* reveal + shudder */
+      .reveal { opacity: 0; transform: translateY(16px); animation: rise-in 1s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: var(--d, 0s); }
+      @keyframes rise-in { to { opacity: 1; transform: none; } }
+      .scene.shudder .door-inner { animation: shudder .5s cubic-bezier(.36,.07,.19,.97); }
+      @keyframes shudder { 10%,90% { transform: translate(-1px,1px);} 20%,80% { transform: translate(2px,-2px);} 30%,50%,70% { transform: translate(-4px,2px);} 40%,60% { transform: translate(4px,-1px);} }
+
+      /* below the fold */
+      .below { position: relative; z-index: 2; background: linear-gradient(180deg, #050506, #0b0b0f 30%, #08080a); border-top: 1px solid rgba(185,143,82,.12); }
+      .wrap { max-width: 1040px; margin: 0 auto; padding: clamp(56px, 9vw, 110px) 24px 40px; }
+      .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold); opacity: .85; }
+      .h-serif { font-family: var(--display); font-weight: 600; font-size: clamp(26px, 4.4vw, 46px); line-height: 1.1; margin: 16px 0 20px; max-width: 20ch; }
+      .lede { font-size: clamp(17px, 2.1vw, 21px); line-height: 1.62; color: #cfc6b2; max-width: 62ch; }
+      .lede strong { color: var(--gold-hi); font-weight: 600; }
+      .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 48px 0 72px; }
+      .card { padding: 26px 24px; border: 1px solid rgba(185,143,82,.18); border-radius: 12px; background: linear-gradient(180deg, rgba(24,24,30,.6), rgba(12,12,16,.6)); }
+      .card h3 { font-family: var(--display); font-weight: 600; font-size: 20px; color: var(--ivory); margin-bottom: 10px; }
+      .card p { color: var(--ash); font-size: 16.5px; line-height: 1.5; margin-bottom: 18px; }
+      .btn { display: inline-block; padding: 10px 20px; border-radius: 7px; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--brass-hi), var(--brass)); box-shadow: 0 6px 16px rgba(0,0,0,.4); transition: filter .25s, transform .15s; }
+      .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+      .btn.ghost { color: var(--gold-hi); background: none; border: 1px solid rgba(246,178,60,.4); box-shadow: none; }
+      .btn.ghost:hover { border-color: var(--gold); background: rgba(246,178,60,.08); }
+      .soon { margin-top: 20px; }
+      .soonstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px; }
+      .mini { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(185,143,82,.2); filter: grayscale(.2) brightness(.82); transition: filter .4s, transform .4s; }
+      .mini:hover { filter: none; transform: translateY(-4px); }
+      .mini img { width: 100%; display: block; }
+      .mini figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px; font-family: var(--display); font-size: 12px; letter-spacing: .08em; color: var(--ivory); background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+      .v2 figcaption { color: #a9e6c0; } .v3 figcaption { color: #f2b6c6; } .v4 figcaption { color: #a9d9e6; } .v5 figcaption { color: #eccf8f; }
+
+      .foot { border-top: 1px solid rgba(185,143,82,.12); padding: 40px 24px; text-align: center; }
+      .wordmark { font-family: var(--display); font-weight: 700; letter-spacing: .3em; font-size: 15px; color: var(--ash); }
+      .wordmark span { color: var(--gold); }
+      .foot nav { margin: 18px 0; display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; }
+      .foot nav a { font-size: 15px; color: var(--ash); transition: color .3s; }
+      .foot nav a:hover { color: var(--gold-hi); }
+      .fine { font-style: italic; font-size: 14px; color: var(--ash-dim); }
+
+      @media (max-width: 720px) {
+        .cards { grid-template-columns: 1fr; }
+        .soonstrip { grid-template-columns: repeat(2, 1fr); }
+        .tile { width: 40px; height: 50px; font-size: 21px; }
+        .liveblock { width: 92vw; align-items: center; }
+        .slot { width: 92vw; max-width: 92vw; }
+        .entry { width: 100%; }
+        .tiles { gap: 8px; justify-content: center; width: 100%; }
+        .speak { flex-basis: 100%; margin-left: 0; margin-top: 12px; justify-content: center; }
+        .caption { width: 92vw; max-width: 92vw; text-align: center; }
+        .caption p { font-size: 16.5px; line-height: 1.4; text-align: center; }
+        .entry-hint { font-size: 13px; }
+        .chrome { gap: 6px; padding: 12px 12px; }
+        .chip { height: 32px; padding: 0 9px; }
+        .chip .lbl { display: none; }
+        .brandmark { font-size: 9px; letter-spacing: .16em; }
+        /* mobile: door is the backdrop and the seam runs through the text — scrim for legibility */
+        .door-layer { filter: brightness(.5) saturate(.88); }
+        .scene.live .door-layer { filter: brightness(.9) saturate(1); }
+        .console { background: radial-gradient(130% 62% at 50% 42%, rgba(6,6,9,.62), rgba(6,6,9,.2) 68%, transparent); }
+        .titlelock h1, .tagline, .series-cap, .caption p { text-shadow: 0 1px 2px #000, 0 2px 20px #000; }
+        .series { align-items: center; }
+        .sv-row { gap: 2px; }
+        .sv { padding: 10px 22px 8px; }
+        .series-cap { text-align: center; white-space: normal; max-width: 88vw; margin-top: 4px; }
+        .series-cap .soon-note { display: none; }
+        .caption p { text-shadow: 0 2px 3px #000, 0 2px 22px #000; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .stage, .door-inner, .seam, .ghosts span, .dust i, .reveal,
+        .scene.igniting, .scene.igniting .door-inner, .scene.igniting .flare, .scene.igniting .seam, .scene.igniting .burst i { animation: none !important; }
+        .stage { filter: none !important; }
+        .door-inner, .reveal { opacity: 1; transform: none; }
+        .flare, .burst i { opacity: 0 !important; }
+      }
+    </style>
+  </body>
+</html>
