@@ -1127,21 +1127,118 @@
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       const src = actx.createBufferSource(); src.buffer = buf; src.loop = true; return src;
     }
+    /* ---- THE VAULT SOUNDSCAPE (redesigned 2026-07-22 per Dan: the old 55Hz sawtooth
+       hum read as "hospital fluorescent lights"). Now: a hollow cavern room-tone,
+       slow breathing air drafts, echoing water drips, and a deep sub rumble —
+       crossfaded per room as you walk. All synthesized, no files. ---- */
+    function makeNoiseFor(ctx) {
+      const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; return src;
+    }
+    function buildAmbience(ctx, dest) {
+      const bus = ctx.createGain(); bus.gain.value = 0; bus.connect(dest);
+      // hollow room tone — air through twin resonant "cavern" filters, slowly wandering
+      const noise = makeNoiseFor(ctx);
+      const bp1 = ctx.createBiquadFilter(); bp1.type = 'bandpass'; bp1.frequency.value = 145; bp1.Q.value = 5.5;
+      const bp2 = ctx.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 410; bp2.Q.value = 9;
+      const roomG = ctx.createGain(); roomG.gain.value = 0.05;
+      noise.connect(bp1); bp1.connect(roomG); noise.connect(bp2); bp2.connect(roomG); roomG.connect(bus);
+      const wander = ctx.createOscillator(); wander.type = 'sine'; wander.frequency.value = 0.045;
+      const wG = ctx.createGain(); wG.gain.value = 60; wander.connect(wG); wG.connect(bp2.frequency);
+      // moving air — soft low noise, breathing on a very slow cycle
+      const noise2 = makeNoiseFor(ctx);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 480; lp.Q.value = 0.4;
+      const airG = ctx.createGain(); airG.gain.value = 0.012;
+      noise2.connect(lp); lp.connect(airG); airG.connect(bus);
+      const breath = ctx.createOscillator(); breath.type = 'sine'; breath.frequency.value = 0.07;
+      const bG = ctx.createGain(); bG.gain.value = 0.008; breath.connect(bG); bG.connect(airG.gain);
+      // deep vault rumble — felt more than heard
+      const rum = ctx.createOscillator(); rum.type = 'sine'; rum.frequency.value = 33;
+      const rumG = ctx.createGain(); rumG.gain.value = 0.025; rum.connect(rumG); rumG.connect(bus);
+      // drip chain — each drip echoes down the stone
+      const dripBus = ctx.createGain(); dripBus.gain.value = 0.3; dripBus.connect(bus);
+      const dl = ctx.createDelay(1.5); dl.delayTime.value = 0.34;
+      const dlLp = ctx.createBiquadFilter(); dlLp.type = 'lowpass'; dlLp.frequency.value = 1300;
+      const fb = ctx.createGain(); fb.gain.value = 0.4;
+      dripBus.connect(dl); dl.connect(dlLp); dlLp.connect(fb); fb.connect(dl); dlLp.connect(bus);
+      function spawnDrip(t, loud = 1) {
+        const p = 480 + Math.random() * 1300;
+        const o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(p * 2.7, t);
+        o.frequency.exponentialRampToValueAtTime(p, t + 0.05);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime((0.24 + Math.random() * 0.16) * loud, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+        o.connect(g);
+        if (ctx.createStereoPanner) {
+          const pan = ctx.createStereoPanner(); pan.pan.value = Math.random() * 1.6 - 0.8;
+          g.connect(pan); pan.connect(dripBus);
+        } else g.connect(dripBus);
+        o.start(t); o.stop(t + 0.25);
+      }
+      // candle crackle (study only) — tiny warm ticks
+      const crackG = ctx.createGain(); crackG.gain.value = 0; crackG.connect(bus);
+      function spawnCrack(t) {
+        const len = Math.floor(ctx.sampleRate * 0.025);
+        const b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) * (1 - i / len);
+        const s = ctx.createBufferSource(); s.buffer = b;
+        const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500 + Math.random() * 2500;
+        const g = ctx.createGain(); g.gain.value = 0.25 + Math.random() * 0.5;
+        s.connect(hp); hp.connect(g); g.connect(crackG); s.start(t);
+      }
+      // gold shimmer (treasure vault only) — the faintest bell partials, very rare
+      const shimG = ctx.createGain(); shimG.gain.value = 0; shimG.connect(bus);
+      function spawnShimmer(t) {
+        [2600, 3920].forEach((f, i) => {
+          const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * (1 + Math.random() * 0.01);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05 / (i + 1), t + 0.03);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+          o.connect(g); g.connect(shimG); o.start(t); o.stop(t + 1.2);
+        });
+      }
+      noise.start(); noise2.start(); wander.start(); breath.start(); rum.start();
+      // per-room mixes (crossfaded with setTargetAtTime as the player walks)
+      const PROFILES = {
+        study:    { room: 0.045, air: 0.008, drip: 0.2,  rum: 0.018, crack: 0.05, shim: 0 },
+        corridor: { room: 0.06,  air: 0.02,  drip: 0.62, rum: 0.03,  crack: 0,    shim: 0 },
+        library:  { room: 0.035, air: 0.01,  drip: 0.2,  rum: 0.022, crack: 0,    shim: 0 },
+        treasure: { room: 0.05,  air: 0.012, drip: 0.5,  rum: 0.04,  crack: 0,    shim: 0.9 },
+      };
+      function setRoom(key, tc = 1.6) {
+        const p = PROFILES[key], t = ctx.currentTime;
+        roomG.gain.setTargetAtTime(p.room, t, tc);
+        airG.gain.setTargetAtTime(p.air, t, tc);
+        dripBus.gain.setTargetAtTime(p.drip, t, tc);
+        rumG.gain.setTargetAtTime(p.rum, t, tc);
+        crackG.gain.setTargetAtTime(p.crack, t, tc);
+        shimG.gain.setTargetAtTime(p.shim, t, tc);
+      }
+      return { bus, setRoom, spawnDrip, spawnCrack, spawnShimmer };
+    }
     function startAmbient() {
       if (!audioReady || ambient) return;
-      const bus = actx.createGain(); bus.gain.value = 0; bus.connect(master);
-      const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300; lp.Q.value = 0.7; lp.connect(bus);
-      const o1 = actx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 55;
-      const o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 41; o2.detune.value = 5;
-      const g1 = actx.createGain(); g1.gain.value = 0.07; o1.connect(g1).connect(lp);
-      const g2 = actx.createGain(); g2.gain.value = 0.12; o2.connect(g2).connect(lp);
-      const lfo = actx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.06;
-      const lfoG = actx.createGain(); lfoG.gain.value = 80; lfo.connect(lfoG).connect(lp.frequency);
-      const noise = makeNoise(); const nf = actx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1100; nf.Q.value = 0.5;
-      const ng = actx.createGain(); ng.gain.value = 0.005; noise.connect(nf).connect(ng).connect(bus);
-      o1.start(); o2.start(); lfo.start(); noise.start();
-      bus.gain.linearRampToValueAtTime(0.8, actx.currentTime + 2.5);
-      ambient = { bus };
+      ambient = buildAmbience(actx, master);
+      ambient.setRoom('study', 0.4);
+      ambient.bus.gain.linearRampToValueAtTime(0.85, actx.currentTime + 3);
+      (function dripLoop() {
+        if (!ambient) return;
+        if (actx.state === 'running') ambient.spawnDrip(actx.currentTime + 0.05);
+        ambient.dripT = setTimeout(dripLoop, 2200 + Math.random() * 5600);
+      })();
+      (function crackLoop() {
+        if (!ambient) return;
+        if (actx.state === 'running' && ambRoom === 'study') ambient.spawnCrack(actx.currentTime + 0.02);
+        ambient.crackT = setTimeout(crackLoop, 90 + Math.random() * 480);
+      })();
+      (function shimLoop() {
+        if (!ambient) return;
+        if (actx.state === 'running' && ambRoom === 'treasure') ambient.spawnShimmer(actx.currentTime + 0.05);
+        ambient.shimT = setTimeout(shimLoop, 14000 + Math.random() * 18000);
+      })();
     }
     function playBoom(gain = 1) {
       if (!audioReady || muted) return;
@@ -1285,6 +1382,7 @@
     let rewardGiven = false, doorOpened = false;
     let door2Open = false, door3Open = false;
     let seenLib = false, seenV3 = false;
+    let ambT = 0, ambRoom = 'study';
     const roomNameEl = document.getElementById('roomName');
 
     // Walkable world = a union of zones, each gated by story progress.
@@ -1703,6 +1801,38 @@
       forceDoor: (n) => openVaultDoor(n === 3 ? 'door3' : 'door2'), // test-only client force (reveals no words)
       setWord: (w) => wbSet(w),
       walkToward, get holdWalk() { return holdWalk; },     // test hooks for hold-to-walk
+      // offline-render the soundscape and measure it (headless quality loop)
+      testAmbience: async (room = 'corridor', secs = 8) => {
+        const sr = 44100;
+        const octx = new OfflineAudioContext(2, sr * secs, sr);
+        const amb = buildAmbience(octx, octx.destination);
+        amb.bus.gain.value = 0.85;
+        amb.setRoom(room, 0.05);
+        for (let dt2 = 1; dt2 < secs - 0.5; dt2 += 2.1) amb.spawnDrip(dt2);
+        if (room === 'study') for (let ct = 0.5; ct < secs; ct += 0.3) amb.spawnCrack(ct);
+        if (room === 'treasure') amb.spawnShimmer(2);
+        const buf = await octx.startRendering();
+        const x = buf.getChannelData(0);
+        const w = Math.floor(sr * 0.02), n = Math.floor(x.length / w);
+        const rms = [];
+        for (let i = 0; i < n; i++) {
+          let s = 0; for (let j = 0; j < w; j++) { const vv = x[i * w + j]; s += vv * vv; }
+          rms.push(Math.sqrt(s / w));
+        }
+        const mean = rms.reduce((a2, b2) => a2 + b2, 0) / n;
+        let trans = 0;
+        for (let i = 2; i < n; i++) if (rms[i] > mean * 2.2 && rms[i - 1] <= mean * 2.2) trans++;
+        const seg = x.slice(sr * 3, sr * 4);
+        const goertzel = (f) => {
+          const c = 2 * Math.cos(2 * Math.PI * f / sr); let s0 = 0, s1 = 0, s2 = 0;
+          for (let i = 0; i < seg.length; i++) { s0 = seg[i] + c * s1 - s2; s2 = s1; s1 = s0; }
+          return Math.sqrt(Math.abs(s1 * s1 + s2 * s2 - c * s1 * s2)) / seg.length;
+        };
+        const bands = []; for (let f = 40; f <= 800; f += 10) bands.push(goertzel(f));
+        const sorted = [...bands].sort((a2, b2) => a2 - b2);
+        const med = sorted[Math.floor(bands.length / 2)] + 1e-9;
+        return { room, rms: +mean.toFixed(4), transients: trans, tonalPeakRatio: +(Math.max(...bands) / med).toFixed(1) };
+      },
       get yaw() { return yaw; }, set yaw(v) { yaw = v; },
       info: () => renderer.info,
       step: (dt, n = 1) => { for (let i = 0; i < n; i++) tick(dt); }, // manual frame-step (headless verification)
@@ -1803,6 +1933,13 @@
       if (roomNameEl.textContent !== label) roomNameEl.textContent = label;
       if (!seenLib && zp < -8.0) { seenLib = true; keeper('libentry'); }
       if (!seenV3 && zp < -20.2) { seenV3 = true; keeper('v3entry'); }
+      // the soundscape follows you room to room
+      ambT += dt;
+      if (ambient && ambT > 0.4) {
+        ambT = 0;
+        const rk = zp > -3.6 ? 'study' : zp > -8.0 ? 'corridor' : zp > -16.9 ? 'library' : zp > -20.3 ? 'corridor' : 'treasure';
+        if (rk !== ambRoom) { ambRoom = rk; ambient.setRoom(rk); }
+      }
 
       // dust drift
       if (dust) {
