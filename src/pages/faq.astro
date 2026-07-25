@@ -1,0 +1,88 @@
+---
+import Layout from '../layouts/Layout.astro';
+const AMAZON_URL = "https://amzn.to/4flLyPR";
+---
+
+<Layout title="Frequently Asked Questions · PuzzleSecret" description="Find answers to common questions about Sudoku with a Secret, vault rewards, PDF downloads, and ordering.">
+  <main class="page-faq">
+    <div class="faq-hero">
+      <p class="eyebrow">Questions &amp; Answers</p>
+      <h1>Frequently Asked Questions</h1>
+      <p class="lede">Everything you need to know about the secret mechanics, reward PDFs, digital privacy, and buying the book.</p>
+    </div>
+
+    <section class="wrap faq-body">
+      <div class="faq-group">
+        <h2>The Secret Mechanic &amp; Book</h2>
+        <details class="faq-card">
+          <summary>What makes Sudoku with a Secret different from regular Sudoku books?</summary>
+          <div class="faq-ans">
+            <p>Every puzzle in the book is a high-quality, honest Sudoku puzzle solvable with logic alone. However, 20 of those puzzles contain a single shaded cell. The digits inside those shaded cells spell out passwords that unlock 3 secret vaults on this website!</p>
+          </div>
+        </details>
+        <details class="faq-card">
+          <summary>Are the answer keys included in the book?</summary>
+          <div class="faq-ans">
+            <p>Yes! Full answer keys for all 200 puzzles are included in the back of the book, alongside an enciphered spoiler protection key.</p>
+          </div>
+        </details>
+        <details class="faq-card">
+          <summary>What if I get stuck on a secret word?</summary>
+          <div class="faq-ans">
+            <p>You can visit our <a href="/hints" style="color:var(--gold)">Hint Chamber</a> for progressive, spoiler-free clues that help you find the key digits and decode the words without ruining the surprise.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="faq-group">
+        <h2>Vault Rewards &amp; PDF Downloads</h2>
+        <details class="faq-card">
+          <summary>Do I have to enter my email to get the vault reward PDFs?</summary>
+          <div class="faq-ans">
+            <p>No! Email is strictly optional. When you crack a vault, your reward PDF (50 Easy, 100 Medium, or 200 Hard puzzles) is available for direct instant download. We never gate your rewards behind email collection.</p>
+          </div>
+        </details>
+        <details class="faq-card">
+          <summary>What is the hidden 4th vault?</summary>
+          <div class="faq-ans">
+            <p>Hidden across the Keeper's letters in the book is an unannounced secret acrostic spelling <code style="color:var(--gold)">LANTERN</code>. Entering that word or clicking the unlit lantern in Vault III opens the Secret 4th Vault!</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="faq-group">
+        <h2>Privacy, Kid Safety &amp; Orders</h2>
+        <details class="faq-card">
+          <summary>Is this website safe for kids?</summary>
+          <div class="faq-ans">
+            <p>Yes. PuzzleSecret contains zero tracking scripts, zero third-party ads, zero dark patterns, and zero external font tracking. All font assets are self-hosted directly on our servers.</p>
+          </div>
+        </details>
+        <details class="faq-card">
+          <summary>Where can I buy Volume 1?</summary>
+          <div class="faq-ans">
+            <p>Volume 1 is available in paperback on <a href={AMAZON_URL} target="_blank" rel="noopener" style="color:var(--gold)">Amazon Prime</a> worldwide.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .page-faq { padding-top: 90px; padding-bottom: 80px; }
+    .faq-hero { text-align: center; max-width: 640px; margin: 0 auto 40px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .faq-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 50px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+
+    .wrap { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+
+    .faq-group { margin-bottom: 40px; }
+    .faq-group h2 { font-family: var(--display); font-size: 20px; color: var(--gold); margin-bottom: 16px; border-bottom: 1px solid rgba(185,143,82,.2); padding-bottom: 8px; }
+
+    .faq-card { background: #121016; border: 1px solid rgba(185,143,82,.2); border-radius: 8px; margin-bottom: 12px; padding: 16px 20px; }
+    .faq-card summary { font-family: var(--display); font-size: 15px; color: var(--ivory); cursor: pointer; list-style: none; }
+    .faq-card summary::-webkit-details-marker { display: none; }
+    .faq-ans { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.05); font-size: 15.5px; line-height: 1.55; color: var(--ash); }
+  </style>
+</Layout>

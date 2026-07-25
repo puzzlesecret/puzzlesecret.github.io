@@ -1,0 +1,112 @@
+---
+import Layout from '../layouts/Layout.astro';
+const AMAZON_URL = "https://amzn.to/4flLyPR";
+---
+
+<Layout title="The Keeper & Series Lore · PuzzleSecret" description="Discover the story behind Sudoku with a Secret, author Dan Herlehy, and the 5-volume roadmap.">
+  <main class="page-keeper">
+    <div class="keeper-hero">
+      <p class="eyebrow">The Author &amp; Lore</p>
+      <h1>Behind the Vaults</h1>
+      <p class="lede">A book that hides a password. A web vault that opens when you find it. Here is the story of how Sudoku with a Secret was born.</p>
+    </div>
+
+    <section class="wrap keeper-body">
+      <!-- Bio Split -->
+      <div class="bio-card">
+        <div class="bio-text">
+          <h2>About Dan Herlehy</h2>
+          <p class="tag-line">Creator &amp; Author of <em>Sudoku with a Secret</em></p>
+          <p>Dan Herlehy created <em>PuzzleSecret</em> to combine the timeless joy of classic paper-and-pencil Sudoku with the thrilling discovery of an escape room or treasure hunt.</p>
+          <p>Instead of superficial gimmicks or low-quality AI grids, every puzzle in <em>Sudoku with a Secret</em> is an honest, hand-graded Sudoku puzzle. The secret cipher mechanics are built seamlessly into the book's structure—meaning solving the book unlocks a living digital vault of bonus puzzles and rewards.</p>
+          <div class="bio-actions">
+            <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get Vol. 1 on Amazon ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Series Roadmap Timeline -->
+      <div class="timeline-section">
+        <h2>The 5-Volume Series Roadmap</h2>
+        <p class="t-sub">Five books. Five distinct glowing seams. Five unique secret mechanics.</p>
+
+        <div class="timeline">
+          <div class="t-item active">
+            <div class="t-rn" style="color:var(--v1)">VOL. I</div>
+            <div class="t-content">
+              <h3>The Keeper's Vault</h3>
+              <p>200 Sudoku Puzzles · 3-Act Cipher Progression · Available Now</p>
+              <a href={AMAZON_URL} target="_blank" rel="noopener" class="t-link">Order on Amazon ↗</a>
+            </div>
+          </div>
+
+          <div class="t-item">
+            <div class="t-rn" style="color:var(--v2)">VOL. II</div>
+            <div class="t-content">
+              <h3>The Corsair's Chart</h3>
+              <p>Pirate cipher maps, buried coordinates, and sea-shanty word grids.</p>
+              <span class="t-tag">In Writing</span>
+            </div>
+          </div>
+
+          <div class="t-item">
+            <div class="t-rn" style="color:var(--v3)">VOL. III</div>
+            <div class="t-content">
+              <h3>The Lost Love Letters</h3>
+              <p>Victorian wax-sealed cipher correspondence and hidden acrostics.</p>
+              <span class="t-tag">Concept</span>
+            </div>
+          </div>
+
+          <div class="t-item">
+            <div class="t-rn" style="color:var(--v4)">VOL. IV</div>
+            <div class="t-content">
+              <h3>The Silent Signal</h3>
+              <p>Cold-war bunker telegraph codes and frequency-shift Sudokus.</p>
+              <span class="t-tag">Concept</span>
+            </div>
+          </div>
+
+          <div class="t-item">
+            <div class="t-rn" style="color:var(--v5)">VOL. V</div>
+            <div class="t-content">
+              <h3>The Hollow Oak</h3>
+              <p>Ancient druidic runic wheel ciphers and botanical puzzle maps.</p>
+              <span class="t-tag">Concept</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .page-keeper { padding-top: 90px; padding-bottom: 80px; }
+    .keeper-hero { text-align: center; max-width: 660px; margin: 0 auto 48px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .keeper-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+
+    .bio-card { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px; margin-bottom: 56px; }
+    .bio-text h2 { font-family: var(--display); font-size: 28px; color: var(--gold-hi); margin-bottom: 4px; }
+    .bio-text .tag-line { font-style: italic; color: var(--gold); font-size: 15px; margin-bottom: 18px; }
+    .bio-text p { font-size: 16.5px; line-height: 1.6; color: var(--ivory); margin-bottom: 14px; }
+    .bio-actions { margin-top: 24px; }
+    .btn-amz { display: inline-block; padding: 12px 28px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; }
+
+    .timeline-section h2 { font-family: var(--display); font-size: 26px; color: var(--gold); text-align: center; margin-bottom: 6px; }
+    .timeline-section .t-sub { font-style: italic; color: var(--ash); text-align: center; margin-bottom: 36px; }
+
+    .timeline { display: flex; flex-direction: column; gap: 20px; position: relative; }
+    .timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 32px; width: 2px; background: rgba(185,143,82,.2); }
+    .t-item { display: flex; gap: 24px; align-items: flex-start; background: #110f15; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 20px; position: relative; z-index: 2; }
+    .t-item.active { border-color: rgba(246,178,60,.4); background: rgba(246,178,60,.04); }
+    .t-rn { font-family: var(--display); font-size: 18px; font-weight: 700; min-width: 50px; }
+    .t-content h3 { font-family: var(--display); font-size: 18px; color: var(--ivory); margin-bottom: 4px; }
+    .t-content p { font-style: italic; font-size: 14px; color: var(--ash); margin-bottom: 10px; }
+    .t-link { font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+    .t-tag { font-family: var(--display); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash-dim); background: rgba(255,255,255,.05); padding: 2px 8px; border-radius: 4px; }
+  </style>
+</Layout>

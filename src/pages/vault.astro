@@ -1090,6 +1090,25 @@
     lglass.position.y = 0.14; lantern.add(lglass);
     const lanternGlim = sprite(0.22, 0, 0.14, 0, lantern, 0.0); // dark until noticed… then the faintest breath of light
 
+    /* ---- VAULT IV — THE SECRET SANCTUM (z -25.9 … -31.2, x AX±3.2, H 4.2) ---- */
+    const door4 = makeVaultDoor(-25.85, 'door4', 'The fourth door — secret wall passage');
+    const v4Floor = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 5.3), M.floor);
+    v4Floor.rotation.x = -Math.PI / 2; v4Floor.position.set(AX, 0.001, -28.55); scene.add(v4Floor);
+    const v4Ceil = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 5.3), new THREE.MeshStandardMaterial({ map: wallTex, color: 0x4a3420, roughness: 0.95 }));
+    v4Ceil.rotation.x = Math.PI / 2; v4Ceil.position.set(AX, 4.2, -28.55); scene.add(v4Ceil);
+    box(0.2, 4.2, 5.3, M.frieze, AX - 3.2, 2.1, -28.55);
+    box(0.2, 4.2, 5.3, M.frieze, AX + 3.2, 2.1, -28.55);
+    box(6.4, 4.2, 0.2, M.frieze, AX, 2.1, -31.2);
+
+    // central golden pedestal holding the Master Secret Tome
+    const ped4 = pedestal(AX, -28.5);
+    const masterTome = new THREE.Group(); masterTome.position.set(0, 1.05, 0); ped4.add(masterTome);
+    masterTome.userData = { kind: 'masterTome', label: "The Secret Sanctum — Master Reward" };
+    box(0.48, 0.09, 0.36, M.stack, 0, 0.05, 0, 0, masterTome);
+    sprite(1.5, 0, 0.3, 0, masterTome, 0.95);
+    const mtLight = new THREE.PointLight(0xffd47a, 20, 7, 2);
+    mtLight.position.set(0, 0.5, 0); masterTome.add(mtLight);
+
     /* ---- dust motes ---- */
     const dustN = REDUCED ? 0 : 280;
     let dust = null;
@@ -1380,8 +1399,8 @@
     let yaw = 0, pitch = -0.02;
     let pendingAction = null;      // fires when the glide arrives
     let rewardGiven = false, doorOpened = false;
-    let door2Open = false, door3Open = false;
-    let seenLib = false, seenV3 = false;
+    let door2Open = false, door3Open = false, door4Open = false;
+    let seenLib = false, seenV3 = false, seenV4 = false;
     let ambT = 0, ambRoom = 'study';
     const roomNameEl = document.getElementById('roomName');
 
@@ -1394,6 +1413,8 @@
       { minX: AX - 0.62, maxX: AX + 0.62, minZ: -19.15, maxZ: -16.55, ok: () => door2Open },        // corridor II
       { minX: AX - 0.5, maxX: AX + 0.5, minZ: -20.3, maxZ: -19.15, ok: () => door3Open },           // through Door III
       { minX: V3.minX + 0.45, maxX: V3.maxX - 0.45, minZ: -25.45, maxZ: -20.3, ok: () => door3Open }, // the treasure vault
+      { minX: AX - 0.5, maxX: AX + 0.5, minZ: -26.5, maxZ: -25.45, ok: () => door4Open },           // through Door IV
+      { minX: AX - 2.8, maxX: AX + 2.8, minZ: -30.8, maxZ: -26.5, ok: () => door4Open },            // the secret sanctum
     ];
     const OBSTACLES = [
       { x: 0.5, z: -0.55, r: 1.55 },                                   // desk + chair
@@ -1403,6 +1424,7 @@
       { x: AX - 1.15, z: -22.2, r: 0.55 }, { x: AX + 1.15, z: -22.7, r: 0.55 }, // pedestals
       { x: AX, z: -24.5, r: 0.88 },                                    // the grand chest
       { x: AX - 1.9, z: -23.6, r: 0.62 }, { x: AX + 1.75, z: -23.9, r: 0.62 }, // side chests
+      { x: AX, z: -28.5, r: 0.65 },                                    // master pedestal
     ];
     function clampPos(p) {
       let bx = 0, bz = 0, bd = Infinity;
@@ -1433,7 +1455,7 @@
     /* ---- pointer: drag = look, tap = interact/walk ---- */
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
-    const interactables = [stack, hinge, door2, door3, lectern, chestG, sealsWall, lantern,
+    const interactables = [stack, hinge, door2, door3, door4, lectern, chestG, masterTome, sealsWall, lantern,
       ...sealPulse.filter(o => o.isMesh)];
     let down = null, dragging = false;
     const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden;
@@ -1548,6 +1570,11 @@
         text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.',
         btn: 'Download the 200 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf', vo: 'finale',
       },
+      IV: {
+        kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES',
+        text: "You found the unlit lantern and decoded what was never written. Twenty master puzzles from the Keeper's private collection.",
+        btn: 'Download the 20 Master Puzzles (PDF)', file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf', vo: 'fourth',
+      },
     };
     const rewardsGiven = {};
     let sealFlareT = -99;
@@ -1574,7 +1601,8 @@
                kicker: 'THE SECOND DOOR', vo: 'door2', isOpen: () => door2Open, setOpen: () => { door2Open = true; }, obj: door2 },
       door3: { act: 'III', stand: { x: AX, z: -18.55 }, inside: { x: AX, z: -21.0 },
                kicker: 'THE THIRD DOOR', vo: 'door3', isOpen: () => door3Open, setOpen: () => { door3Open = true; }, obj: door3 },
-      fourth: { act: 'IV', kicker: 'THE FOURTH SECRET', vo: 'fourth' },
+      fourth: { act: 'IV', stand: { x: V3.minX + 1.2, z: -24.8 }, inside: { x: AX, z: -28.5 },
+               kicker: 'THE FOURTH SECRET', vo: 'fourth', isOpen: () => door4Open, setOpen: () => { door4Open = true; }, obj: door4 },
     };
     const doorAnims = [];
     function openVaultDoor(key) {
@@ -1686,9 +1714,11 @@
       } catch (e) { /* ignore */ }
     });
     function lanternSuccess() {
-      lanternGlim.material.opacity = 0.9;
-      playUnlock(); burstConfetti();
-      showCaption('So. You heard the whole of it. The fourth vault is being carved… return when it opens.', 8000);
+      lanternGlim.material.opacity = 1.0;
+      door4Open = true;
+      openVaultDoor('fourth');
+      burstConfetti();
+      showCaption('So. You heard the whole of it. The secret sanctum stands open.', 8000);
     }
 
     /* ---- what clicking things does ---- */
@@ -1709,18 +1739,24 @@
         goThen(AX + 0.85, -11.3, () => openReward('II'));
       } else if (kind === 'chest') {
         goThen(AX, -23.4, () => openReward('III'));
+      } else if (kind === 'masterTome') {
+        goThen(AX, -27.6, () => openReward('IV'));
       } else if (kind === 'bookcase') {
         if (doorAnim || doorAmt > 0.5) return;
         openBookcase();
-      } else if (kind === 'door2' || kind === 'door3') {
+      } else if (kind === 'door2' || kind === 'door3' || kind === 'door4') {
         const D = DOORS[kind];
         if (D.isOpen()) return;
         goThen(D.stand.x, D.stand.z, () => openWordbox(kind));
       } else if (kind === 'seals') {
         showCaption('Four seals. Four secrets still to come — the hunt continues beyond this vault.', 6200);
       } else if (kind === 'fourth') {
-        lanternGlim.material.opacity = 0.3;
-        goThen(V3.minX + 1.3, -24.8, () => openWordbox('fourth'));
+        if (door4Open) {
+          goThen(AX, -27.6, () => openReward('IV'));
+        } else {
+          lanternGlim.material.opacity = 0.5;
+          goThen(V3.minX + 1.3, -24.8, () => openWordbox('fourth'));
+        }
       }
     }
     function openBookcase() {

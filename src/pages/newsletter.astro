@@ -1,0 +1,79 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="The Keeper's Dispatch · Newsletter" description="Join the Keeper's list for ten free printable Sudoku puzzles every month and early word on upcoming volumes.">
+  <main class="page-newsletter">
+    <div class="news-hero">
+      <p class="eyebrow">The Dispatch</p>
+      <h1>Ten Free Puzzles Every Month</h1>
+      <p class="lede">Join the Keeper's inner circle. Delivered directly to your inbox on the 1st of every month. No spam, no tracking, optional always.</p>
+    </div>
+
+    <section class="wrap news-body">
+      <div class="parchment-card">
+        <div class="card-inner">
+          <div class="seal-mark">✦</div>
+          <h2>Join the Keeper's List</h2>
+          <p>Receive exclusive bonus puzzles, series lore, and first notification when Volume II (The Corsair's Chart) launches.</p>
+
+          <form class="news-form" id="newsForm">
+            <input type="email" id="emailInput" placeholder="Enter your email address" class="n-input" required autocomplete="email" />
+            <button type="submit" class="n-btn">Subscribe Free</button>
+          </form>
+
+          <div id="newsMsg" class="n-msg"></div>
+
+          <ul class="promise-list">
+            <li>✓ 10 printable Sudoku puzzles every month (Easy, Med, Hard)</li>
+            <li>✓ Zero email gating for book vault rewards (vault rewards are always free)</li>
+            <li>✓ Unsubscribe with a single click anytime</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('newsForm');
+    const input = document.getElementById('emailInput') as HTMLInputElement;
+    const msg = document.getElementById('newsMsg');
+
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = (input?.value || '').trim();
+      if (!email) return;
+      if (msg) {
+        msg.innerHTML = `<span style="color:var(--v2)">✓ Welcome to the Dispatch! Your first 10 puzzles are on their way to ${email}.</span>`;
+        input.value = '';
+      }
+    });
+  </script>
+
+  <style>
+    .page-newsletter { padding-top: 90px; padding-bottom: 80px; }
+    .news-hero { text-align: center; max-width: 640px; margin: 0 auto 40px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .news-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 50px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+
+    .wrap { max-width: 680px; margin: 0 auto; padding: 0 20px; }
+
+    .parchment-card { background: linear-gradient(180deg, #16121a, #0d0a10); border: 1px solid rgba(246,178,60,.35); border-radius: 14px; padding: 40px 32px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.6); position: relative; }
+    .seal-mark { font-size: 32px; color: var(--gold); margin-bottom: 12px; }
+    .parchment-card h2 { font-family: var(--display); font-size: 26px; color: var(--gold-hi); margin-bottom: 10px; }
+    .parchment-card p { font-style: italic; font-size: 16px; color: var(--ash); margin-bottom: 28px; line-height: 1.5; }
+
+    .news-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto 20px; }
+    .n-input { flex: 1; padding: 14px 18px; border: 1px solid rgba(185,143,82,.4); border-radius: 8px; background: rgba(10,10,12,.8); color: var(--gold-hi); font-size: 15px; outline: none; }
+    .n-btn { padding: 14px 24px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; transition: transform .2s; }
+    .n-btn:hover { transform: translateY(-1px); }
+    .n-msg { min-height: 24px; font-style: italic; font-size: 14.5px; margin-bottom: 20px; }
+
+    .promise-list { list-style: none; text-align: left; max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--ash); border-top: 1px solid rgba(255,255,255,.06); padding-top: 20px; }
+
+    @media (max-width: 600px) {
+      .news-form { flex-direction: column; }
+    }
+  </style>
+</Layout>

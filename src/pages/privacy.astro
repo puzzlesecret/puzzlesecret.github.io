@@ -1,0 +1,43 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Privacy Policy · PuzzleSecret" description="Plain-English, zero-tracking privacy policy for PuzzleSecret. Safe for kids and solvers of all ages.">
+  <main class="page-legal">
+    <div class="wrap">
+      <p class="eyebrow">Legal &amp; Safety</p>
+      <h1>Privacy Policy</h1>
+      <p class="last-up">Last updated: July 25, 2026</p>
+
+      <div class="legal-content">
+        <h2>1. Our Commitment to Your Privacy</h2>
+        <p>At PuzzleSecret (operated by Dan Herlehy), we believe websites should respect your privacy. Our website is designed for solvers of all ages, including children and families. We do not sell your personal data, we do not track you across the web, and we do not use invasive advertising trackers.</p>
+
+        <h2>2. Zero Secret Word &amp; Game Tracking</h2>
+        <p>Your progress through the 3D Vault Crawl and your unlocked passport badges are stored locally on your own browser device using standard browser LocalStorage. We do not transmit or store your vault solutions or gameplay history on external tracking servers.</p>
+
+        <h2>3. Self-Hosted Fonts &amp; Assets</h2>
+        <p>To ensure child safety and eliminate third-party tracking calls, all typography fonts (Cinzel and Cormorant Garamond) are self-hosted directly on our own domain servers. When you browse PuzzleSecret, no IP addresses or browser fingerprints are sent to Google Fonts or third-party font networks.</p>
+
+        <h2>4. Optional Email Dispatch</h2>
+        <p>If you choose to subscribe to <em>The Keeper's Dispatch</em> newsletter, we collect only your email address. Email registration is strictly optional and is never required to unlock or download any vault reward PDFs. You may unsubscribe at any time via the single-click link in any dispatch email.</p>
+
+        <h2>5. External Links</h2>
+        <p>Our website contains links to external sites such as Amazon.com for book purchases. We are not responsible for the privacy practices of external third-party sites once you navigate away from PuzzleSecret.com.</p>
+
+        <h2>6. Contact Us</h2>
+        <p>If you have any questions regarding this Privacy Policy, you may contact us at <a href="mailto:privacy@puzzlesecret.com" style="color:var(--gold)">privacy@puzzlesecret.com</a>.</p>
+      </div>
+    </div>
+  </main>
+
+  <style>
+    .page-legal { padding-top: 90px; padding-bottom: 80px; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .page-legal h1 { font-family: var(--display); font-size: 38px; color: var(--ivory); margin-bottom: 6px; }
+    .last-up { font-style: italic; color: var(--ash-dim); font-size: 14px; margin-bottom: 36px; }
+    .legal-content h2 { font-family: var(--display); font-size: 20px; color: var(--gold); margin-top: 28px; margin-bottom: 10px; }
+    .legal-content p { font-size: 16px; line-height: 1.6; color: var(--ash); margin-bottom: 14px; }
+  </style>
+</Layout>

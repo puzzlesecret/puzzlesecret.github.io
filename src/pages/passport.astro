@@ -1,0 +1,126 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Your Passport · PuzzleSecret" description="Your official PuzzleSecret Solver Passport. Track cracked vaults, collected stamps, and unlocked reward PDFs.">
+  <main class="page-passport">
+    <div class="passport-hero">
+      <p class="eyebrow">Official Record</p>
+      <h1>The Solver's Passport</h1>
+      <p class="lede">Every cracked vault stamps your passport. Track your progress across Volume 1 and claim your unlocked treasure packs.</p>
+    </div>
+
+    <section class="wrap passport-body">
+      <!-- Passport Notebook Frame -->
+      <div class="passport-book">
+        <div class="p-header">
+          <div class="p-brand">PUZZLE<span>SECRET</span></div>
+          <div class="p-title">Volume 1 · Solver Certificate</div>
+        </div>
+
+        <div class="stamps-grid">
+          <!-- Stamp 1 -->
+          <div class="stamp-slot" id="slot-v1">
+            <div class="stamp-inner">
+              <div class="stamp-num">I</div>
+              <div class="stamp-icon">🖋</div>
+              <div class="stamp-name">The Writer's Study</div>
+              <div class="stamp-status">UNLOCKED</div>
+            </div>
+            <a href="/rewards/PuzzleSecret-Vault-I-50-Easy.pdf" download class="stamp-dl">50 Easy PDF ⬇</a>
+          </div>
+
+          <!-- Stamp 2 -->
+          <div class="stamp-slot" id="slot-v2">
+            <div class="stamp-inner">
+              <div class="stamp-num">II</div>
+              <div class="stamp-icon">📜</div>
+              <div class="stamp-name">Library of Puzzles</div>
+              <div class="stamp-status">VAULT II</div>
+            </div>
+            <a href="/rewards/PuzzleSecret-Vault-II-100-Medium.pdf" download class="stamp-dl">100 Med PDF ⬇</a>
+          </div>
+
+          <!-- Stamp 3 -->
+          <div class="stamp-slot" id="slot-v3">
+            <div class="stamp-inner">
+              <div class="stamp-num">III</div>
+              <div class="stamp-icon">🏆</div>
+              <div class="stamp-name">Grand Treasure Vault</div>
+              <div class="stamp-status">VAULT III</div>
+            </div>
+            <a href="/rewards/PuzzleSecret-Vault-III-200-Hard.pdf" download class="stamp-dl">200 Hard PDF ⬇</a>
+          </div>
+
+          <!-- Stamp 4 (Secret) -->
+          <div class="stamp-slot secret-slot" id="slot-v4">
+            <div class="stamp-inner">
+              <div class="stamp-num">IV</div>
+              <div class="stamp-icon">🕯</div>
+              <div class="stamp-name">Secret Lantern Vault</div>
+              <div class="stamp-status">SECRET</div>
+            </div>
+            <a href="/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf" download class="stamp-dl">20 Master PDF ⬇</a>
+          </div>
+        </div>
+
+        <!-- Passport Stats Bar -->
+        <div class="p-stats">
+          <div class="stat">
+            <span class="stat-num" id="unlockedPuzzles">50</span>
+            <span class="stat-lbl">Puzzles Unlocked</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num" id="stampsCount">1 / 4</span>
+            <span class="stat-lbl">Stamps Earned</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num" id="couponTier">10% OFF</span>
+            <span class="stat-lbl">Commissary Discount</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="passport-cta">
+        <a href="/vault" class="btn-vault">Return to the 3D Vaults →</a>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .page-passport { padding-top: 90px; padding-bottom: 80px; }
+    .passport-hero { text-align: center; max-width: 660px; margin: 0 auto 40px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .passport-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+
+    .passport-book { background: linear-gradient(180deg, #181410, #0e0b08); border: 2px solid var(--brass); border-radius: 16px; padding: 36px; box-shadow: 0 12px 50px rgba(0,0,0,.7), inset 0 0 20px rgba(246,178,60,.1); position: relative; }
+    .p-header { text-align: center; margin-bottom: 32px; border-bottom: 1px solid rgba(185,143,82,.2); padding-bottom: 20px; }
+    .p-brand { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .3em; color: var(--ash); }
+    .p-brand span { color: var(--gold); }
+    .p-title { font-style: italic; font-size: 15px; color: var(--ash-dim); margin-top: 4px; }
+
+    .stamps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 32px; }
+    .stamp-slot { background: rgba(10,8,6,.7); border: 1px dashed rgba(185,143,82,.3); border-radius: 12px; padding: 20px 14px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
+    .stamp-slot.unlocked { border-style: solid; border-color: var(--gold); background: rgba(246,178,60,.08); }
+    .stamp-num { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold); opacity: .7; }
+    .stamp-icon { font-size: 32px; margin: 4px 0; }
+    .stamp-name { font-family: var(--display); font-size: 13px; letter-spacing: .08em; color: var(--ivory); }
+    .stamp-status { font-family: var(--display); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--v2); }
+    .stamp-dl { display: block; font-family: var(--display); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 8px; border: 1px solid rgba(246,178,60,.4); border-radius: 6px; color: var(--gold-hi); transition: background .2s; }
+    .stamp-dl:hover { background: rgba(246,178,60,.2); }
+
+    .p-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; background: rgba(0,0,0,.4); border-radius: 10px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,.05); }
+    .stat-num { display: block; font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--gold-hi); margin-bottom: 4px; }
+    .stat-lbl { font-size: 12px; font-style: italic; color: var(--ash); }
+
+    .passport-cta { text-align: center; margin-top: 32px; }
+    .btn-vault { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
+
+    @media (max-width: 600px) {
+      .p-stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</Layout>

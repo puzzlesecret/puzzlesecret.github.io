@@ -1,0 +1,275 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="The Hint Chamber · PuzzleSecret" description="Progressive, spoiler-free hints for Sudoku with a Secret. Get nudged in the right direction without spoiling the fun.">
+  <main class="page-hints">
+    <div class="hints-hero">
+      <p class="eyebrow">The Hint Chamber</p>
+      <h1>Need a Nudge, Solver?</h1>
+      <p class="lede">Every puzzle in the book is solvable with logic alone. If you're stuck on finding key digits or decoding a secret word, step through the progressive hints below.</p>
+    </div>
+
+    <section class="wrap hints-body">
+      <!-- Act Selector Tabs -->
+      <div class="tab-row" role="tablist">
+        <button class="tab-btn active" data-act="act1" role="tab">Act I · Clever</button>
+        <button class="tab-btn" data-act="act2" role="tab">Act II · Solvers</button>
+        <button class="tab-btn" data-act="act3" role="tab">Act III · Triumph</button>
+        <button class="tab-btn" data-act="act4" role="tab">Secret · Lantern</button>
+      </div>
+
+      <!-- Act I Hints -->
+      <div class="act-panel active" id="act1">
+        <div class="act-header">
+          <h2>Act I — The First Secret Door</h2>
+          <p>Easy difficulty tier (Puzzles 1–70). Yields 6 shaded key digits.</p>
+        </div>
+
+        <div class="accordion">
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 1</span> Where are the Act I Key Puzzles?</summary>
+            <div class="hint-content">
+              <p>Look for the single shaded cell hidden inside key puzzles. The 6 key puzzles for Act I are:</p>
+              <ul>
+                <li>Key 1: Puzzle 1</li>
+                <li>Key 2: Puzzle 14</li>
+                <li>Key 3: Puzzle 28</li>
+                <li>Key 4: Puzzle 42</li>
+                <li>Key 5: Puzzle 56</li>
+                <li>Key 6: Puzzle 70</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 2</span> How do I use the Vault Door Tally?</summary>
+            <div class="hint-content">
+              <p>As you solve each key puzzle, copy the single digit from its shaded cell into the corresponding box on the <strong>Vault Door Tally page</strong> (page 210 in the back of the book).</p>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 3</span> How does Keyplate I work?</summary>
+            <div class="hint-content">
+              <p>Turn to <strong>Keyplate I</strong> (page 211). Locate column <em>Key 1</em> through <em>Key 6</em>. Match the digit you found in that key puzzle to the row number in the table to read the corresponding letter.</p>
+              <p class="example-box">Example: If Key 1 has digit 3, look down column Key 1 to row 3 to read your letter.</p>
+            </div>
+          </details>
+
+          <details class="hint-card reveal-card">
+            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act I Secret Word</summary>
+            <div class="hint-content">
+              <p>Are you sure? Only reveal if you are completely stuck!</p>
+              <button class="btn-reveal" data-word="CLEVER">Click to Reveal Word</button>
+              <div class="revealed-word"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Act II Hints -->
+      <div class="act-panel" id="act2">
+        <div class="act-header">
+          <h2>Act II — The Burned Plate</h2>
+          <p>Medium difficulty tier (Puzzles 71–150). Yields 7 shaded key digits.</p>
+        </div>
+
+        <div class="accordion">
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 1</span> Where are the Act II Key Puzzles?</summary>
+            <div class="hint-content">
+              <p>The 7 key puzzles for Act II are:</p>
+              <ul>
+                <li>Key 7: Puzzle 71</li>
+                <li>Key 8: Puzzle 84</li>
+                <li>Key 9: Puzzle 98</li>
+                <li>Key 10: Puzzle 112</li>
+                <li>Key 11: Puzzle 126</li>
+                <li>Key 12: Puzzle 140</li>
+                <li>Key 13: Puzzle 150</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 2</span> Why are the columns burned on Keyplate II?</summary>
+            <div class="hint-content">
+              <p>Keyplate II (page 212) shows the columns destroyed by fire! Notice the note directing you to <strong>The Second Letter</strong> (page 209).</p>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 3</span> How do I count words in the Second Letter?</summary>
+            <div class="hint-content">
+              <p>The Second Letter has 7 numbered sentences. Key 7 maps to Sentence 1, Key 8 maps to Sentence 2, and so on. Your key digit tells you which word to count in that sentence!</p>
+              <p class="rule-box"><strong>Golden Rule:</strong> Count <em>only</em> the sentence's own words — never count its sentence number!</p>
+            </div>
+          </details>
+
+          <details class="hint-card reveal-card">
+            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act II Secret Word</summary>
+            <div class="hint-content">
+              <button class="btn-reveal" data-word="SOLVERS">Click to Reveal Word</button>
+              <div class="revealed-word"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Act III Hints -->
+      <div class="act-panel" id="act3">
+        <div class="act-header">
+          <h2>Act III — The Cipher Wheel</h2>
+          <p>Hard difficulty tier (Puzzles 151–200). Yields 7 shaded key digits.</p>
+        </div>
+
+        <div class="accordion">
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 1</span> Where are the Act III Key Puzzles?</summary>
+            <div class="hint-content">
+              <p>The 7 key puzzles for Act III are:</p>
+              <ul>
+                <li>Key 14: Puzzle 151</li>
+                <li>Key 15: Puzzle 160</li>
+                <li>Key 16: Puzzle 170</li>
+                <li>Key 17: Puzzle 180</li>
+                <li>Key 18: Puzzle 190</li>
+                <li>Key 19: Puzzle 195</li>
+                <li>Key 20: Puzzle 200</li>
+              </ul>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 2</span> How does the Cipher Wheel work?</summary>
+            <div class="hint-content">
+              <p>Keyplate III (page 213) features a two-ring cipher wheel. Look at the Keeper's clue: <em>"Step back three."</em> The outer ring shows the printed letter; the inner ring shows the true letter shifted back by 3 positions (D $\rightarrow$ A).</p>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 3</span> Do I need to do any manual math?</summary>
+            <div class="hint-content">
+              <p>No counting needed! Keyplate III already prints the shifted letters directly in the table. Simply look up your key digit down the corresponding column.</p>
+            </div>
+          </details>
+
+          <details class="hint-card reveal-card">
+            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act III Secret Word</summary>
+            <div class="hint-content">
+              <button class="btn-reveal" data-word="TRIUMPH">Click to Reveal Word</button>
+              <div class="revealed-word"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Act IV (Acrostic) Hints -->
+      <div class="act-panel" id="act4">
+        <div class="act-header">
+          <h2>The Hidden Fourth Secret</h2>
+          <p>Unannounced easter egg. Hidden across the Keeper's three letters.</p>
+        </div>
+
+        <div class="accordion">
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 1</span> What is an acrostic?</summary>
+            <div class="hint-content">
+              <p>An acrostic reads the first letter of consecutive paragraphs or sentences in order!</p>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 2</span> Which letters should I read?</summary>
+            <div class="hint-content">
+              <p>Read the opening letter of each paragraph across the Keeper's letters in the back of the book (pages 208, 209, and 214).</p>
+            </div>
+          </details>
+
+          <details class="hint-card">
+            <summary class="hint-title"><span class="h-step">Nudge 3</span> Where do I use the 4th word on the site?</summary>
+            <div class="hint-content">
+              <p>In <a href="/vault" style="color:var(--gold)">The 3D Vault Crawl</a>, walk deep into Vault III (The Grand Treasure Chamber) and click on the <strong>unlit lantern</strong> on the left pedestal!</p>
+            </div>
+          </details>
+
+          <details class="hint-card reveal-card">
+            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the 4th Secret Word</summary>
+            <div class="hint-content">
+              <button class="btn-reveal" data-word="LANTERN">Click to Reveal Word</button>
+              <div class="revealed-word"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Tab Switching
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('.act-panel');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-act');
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(target)?.classList.add('active');
+      });
+    });
+
+    // Word Reveal Buttons
+    document.querySelectorAll('.btn-reveal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const word = btn.getAttribute('data-word');
+        const container = btn.nextElementSibling;
+        if (container) {
+          container.innerHTML = `<div class="word-badge">${word}</div>`;
+          btn.style.display = 'none';
+        }
+      });
+    });
+  </script>
+
+  <style>
+    .page-hints { padding-top: 90px; padding-bottom: 80px; }
+    .hints-hero { text-align: center; max-width: 660px; margin: 0 auto 40px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .hints-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+
+    .tab-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+    .tab-btn { padding: 12px 22px; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ash); background: rgba(14,14,18,.8); border: 1px solid rgba(185,143,82,.25); border-radius: 8px; cursor: pointer; transition: all .25s; }
+    .tab-btn:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.4); }
+    .tab-btn.active { color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-color: var(--gold); font-weight: 700; box-shadow: 0 4px 16px rgba(246,178,60,.3); }
+
+    .act-panel { display: none; }
+    .act-panel.active { display: block; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .act-header { text-align: center; margin-bottom: 24px; }
+    .act-header h2 { font-family: var(--display); font-size: 24px; color: var(--gold); margin-bottom: 4px; }
+    .act-header p { font-style: italic; color: var(--ash); font-size: 15px; }
+
+    .accordion { display: flex; flex-direction: column; gap: 14px; }
+    .hint-card { background: #121016; border: 1px solid rgba(185,143,82,.22); border-radius: 10px; padding: 18px 22px; transition: border-color .2s; }
+    .hint-card[open] { border-color: rgba(246,178,60,.45); background: #16131c; }
+    .hint-title { font-family: var(--display); font-size: 15px; letter-spacing: .06em; color: var(--ivory); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 12px; }
+    .hint-title::-webkit-details-marker { display: none; }
+    .h-step { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); background: rgba(246,178,60,.12); border: 1px solid rgba(246,178,60,.3); padding: 3px 9px; border-radius: 4px; }
+    .hint-content { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.06); font-size: 16px; line-height: 1.55; color: var(--ivory); }
+    .hint-content ul { margin: 12px 0 12px 24px; }
+    .hint-content li { margin-bottom: 4px; color: var(--ash); }
+    .example-box, .rule-box { background: rgba(246,178,60,.08); border-left: 3px solid var(--gold); padding: 10px 14px; margin-top: 12px; border-radius: 0 6px 6px 0; font-size: 14.5px; }
+
+    .reveal-card { border-color: rgba(231,138,166,.3); }
+    .btn-reveal { padding: 10px 20px; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; background: rgba(231,138,166,.15); color: var(--v3); border: 1px solid rgba(231,138,166,.4); border-radius: 6px; cursor: pointer; transition: all .2s; margin-top: 8px; }
+    .btn-reveal:hover { background: rgba(231,138,166,.3); }
+    .word-badge { display: inline-block; font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: .28em; color: var(--gold-hi); background: rgba(246,178,60,.15); border: 1px solid var(--gold); padding: 8px 24px; border-radius: 8px; margin-top: 10px; text-shadow: 0 0 16px rgba(246,178,60,.5); }
+  </style>
+</Layout>

@@ -1,0 +1,201 @@
+---
+export interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "Sudoku with a Secret — The Keeper's Vault",
+  description = "You solved the book. Now crack the vault. Speak the words hidden in Sudoku with a Secret and open vaults of treasure and free bonus puzzles."
+} = Astro.props;
+
+const AMAZON_URL = "https://amzn.to/4flLyPR";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="/art/og-door.jpg" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0a0a0c" />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+  </head>
+
+  <body>
+    <!-- Persistent Header Chrome -->
+    <header class="chrome" aria-label="Site controls">
+      <a class="chip brand-chip" href="/" title="Home">
+        <span class="wm">PUZZLE<span>SECRET</span></span>
+      </a>
+      <div class="chrome-right">
+        <button class="chip muted" id="soundToggle" aria-pressed="false" title="Sound on/off">
+          <span class="ic" aria-hidden="true">○</span><span class="lbl">sound</span>
+        </button>
+        <a class="chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span><span class="lbl-desktop">Passport</span></a>
+        <a class="chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span><span class="lbl-desktop">Shop</span></a>
+        <button class="chip" id="menuBtn" aria-label="Open Menu"><span class="ic" aria-hidden="true">≡</span></button>
+      </div>
+    </header>
+
+    <!-- Slide-Out Menu Drawer -->
+    <div class="menu-drawer" id="menuDrawer" aria-hidden="true">
+      <div class="drawer-backdrop" id="drawerBackdrop"></div>
+      <div class="drawer-panel">
+        <div class="drawer-head">
+          <span class="wm">PUZZLE<span>SECRET</span></span>
+          <button class="drawer-close" id="drawerClose" aria-label="Close menu">✕</button>
+        </div>
+        <nav class="drawer-nav">
+          <a href="/" class="d-link"><span class="d-num">01</span> The Front Door <span class="d-arrow">→</span></a>
+          <a href="/vault" class="d-link"><span class="d-num">02</span> The 3D Vault Crawl <span class="d-arrow">→</span></a>
+          <a href="/shop" class="d-link"><span class="d-num">03</span> The Commissary <span class="d-arrow">→</span></a>
+          <a href="/passport" class="d-link"><span class="d-num">04</span> Solver's Passport <span class="d-arrow">→</span></a>
+          <a href="/hints" class="d-link"><span class="d-num">05</span> Hint Chamber <span class="d-arrow">→</span></a>
+          <a href="/the-keeper" class="d-link"><span class="d-num">06</span> The Keeper's Story <span class="d-arrow">→</span></a>
+          <a href="/newsletter" class="d-link"><span class="d-num">07</span> Free Monthly Dispatch <span class="d-arrow">→</span></a>
+          <a href="/faq" class="d-link"><span class="d-num">08</span> FAQ & Help <span class="d-arrow">→</span></a>
+          <a href="/privacy" class="d-link"><span class="d-num">09</span> Privacy Policy <span class="d-arrow">→</span></a>
+          <a href="/terms" class="d-link"><span class="d-num">10</span> Terms of Service <span class="d-arrow">→</span></a>
+        </nav>
+        <div class="drawer-foot">
+          <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amazon">
+            Get Vol. 1 on Amazon ↗
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <slot />
+
+    <!-- Persistent Global Footer (if page uses it) -->
+    <footer class="global-foot">
+      <div class="wrap">
+        <div class="foot-top">
+          <span class="wordmark">PUZZLE<span>SECRET</span></span>
+          <nav class="foot-nav">
+            <a href="/shop">Shop</a>
+            <a href="/hints">Hints</a>
+            <a href="/passport">Passport</a>
+            <a href="/the-keeper">The Keeper</a>
+            <a href="/newsletter">Newsletter</a>
+            <a href="/faq">FAQ</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href={AMAZON_URL} target="_blank" rel="noopener" class="amz-link">Amazon ↗</a>
+          </nav>
+        </div>
+        <p class="fine">Sudoku with a Secret · Volume 1 — the vaults are bonus treasure, not a prize of chance.</p>
+      </div>
+    </footer>
+
+    <!-- Menu Drawer JavaScript -->
+    <script>
+      const menuBtn = document.getElementById('menuBtn');
+      const drawer = document.getElementById('menuDrawer');
+      const closeBtn = document.getElementById('drawerClose');
+      const backdrop = document.getElementById('drawerBackdrop');
+
+      function openDrawer() {
+        if (!drawer) return;
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeDrawer() {
+        if (!drawer) return;
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+      }
+
+      menuBtn?.addEventListener('click', openDrawer);
+      closeBtn?.addEventListener('click', closeDrawer);
+      backdrop?.addEventListener('click', closeDrawer);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && drawer?.classList.contains('open')) {
+          closeDrawer();
+        }
+      });
+    </script>
+
+    <style is:global>
+      :root {
+        --void: #08080a;
+        --steel: #17181d;
+        --ivory: #f2e9d6;
+        --ash: #9a927f;
+        --ash-dim: #6d675b;
+        --gold: #f6b23c;
+        --gold-hi: #ffd47a;
+        --brass: #b98f52;
+        --brass-hi: #e6c184;
+        --v1: #f6b23c;
+        --v2: #35cf7f;
+        --v3: #e78aa6;
+        --v4: #33d0e6;
+        --v5: #ef9a2b;
+        --serif: 'Cormorant Garamond', Georgia, serif;
+        --display: 'Cinzel', 'Cormorant Garamond', serif;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body { background: var(--void); color: var(--ivory); font-family: var(--serif); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+      a { color: inherit; text-decoration: none; }
+
+      /* Global Header Chrome */
+      .chrome { position: fixed; top: 0; left: 0; right: 0; z-index: 40; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; pointer-events: none; }
+      .chrome > * { pointer-events: auto; }
+      .chrome-right { display: flex; gap: 8px; align-items: center; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border: 1px solid rgba(185,143,82,.28); border-radius: 999px; background: rgba(14,14,18,.75); backdrop-filter: blur(8px); color: var(--ash); cursor: pointer; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transition: color .3s, border-color .3s, transform .2s; }
+      .chip:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.5); transform: translateY(-1px); }
+      .chip.brand-chip { border-color: rgba(246,178,60,.35); background: rgba(10,10,12,.85); }
+      .chip .wm { font-weight: 700; color: var(--ash); letter-spacing: .2em; }
+      .chip .wm span { color: var(--gold); }
+      .chip.muted { color: var(--ash-dim); border-color: rgba(154,146,127,.18); }
+      .chip .ic { font-size: 14px; line-height: 1; }
+      .chip .key { color: var(--brass-hi); }
+      @media (max-width: 600px) {
+        .lbl-desktop { display: none; }
+      }
+
+      /* Slide-out Navigation Drawer */
+      .menu-drawer { position: fixed; inset: 0; z-index: 100; pointer-events: none; opacity: 0; transition: opacity .35s; }
+      .menu-drawer.open { pointer-events: auto; opacity: 1; }
+      .drawer-backdrop { position: absolute; inset: 0; background: rgba(4,4,6,.75); backdrop-filter: blur(6px); }
+      .drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 100%; max-width: 420px; background: linear-gradient(180deg, #141217, #0a090d); border-left: 1px solid rgba(246,178,60,.25); padding: 28px 24px; display: flex; flex-direction: column; justify-content: space-between; transform: translateX(100%); transition: transform .35s cubic-bezier(.2,.8,.2,1); box-shadow: -10px 0 40px rgba(0,0,0,.8); }
+      .menu-drawer.open .drawer-panel { transform: translateX(0); }
+      .drawer-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid rgba(185,143,82,.2); }
+      .drawer-head .wm { font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: .24em; color: var(--ash); }
+      .drawer-head .wm span { color: var(--gold); }
+      .drawer-close { background: none; border: 1px solid rgba(185,143,82,.3); color: var(--ash); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 14px; transition: color .2s, border-color .2s; }
+      .drawer-close:hover { color: var(--gold); border-color: var(--gold); }
+      .drawer-nav { display: flex; flex-direction: column; gap: 8px; margin: 24px 0; overflow-y: auto; }
+      .d-link { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 8px; font-family: var(--display); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ivory); border: 1px solid rgba(185,143,82,.12); background: rgba(255,255,255,.02); transition: background .2s, border-color .2s, color .2s; }
+      .d-link:hover { background: rgba(246,178,60,.08); border-color: rgba(246,178,60,.4); color: var(--gold-hi); }
+      .d-num { font-size: 10px; color: var(--gold); opacity: .7; }
+      .d-arrow { color: var(--brass-hi); opacity: .5; transition: transform .2s; }
+      .d-link:hover .d-arrow { transform: translateX(4px); opacity: 1; }
+      .drawer-foot { padding-top: 16px; border-top: 1px solid rgba(185,143,82,.2); }
+      .btn-amazon { display: block; width: 100%; text-align: center; padding: 14px; font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 4px 20px rgba(246,178,60,.3); transition: transform .2s, box-shadow .2s; }
+      .btn-amazon:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(246,178,60,.45); }
+
+      /* Global Footer */
+      .global-foot { background: #060608; border-top: 1px solid rgba(185,143,82,.18); padding: 48px 20px; margin-top: auto; }
+      .global-foot .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+      .foot-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+      .global-foot .wordmark { font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .24em; color: var(--ash); }
+      .global-foot .wordmark span { color: var(--gold); }
+      .foot-nav { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); }
+      .foot-nav a:hover { color: var(--gold-hi); }
+      .foot-nav .amz-link { color: var(--gold); }
+      .global-foot .fine { font-style: italic; font-size: 13px; color: var(--ash-dim); border-top: 1px solid rgba(255,255,255,.05); padding-top: 16px; }
+    </style>
+  </body>
+</html>
