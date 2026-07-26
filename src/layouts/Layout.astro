@@ -156,12 +156,12 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
       .chrome { position: fixed; top: 0; left: 0; right: 0; z-index: 40; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; pointer-events: none; }
       .chrome > * { pointer-events: auto; }
       .chrome-right { display: flex; gap: 8px; align-items: center; }
-      .chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border: 1px solid rgba(185,143,82,.28); border-radius: 999px; background: rgba(14,14,18,.75); backdrop-filter: blur(8px); color: var(--ash); cursor: pointer; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transition: color .3s, border-color .3s, transform .2s; }
-      .chip:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.5); transform: translateY(-1px); }
-      .chip.brand-chip { border-color: rgba(246,178,60,.35); background: rgba(10,10,12,.85); }
+      .chip { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: 1px solid rgba(246,178,60,.4); border-radius: 999px; background: rgba(14,14,18,.85); backdrop-filter: blur(12px); color: var(--ash); cursor: pointer; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transition: color .3s, border-color .3s, transform .2s, box-shadow .2s; box-shadow: 0 4px 16px rgba(0,0,0,.6); }
+      .chip:hover { color: var(--gold-hi); border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 6px 22px rgba(246,178,60,.35); }
+      .chip.brand-chip { border-color: rgba(246,178,60,.5); background: rgba(10,10,12,.92); }
       .chip .wm { font-weight: 700; color: var(--ash); letter-spacing: .2em; }
-      .chip .wm span { color: var(--gold); }
-      .chip.muted { color: var(--ash-dim); border-color: rgba(154,146,127,.18); }
+      .chip .wm span { color: var(--gold); text-shadow: 0 0 10px rgba(246,178,60,.4); }
+      .chip.muted { color: var(--ash-dim); border-color: rgba(154,146,127,.25); }
       .chip .ic { font-size: 14px; line-height: 1; }
       .chip .key { color: var(--brass-hi); }
       @media (max-width: 600px) {

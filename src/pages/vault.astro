@@ -506,15 +506,29 @@
     const boardTex = canvasTex(512, 340, drawBoard);
     const glowTex = glowTexture();
 
+    /* ---- texture loaders for high-res bump maps and PBR materials ---- */
+    const texLoader = new THREE.TextureLoader();
+    const wallBumpTex = texLoader.load('/art/stone_wall_bump.png');
+    wallBumpTex.wrapS = wallBumpTex.wrapT = THREE.RepeatWrapping;
+    wallBumpTex.repeat.set(4, 2);
+
+    const woodMatTex = texLoader.load('/art/mahogany_wood.png');
+    woodMatTex.wrapS = woodMatTex.wrapT = THREE.RepeatWrapping;
+    woodMatTex.repeat.set(2, 2);
+
+    const goldFoilTex = texLoader.load('/art/gold_foil_bg.png');
+    goldFoilTex.wrapS = goldFoilTex.wrapT = THREE.RepeatWrapping;
+    goldFoilTex.repeat.set(1, 1);
+
     /* ================= materials ================= */
     const M = {
-      floor: new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.92 }),
-      wall: new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.95 }),
-      wood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.8 }),
-      woodDark: new THREE.MeshStandardMaterial({ map: woodTex, color: 0x8a6a48, roughness: 0.85 }),
-      gold: new THREE.MeshStandardMaterial({ color: 0xc9973f, metalness: 0.85, roughness: 0.35 }),
-      goldGlow: new THREE.MeshStandardMaterial({ color: 0xd7a44a, metalness: 0.7, roughness: 0.3, emissive: 0xa06a14, emissiveIntensity: 0.35 }),
-      iron: new THREE.MeshStandardMaterial({ color: 0x2c2620, metalness: 0.6, roughness: 0.6 }),
+      floor: new THREE.MeshStandardMaterial({ map: floorTex, bumpMap: wallBumpTex, bumpScale: 0.03, roughness: 0.88 }),
+      wall: new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallBumpTex, bumpScale: 0.05, roughness: 0.9 }),
+      wood: new THREE.MeshStandardMaterial({ map: woodMatTex, roughness: 0.55, metalness: 0.1 }),
+      woodDark: new THREE.MeshStandardMaterial({ map: woodMatTex, color: 0x6a4a2c, roughness: 0.65 }),
+      gold: new THREE.MeshStandardMaterial({ map: goldFoilTex, color: 0xe6b84c, metalness: 0.9, roughness: 0.25 }),
+      goldGlow: new THREE.MeshStandardMaterial({ map: goldFoilTex, color: 0xffd47a, metalness: 0.85, roughness: 0.2, emissive: 0xa06a14, emissiveIntensity: 0.4 }),
+      iron: new THREE.MeshStandardMaterial({ color: 0x2c2620, metalness: 0.65, roughness: 0.55 }),
       paperA: new THREE.MeshStandardMaterial({ map: paperTexA, roughness: 0.9 }),
       paperB: new THREE.MeshStandardMaterial({ map: paperTexB, roughness: 0.9 }),
       spines: new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.85 }),
@@ -522,15 +536,15 @@
       flame: new THREE.MeshStandardMaterial({ color: 0xffc060, emissive: 0xff9a30, emissiveIntensity: 1.5 }),
       stack: new THREE.MeshStandardMaterial({ color: 0xcaa24e, emissive: 0xffb43c, emissiveIntensity: 0.8, roughness: 0.45, metalness: 0.25 }),
       dark: new THREE.MeshStandardMaterial({ color: 0x0a0705, roughness: 1 }),
-      parquet: new THREE.MeshStandardMaterial({ map: parquetTex, roughness: 0.75 }),
-      frieze: new THREE.MeshStandardMaterial({ map: friezeTex, roughness: 0.95 }),
+      parquet: new THREE.MeshStandardMaterial({ map: parquetTex, roughness: 0.7 }),
+      frieze: new THREE.MeshStandardMaterial({ map: friezeTex, bumpMap: wallBumpTex, bumpScale: 0.04, roughness: 0.92 }),
       checker: new THREE.MeshStandardMaterial({ map: checkerTex, roughness: 0.7 }),
       enigma: new THREE.MeshStandardMaterial({ map: enigmaTex, roughness: 0.65 }),
-      brass: new THREE.MeshStandardMaterial({ color: 0x9a7434, metalness: 0.9, roughness: 0.4 }),
-      coin: new THREE.MeshStandardMaterial({ color: 0xd9a940, metalness: 0.95, roughness: 0.3, emissive: 0x442a08, emissiveIntensity: 0.3 }),
-      stonePed: new THREE.MeshStandardMaterial({ color: 0x6a5843, roughness: 0.9 }),
-      chestWood: new THREE.MeshStandardMaterial({ color: 0x4a2c16, roughness: 0.8 }),
-      chestWood2: new THREE.MeshStandardMaterial({ color: 0x5e3018, roughness: 0.8 }),
+      brass: new THREE.MeshStandardMaterial({ map: goldFoilTex, color: 0x9a7434, metalness: 0.92, roughness: 0.35 }),
+      coin: new THREE.MeshStandardMaterial({ map: goldFoilTex, color: 0xd9a940, metalness: 0.95, roughness: 0.25, emissive: 0x442a08, emissiveIntensity: 0.3 }),
+      stonePed: new THREE.MeshStandardMaterial({ bumpMap: wallBumpTex, color: 0x6a5843, roughness: 0.88 }),
+      chestWood: new THREE.MeshStandardMaterial({ map: woodMatTex, color: 0x4a2c16, roughness: 0.75 }),
+      chestWood2: new THREE.MeshStandardMaterial({ map: woodMatTex, color: 0x5e3018, roughness: 0.75 }),
       glowStrip: new THREE.MeshStandardMaterial({ color: 0xffcf7a, emissive: 0xffb84a, emissiveIntensity: 1.6 }),
     };
     const GEMS = [0x2aa864, 0xc06a86, 0x2aa8bc, 0xc07d22].map(c =>
@@ -553,7 +567,6 @@
     }
 
     /* ---- original still art loader & framed picture builder ---- */
-    const texLoader = new THREE.TextureLoader();
     function makeFramedPicture(artPath, w, h, x, y, z, ry = 0, parent = scene) {
       const group = new THREE.Group();
       group.position.set(x, y, z); group.rotation.y = ry;

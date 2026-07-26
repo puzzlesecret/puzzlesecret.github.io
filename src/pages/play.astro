@@ -611,21 +611,21 @@ import webPuzzles from '../data/web_puzzles.json';
 
     /* 9x9 Sudoku Grid */
     .sudoku-grid-wrap { display: flex; flex-direction: column; gap: 14px; }
-    .sudoku-grid { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: #0c0b0f; border: 3px solid var(--brass); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.8); outline: none; }
+    .sudoku-grid { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: url('/art/parchment_bg.png') center/cover #0c0b0f; border: 3px solid var(--brass); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,.9), inset 0 0 30px rgba(0,0,0,.6); outline: none; }
 
-    .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: clamp(18px, 4vw, 24px); font-weight: 600; color: var(--ivory); background: rgba(255,255,255,.01); border: 1px solid rgba(185,143,82,.15); cursor: pointer; user-select: none; transition: background .15s, color .15s; position: relative; }
-    .cell.border-right { border-right: 2px solid var(--brass); }
-    .cell.border-bottom { border-bottom: 2px solid var(--brass); }
+    .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: clamp(18px, 4vw, 24px); font-weight: 600; color: #1c150c; background: rgba(0,0,0,.04); border: 1px solid rgba(138,106,72,.28); cursor: pointer; user-select: none; transition: background .15s, color .15s; position: relative; }
+    .cell.border-right { border-right: 2.5px solid var(--brass); }
+    .cell.border-bottom { border-bottom: 2.5px solid var(--brass); }
 
-    .cell.given { color: var(--ash); background: rgba(255,255,255,.03); font-weight: 500; }
-    .cell.filled { color: var(--gold-hi); font-weight: 700; text-shadow: 0 0 10px rgba(246,178,60,.3); }
+    .cell.given { color: #2c2214; background: rgba(0,0,0,.08); font-weight: 700; }
+    .cell.filled { color: #9c6c18; font-weight: 700; text-shadow: 0 0 1px rgba(0,0,0,.3); }
 
     /* Highlights */
-    .cell.highlight-line { background: rgba(246,178,60,.06); }
-    .cell.highlight-num { background: rgba(246,178,60,.16); }
-    .cell.selected { background: rgba(246,178,60,.3) !important; border-color: var(--gold) !important; box-shadow: inset 0 0 0 2px var(--gold-hi); }
-    .cell.key-cell { background: rgba(246,178,60,.15); border: 1.5px solid var(--gold); }
-    .cell.error { color: var(--v3) !important; background: rgba(231,138,166,.2) !important; }
+    .cell.highlight-line { background: rgba(246,178,60,.18); }
+    .cell.highlight-num { background: rgba(246,178,60,.32); }
+    .cell.selected { background: rgba(246,178,60,.45) !important; border-color: var(--gold) !important; box-shadow: inset 0 0 0 2px var(--gold-hi); }
+    .cell.key-cell { background: rgba(246,178,60,.28); border: 2px solid var(--gold); }
+    .cell.error { color: #a42646 !important; background: rgba(231,138,166,.35) !important; }
 
     /* Pencil Notes Grid inside Cell */
     .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; pointer-events: none; }
