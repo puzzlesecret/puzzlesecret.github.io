@@ -37,6 +37,7 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
         <button class="chip muted" id="soundToggle" aria-pressed="false" title="Sound on/off">
           <span class="ic" aria-hidden="true">○</span><span class="lbl">sound</span>
         </button>
+        <a class="chip" href="/play" title="Play 200 Sudokus"><span class="ic" aria-hidden="true">🎮</span><span class="lbl-desktop">Play</span></a>
         <a class="chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span><span class="lbl-desktop">Passport</span></a>
         <a class="chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span><span class="lbl-desktop">Shop</span></a>
         <button class="chip" id="menuBtn" aria-label="Open Menu"><span class="ic" aria-hidden="true">≡</span></button>
@@ -54,14 +55,15 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
         <nav class="drawer-nav">
           <a href="/" class="d-link"><span class="d-num">01</span> The Front Door <span class="d-arrow">→</span></a>
           <a href="/vault" class="d-link"><span class="d-num">02</span> The 3D Vault Crawl <span class="d-arrow">→</span></a>
-          <a href="/shop" class="d-link"><span class="d-num">03</span> The Commissary <span class="d-arrow">→</span></a>
-          <a href="/passport" class="d-link"><span class="d-num">04</span> Solver's Passport <span class="d-arrow">→</span></a>
-          <a href="/hints" class="d-link"><span class="d-num">05</span> Hint Chamber <span class="d-arrow">→</span></a>
-          <a href="/the-keeper" class="d-link"><span class="d-num">06</span> The Keeper's Story <span class="d-arrow">→</span></a>
-          <a href="/newsletter" class="d-link"><span class="d-num">07</span> Free Monthly Dispatch <span class="d-arrow">→</span></a>
-          <a href="/faq" class="d-link"><span class="d-num">08</span> FAQ & Help <span class="d-arrow">→</span></a>
-          <a href="/privacy" class="d-link"><span class="d-num">09</span> Privacy Policy <span class="d-arrow">→</span></a>
-          <a href="/terms" class="d-link"><span class="d-num">10</span> Terms of Service <span class="d-arrow">→</span></a>
+          <a href="/play" class="d-link"><span class="d-num">03</span> Play 200 Sudokus <span class="d-arrow">→</span></a>
+          <a href="/shop" class="d-link"><span class="d-num">04</span> The Commissary <span class="d-arrow">→</span></a>
+          <a href="/passport" class="d-link"><span class="d-num">05</span> Solver's Passport <span class="d-arrow">→</span></a>
+          <a href="/hints" class="d-link"><span class="d-num">06</span> Hint Chamber <span class="d-arrow">→</span></a>
+          <a href="/the-keeper" class="d-link"><span class="d-num">07</span> The Keeper's Story <span class="d-arrow">→</span></a>
+          <a href="/newsletter" class="d-link"><span class="d-num">08</span> Free Monthly Dispatch <span class="d-arrow">→</span></a>
+          <a href="/faq" class="d-link"><span class="d-num">09</span> FAQ & Help <span class="d-arrow">→</span></a>
+          <a href="/privacy" class="d-link"><span class="d-num">10</span> Privacy Policy <span class="d-arrow">→</span></a>
+          <a href="/terms" class="d-link"><span class="d-num">11</span> Terms of Service <span class="d-arrow">→</span></a>
         </nav>
         <div class="drawer-foot">
           <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amazon">
@@ -80,6 +82,7 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
         <div class="foot-top">
           <span class="wordmark">PUZZLE<span>SECRET</span></span>
           <nav class="foot-nav">
+            <a href="/play">Play</a>
             <a href="/shop">Shop</a>
             <a href="/hints">Hints</a>
             <a href="/passport">Passport</a>

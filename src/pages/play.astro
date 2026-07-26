@@ -1,0 +1,697 @@
+---
+import Layout from '../layouts/Layout.astro';
+import webPuzzles from '../data/web_puzzles.json';
+---
+
+<Layout title="Play 200 Sudoku Games · PuzzleSecret Arcade" description="Play 200 free interactive Sudoku puzzles online. Includes Easy, Medium, and Hard puzzles with pencil notes, error checking, and secret key cipher rewards.">
+  <main class="page-play">
+    <!-- Top Arcade Toolbar -->
+    <div class="wrap arcade-top">
+      <div class="top-row">
+        <div class="puz-nav">
+          <button class="nav-btn" id="prevBtn" title="Previous Puzzle">←</button>
+          <button class="puz-title-btn" id="pickerModalBtn" title="Choose from 200 puzzles">
+            <span class="p-tag" id="puzTierBadge">EASY</span>
+            <span class="p-num" id="puzTitleLbl">Puzzle #1</span>
+            <span class="p-icon">▾</span>
+          </button>
+          <button class="nav-btn" id="nextBtn" title="Next Puzzle">→</button>
+        </div>
+
+        <div class="top-stats">
+          <div class="timer-box">
+            <span class="t-ic">⏱</span>
+            <span id="timerLbl">00:00</span>
+          </div>
+          <button class="btn-stat" id="solvedBadgeBtn" title="Puzzles Solved">
+            <span class="s-ic">★</span>
+            <span id="solvedCountLbl">0 / 200</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Game Board Container -->
+    <section class="wrap board-section">
+      <div class="board-layout">
+        <!-- 9x9 Sudoku Grid -->
+        <div class="sudoku-grid-wrap">
+          <div class="sudoku-grid" id="sudokuGrid" tabindex="0" aria-label="Sudoku Grid">
+            <!-- 81 Cell elements dynamically built -->
+          </div>
+
+          <!-- Key Puzzle Banner (shows if active puzzle is a Secret Key puzzle) -->
+          <div class="key-banner" id="keyBanner" hidden>
+            <span class="k-ic">🔑</span>
+            <span class="k-txt">Secret Key Puzzle — Solve the shaded cell to reveal a cipher digit!</span>
+          </div>
+        </div>
+
+        <!-- Controls Side Panel -->
+        <div class="control-panel">
+          <!-- Action Buttons -->
+          <div class="actions-grid">
+            <button class="act-btn" id="undoBtn" title="Undo (Hotkey: U)">
+              <span class="a-ic">↶</span>
+              <span class="a-lbl">Undo</span>
+            </button>
+            <button class="act-btn" id="eraseBtn" title="Erase Cell (Hotkey: Backspace)">
+              <span class="a-ic">⌫</span>
+              <span class="a-lbl">Erase</span>
+            </button>
+            <button class="act-btn" id="pencilBtn" title="Toggle Pencil Notes (Hotkey: N)">
+              <span class="a-ic">✏️</span>
+              <span class="a-lbl" id="pencilLbl">Pencil OFF</span>
+            </button>
+            <button class="act-btn" id="hintBtn" title="Get a Hint (Hotkey: H)">
+              <span class="a-ic">💡</span>
+              <span class="a-lbl">Hint</span>
+            </button>
+          </div>
+
+          <!-- Number Pad (1-9) -->
+          <div class="numpad-grid">
+            {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => (
+              <button class="num-btn" data-num={n}>
+                <span class="num-val">{n}</span>
+                <span class="num-rem" id={`rem-${n}`}>9</span>
+              </button>
+            ))}
+          </div>
+
+          <!-- Utility Options -->
+          <div class="util-row">
+            <button class="u-btn" id="checkBtn">Check Errors</button>
+            <button class="u-btn" id="resetBtn">Reset Board</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 200 Puzzle Browser Picker Modal -->
+    <div class="picker-modal" id="pickerModal" hidden>
+      <div class="modal-backdrop" id="modalBackdrop"></div>
+      <div class="modal-card">
+        <div class="modal-head">
+          <h2>Select a Puzzle (200 Total)</h2>
+          <button class="modal-close" id="modalClose">✕</button>
+        </div>
+
+        <div class="filter-row">
+          <button class="f-tab active" data-filter="all">All (200)</button>
+          <button class="f-tab" data-filter="easy">Easy (50)</button>
+          <button class="f-tab" data-filter="medium">Medium (100)</button>
+          <button class="f-tab" data-filter="hard">Hard (50)</button>
+          <button class="f-tab" data-filter="key">Key Puzzles (20)</button>
+        </div>
+
+        <div class="picker-grid" id="pickerGrid">
+          <!-- 200 Puzzle Cards dynamically generated -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div class="victory-modal" id="vicModal" hidden>
+      <div class="v-card">
+        <div class="v-seal">🏆</div>
+        <h2 id="vicTitle">Puzzle Completed!</h2>
+        <p id="vicTime">Time: 04:12</p>
+        <div class="v-key-box" id="vicKeyBox" hidden>
+          <div class="v-k-tag">SECRET KEY DIGIT UNLOCKED</div>
+          <div class="v-k-val" id="vicKeyVal">Key #1 Digit = 5</div>
+          <p class="v-k-sub">Recorded in your Solver's Passport!</p>
+        </div>
+        <div class="v-actions">
+          <button class="btn-next" id="vicNextBtn">Next Puzzle →</button>
+          <button class="btn-sec" id="vicCloseBtn">Close</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script define:vars={{ webPuzzles }}>
+    // Parse puzzles data passed from Astro
+    const PUZZLES = webPuzzles;
+
+    // State Variables
+    let currentId = 1;
+    let gridState = Array(81).fill(0);
+    let givensMask = Array(81).fill(false);
+    let pencilMarks = Array.from({ length: 81 }, () => new Set());
+    let history = [];
+    let selectedCell = -1;
+    let isPencilMode = false;
+    let timerSec = 0;
+    let timerTimer = null;
+    let solvedSet = new Set();
+    let keyDigitsSaved = {};
+
+    // LocalStorage Keys
+    const LS_KEY_SOLVED = 'ps_web_solved';
+    const LS_KEY_STATE = 'ps_web_state';
+    const LS_KEY_PASSPORT_KEYS = 'ps_key_digits';
+
+    // Load saved data
+    function loadSaved() {
+      try {
+        const s = localStorage.getItem(LS_KEY_SOLVED);
+        if (s) solvedSet = new Set(JSON.parse(s));
+        const k = localStorage.getItem(LS_KEY_PASSPORT_KEYS);
+        if (k) keyDigitsSaved = JSON.parse(k);
+      } catch (e) {}
+    }
+
+    function saveSolved() {
+      try {
+        localStorage.setItem(LS_KEY_SOLVED, JSON.stringify(Array.from(solvedSet)));
+        localStorage.setItem(LS_KEY_PASSPORT_KEYS, JSON.stringify(keyDigitsSaved));
+      } catch (e) {}
+    }
+
+    // DOM Elements
+    const gridEl = document.getElementById('sudokuGrid');
+    const puzTitleLbl = document.getElementById('puzTitleLbl');
+    const puzTierBadge = document.getElementById('puzTierBadge');
+    const timerLbl = document.getElementById('timerLbl');
+    const solvedCountLbl = document.getElementById('solvedCountLbl');
+    const keyBanner = document.getElementById('keyBanner');
+    const pencilBtn = document.getElementById('pencilBtn');
+    const pencilLbl = document.getElementById('pencilLbl');
+
+    // Build 81 Cells inside Grid
+    function createGridCells() {
+      if (!gridEl) return;
+      gridEl.innerHTML = '';
+      for (let i = 0; i < 81; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.index = i;
+
+        // Subgrid border styling
+        const r = Math.floor(i / 9);
+        const c = i % 9;
+        if (c % 3 === 2 && c < 8) cell.classList.add('border-right');
+        if (r % 3 === 2 && r < 8) cell.classList.add('border-bottom');
+
+        cell.addEventListener('click', () => selectCell(i));
+        gridEl.appendChild(cell);
+      }
+    }
+
+    // Load a puzzle by ID (1-200)
+    function loadPuzzle(id) {
+      const puz = PUZZLES.find((p) => p.id === id) || PUZZLES[0];
+      currentId = puz.id;
+      history = [];
+      gridState = Array(81).fill(0);
+      givensMask = Array(81).fill(false);
+      pencilMarks = Array.from({ length: 81 }, () => new Set());
+      selectedCell = -1;
+
+      for (let i = 0; i < 81; i++) {
+        const val = parseInt(puz.givens[i], 10);
+        if (val > 0) {
+          gridState[i] = val;
+          givensMask[i] = true;
+        }
+      }
+
+      // UI Labels
+      puzTitleLbl.textContent = `Puzzle #${puz.id}`;
+      puzTierBadge.textContent = puz.tier.toUpperCase();
+      puzTierBadge.className = `p-tag ${puz.tier}`;
+
+      // Key puzzle banner
+      if (puz.isKey) {
+        keyBanner.hidden = false;
+      } else {
+        keyBanner.hidden = true;
+      }
+
+      // Reset Timer
+      startTimer();
+      renderBoard();
+      updateRemCounts();
+      updateStats();
+    }
+
+    // Render the board visually
+    function renderBoard() {
+      const puz = PUZZLES.find((p) => p.id === currentId);
+      const cells = gridEl.querySelectorAll('.cell');
+
+      const selVal = selectedCell >= 0 ? gridState[selectedCell] : 0;
+      const selRow = selectedCell >= 0 ? Math.floor(selectedCell / 9) : -1;
+      const selCol = selectedCell >= 0 ? selectedCell % 9 : -1;
+
+      cells.forEach((cell, i) => {
+        cell.className = 'cell';
+        const r = Math.floor(i / 9);
+        const c = i % 9;
+        if (c % 3 === 2 && c < 8) cell.classList.add('border-right');
+        if (r % 3 === 2 && r < 8) cell.classList.add('border-bottom');
+
+        // Shaded Key Cell
+        if (puz && puz.isKey && puz.keyCell === i) {
+          cell.classList.add('key-cell');
+        }
+
+        // Given vs Filled vs Notes
+        if (givensMask[i]) {
+          cell.classList.add('given');
+          cell.textContent = gridState[i];
+        } else if (gridState[i] > 0) {
+          cell.classList.add('filled');
+          cell.textContent = gridState[i];
+        } else if (pencilMarks[i].size > 0) {
+          cell.classList.add('has-notes');
+          cell.innerHTML = buildNotesHTML(pencilMarks[i]);
+        } else {
+          cell.textContent = '';
+        }
+
+        // Selection & Highlights
+        if (i === selectedCell) {
+          cell.classList.add('selected');
+        } else if (r === selRow || c === selCol) {
+          cell.classList.add('highlight-line');
+        }
+
+        // Same number highlight
+        if (selVal > 0 && gridState[i] === selVal) {
+          cell.classList.add('highlight-num');
+        }
+      });
+    }
+
+    function buildNotesHTML(set) {
+      let html = '<div class="notes-grid">';
+      for (let n = 1; n <= 9; n++) {
+        html += `<span class="note-digit">${set.has(n) ? n : ''}</span>`;
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function selectCell(i) {
+      selectedCell = i;
+      renderBoard();
+    }
+
+    // Input Number (1-9)
+    function inputNum(n) {
+      if (selectedCell < 0 || givensMask[selectedCell]) return;
+
+      history.push({
+        state: [...gridState],
+        notes: pencilMarks.map((s) => new Set(s)),
+      });
+
+      if (isPencilMode) {
+        gridState[selectedCell] = 0;
+        if (pencilMarks[selectedCell].has(n)) {
+          pencilMarks[selectedCell].delete(n);
+        } else {
+          pencilMarks[selectedCell].add(n);
+        }
+      } else {
+        pencilMarks[selectedCell].clear();
+        gridState[selectedCell] = gridState[selectedCell] === n ? 0 : n;
+      }
+
+      renderBoard();
+      updateRemCounts();
+      checkVictory();
+    }
+
+    function eraseCell() {
+      if (selectedCell < 0 || givensMask[selectedCell]) return;
+      history.push({
+        state: [...gridState],
+        notes: pencilMarks.map((s) => new Set(s)),
+      });
+      gridState[selectedCell] = 0;
+      pencilMarks[selectedCell].clear();
+      renderBoard();
+      updateRemCounts();
+    }
+
+    function undoAction() {
+      if (history.length === 0) return;
+      const last = history.pop();
+      gridState = last.state;
+      pencilMarks = last.notes;
+      renderBoard();
+      updateRemCounts();
+    }
+
+    function togglePencil() {
+      isPencilMode = !isPencilMode;
+      if (isPencilMode) {
+        pencilBtn.classList.add('active');
+        pencilLbl.textContent = 'Pencil ON';
+      } else {
+        pencilBtn.classList.remove('active');
+        pencilLbl.textContent = 'Pencil OFF';
+      }
+    }
+
+    function getHint() {
+      if (selectedCell < 0 || givensMask[selectedCell]) return;
+      const puz = PUZZLES.find((p) => p.id === currentId);
+      const sol = parseInt(puz.solution[selectedCell], 10);
+      inputNum(sol);
+    }
+
+    function checkErrors() {
+      const puz = PUZZLES.find((p) => p.id === currentId);
+      const cells = gridEl.querySelectorAll('.cell');
+      let errorFound = false;
+
+      cells.forEach((cell, i) => {
+        if (!givensMask[i] && gridState[i] > 0) {
+          const correct = parseInt(puz.solution[i], 10);
+          if (gridState[i] !== correct) {
+            cell.classList.add('error');
+            errorFound = true;
+          }
+        }
+      });
+
+      if (!errorFound) {
+        alert('No errors found so far! Keep going!');
+      }
+    }
+
+    function resetBoard() {
+      if (confirm('Reset this puzzle back to the start?')) {
+        history = [];
+        pencilMarks = Array.from({ length: 81 }, () => new Set());
+        for (let i = 0; i < 81; i++) {
+          if (!givensMask[i]) gridState[i] = 0;
+        }
+        renderBoard();
+        updateRemCounts();
+      }
+    }
+
+    function updateRemCounts() {
+      const counts = Array(10).fill(0);
+      gridState.forEach((v) => {
+        if (v > 0) counts[v]++;
+      });
+      for (let n = 1; n <= 9; n++) {
+        const el = document.getElementById(`rem-${n}`);
+        if (el) {
+          const rem = 9 - counts[n];
+          el.textContent = rem > 0 ? rem : '✓';
+          const btn = el.parentElement;
+          if (rem === 0) btn?.classList.add('dimmed');
+          else btn?.classList.remove('dimmed');
+        }
+      }
+    }
+
+    function updateStats() {
+      solvedCountLbl.textContent = `${solvedSet.size} / 200`;
+    }
+
+    function checkVictory() {
+      const puz = PUZZLES.find((p) => p.id === currentId);
+      const currentStr = gridState.join('');
+      if (currentStr === puz.solution) {
+        solvedSet.add(currentId);
+        saveSolved();
+        stopTimer();
+        showVictory(puz);
+      }
+    }
+
+    function showVictory(puz) {
+      const modal = document.getElementById('vicModal');
+      const timeLbl = document.getElementById('vicTime');
+      const keyBox = document.getElementById('vicKeyBox');
+      const keyVal = document.getElementById('vicKeyVal');
+
+      timeLbl.textContent = `Time: ${timerLbl.textContent}`;
+
+      if (puz.isKey) {
+        keyBox.hidden = false;
+        keyVal.textContent = `Key #${puz.keyNumber} Digit = ${puz.targetDigit}`;
+        keyDigitsSaved[puz.keyNumber] = puz.targetDigit;
+        saveSolved();
+      } else {
+        keyBox.hidden = true;
+      }
+
+      modal.hidden = false;
+      updateStats();
+    }
+
+    // Timer Logic
+    function startTimer() {
+      stopTimer();
+      timerSec = 0;
+      timerLbl.textContent = '00:00';
+      timerTimer = setInterval(() => {
+        timerSec++;
+        const m = String(Math.floor(timerSec / 60)).padStart(2, '0');
+        const s = String(timerSec % 60).padStart(2, '0');
+        timerLbl.textContent = `${m}:${s}`;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerTimer) clearInterval(timerTimer);
+    }
+
+    // 200-Puzzle Picker Modal
+    const pickerModal = document.getElementById('pickerModal');
+    const pickerGrid = document.getElementById('pickerGrid');
+
+    function renderPicker(filter = 'all') {
+      pickerGrid.innerHTML = '';
+      PUZZLES.forEach((p) => {
+        if (filter !== 'all') {
+          if (filter === 'key' && !p.isKey) return;
+          if (filter !== 'key' && p.tier !== filter) return;
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-card ${p.tier}`;
+        if (solvedSet.has(p.id)) card.classList.add('solved');
+        if (p.id === currentId) card.classList.add('current');
+
+        card.innerHTML = `
+          <div class="p-card-num">#${p.id}</div>
+          <div class="p-card-tier">${p.tier}</div>
+          ${p.isKey ? '<div class="p-card-key">🔑 Key</div>' : ''}
+          ${solvedSet.has(p.id) ? '<div class="p-card-chk">✓</div>' : ''}
+        `;
+
+        card.addEventListener('click', () => {
+          pickerModal.hidden = true;
+          loadPuzzle(p.id);
+        });
+        pickerGrid.appendChild(card);
+      });
+    }
+
+    // Keyboard Hotkeys
+    window.addEventListener('keydown', (e) => {
+      if (pickerModal && !pickerModal.hidden) return;
+
+      if (e.key >= '1' && e.key <= '9') {
+        inputNum(parseInt(e.key, 10));
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        eraseCell();
+      } else if (e.key === 'u' || e.key === 'U') {
+        undoAction();
+      } else if (e.key === 'n' || e.key === 'N' || e.key === 'p' || e.key === 'P') {
+        togglePencil();
+      } else if (e.key === 'h' || e.key === 'H') {
+        getHint();
+      } else if (selectedCell >= 0) {
+        let r = Math.floor(selectedCell / 9);
+        let c = selectedCell % 9;
+        if (e.key === 'ArrowUp') r = Math.max(0, r - 1);
+        if (e.key === 'ArrowDown') r = Math.min(8, r + 1);
+        if (e.key === 'ArrowLeft') c = Math.max(0, c - 1);
+        if (e.key === 'ArrowRight') c = Math.min(8, c + 1);
+        selectCell(r * 9 + c);
+      }
+    });
+
+    // Event Listeners Setup
+    document.getElementById('prevBtn')?.addEventListener('click', () => {
+      if (currentId > 1) loadPuzzle(currentId - 1);
+    });
+    document.getElementById('nextBtn')?.addEventListener('click', () => {
+      if (currentId < 200) loadPuzzle(currentId + 1);
+    });
+    document.getElementById('undoBtn')?.addEventListener('click', undoAction);
+    document.getElementById('eraseBtn')?.addEventListener('click', eraseCell);
+    document.getElementById('pencilBtn')?.addEventListener('click', togglePencil);
+    document.getElementById('hintBtn')?.addEventListener('click', getHint);
+    document.getElementById('checkBtn')?.addEventListener('click', checkErrors);
+    document.getElementById('resetBtn')?.addEventListener('click', resetBoard);
+
+    document.querySelectorAll('.num-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const num = parseInt(btn.getAttribute('data-num'), 10);
+        inputNum(num);
+      });
+    });
+
+    // Picker Modal Controls
+    document.getElementById('pickerModalBtn')?.addEventListener('click', () => {
+      renderPicker('all');
+      pickerModal.hidden = false;
+    });
+    document.getElementById('modalClose')?.addEventListener('click', () => {
+      pickerModal.hidden = true;
+    });
+    document.getElementById('modalBackdrop')?.addEventListener('click', () => {
+      pickerModal.hidden = true;
+    });
+
+    document.querySelectorAll('.f-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.f-tab').forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        const f = tab.getAttribute('data-filter');
+        renderPicker(f);
+      });
+    });
+
+    // Victory Controls
+    document.getElementById('vicNextBtn')?.addEventListener('click', () => {
+      document.getElementById('vicModal').hidden = true;
+      if (currentId < 200) loadPuzzle(currentId + 1);
+    });
+    document.getElementById('vicCloseBtn')?.addEventListener('click', () => {
+      document.getElementById('vicModal').hidden = true;
+    });
+
+    // Initialize Page
+    loadSaved();
+    createGridCells();
+    loadPuzzle(1);
+  </script>
+
+  <style>
+    .page-play { padding-top: 80px; padding-bottom: 60px; min-height: 100vh; background: var(--void); color: var(--ivory); }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+    /* Top Arcade Toolbar */
+    .arcade-top { margin-bottom: 24px; }
+    .top-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: #121016; border: 1px solid rgba(185,143,82,.25); border-radius: 12px; padding: 14px 20px; box-shadow: 0 4px 20px rgba(0,0,0,.5); }
+
+    .puz-nav { display: flex; align-items: center; gap: 10px; }
+    .nav-btn { background: rgba(185,143,82,.12); border: 1px solid rgba(185,143,82,.3); color: var(--gold-hi); width: 38px; height: 38px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: background .2s; }
+    .nav-btn:hover { background: rgba(246,178,60,.25); }
+
+    .puz-title-btn { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,.4); border: 1px solid rgba(246,178,60,.35); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: border-color .2s; }
+    .puz-title-btn:hover { border-color: var(--gold); }
+    .p-tag { font-family: var(--display); font-size: 9px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; }
+    .p-tag.easy { background: rgba(53,207,127,.2); color: var(--v2); }
+    .p-tag.medium { background: rgba(246,178,60,.2); color: var(--v1); }
+    .p-tag.hard { background: rgba(231,138,166,.2); color: var(--v3); }
+    .p-num { font-family: var(--display); font-size: 16px; font-weight: 600; color: var(--ivory); }
+    .p-icon { font-size: 10px; color: var(--brass-hi); }
+
+    .top-stats { display: flex; align-items: center; gap: 14px; }
+    .timer-box { font-family: var(--display); font-size: 15px; letter-spacing: .1em; color: var(--gold-hi); background: rgba(0,0,0,.4); border: 1px solid rgba(185,143,82,.2); padding: 8px 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px; }
+    .btn-stat { font-family: var(--display); font-size: 13px; color: var(--ivory); background: rgba(185,143,82,.12); border: 1px solid rgba(185,143,82,.3); padding: 8px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .s-ic { color: var(--gold); }
+
+    /* Board Layout */
+    .board-layout { display: grid; grid-template-columns: minmax(320px, 480px) 1fr; gap: 36px; align-items: start; }
+
+    /* 9x9 Sudoku Grid */
+    .sudoku-grid-wrap { display: flex; flex-direction: column; gap: 14px; }
+    .sudoku-grid { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: #0c0b0f; border: 3px solid var(--brass); border-radius: 10px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.8); outline: none; }
+
+    .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: clamp(18px, 4vw, 24px); font-weight: 600; color: var(--ivory); background: rgba(255,255,255,.01); border: 1px solid rgba(185,143,82,.15); cursor: pointer; user-select: none; transition: background .15s, color .15s; position: relative; }
+    .cell.border-right { border-right: 2px solid var(--brass); }
+    .cell.border-bottom { border-bottom: 2px solid var(--brass); }
+
+    .cell.given { color: var(--ash); background: rgba(255,255,255,.03); font-weight: 500; }
+    .cell.filled { color: var(--gold-hi); font-weight: 700; text-shadow: 0 0 10px rgba(246,178,60,.3); }
+
+    /* Highlights */
+    .cell.highlight-line { background: rgba(246,178,60,.06); }
+    .cell.highlight-num { background: rgba(246,178,60,.16); }
+    .cell.selected { background: rgba(246,178,60,.3) !important; border-color: var(--gold) !important; box-shadow: inset 0 0 0 2px var(--gold-hi); }
+    .cell.key-cell { background: rgba(246,178,60,.15); border: 1.5px solid var(--gold); }
+    .cell.error { color: var(--v3) !important; background: rgba(231,138,166,.2) !important; }
+
+    /* Pencil Notes Grid inside Cell */
+    .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; pointer-events: none; }
+    .note-digit { display: flex; align-items: center; justify-content: center; font-size: clamp(8px, 1.8vw, 11px); color: var(--ash); opacity: .75; font-family: sans-serif; }
+
+    .key-banner { display: flex; align-items: center; gap: 10px; background: rgba(246,178,60,.12); border: 1px solid var(--gold); border-radius: 8px; padding: 10px 14px; font-style: italic; font-size: 13.5px; color: var(--gold-hi); }
+
+    /* Controls Panel */
+    .control-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    .actions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .act-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #141218; border: 1px solid rgba(185,143,82,.25); border-radius: 8px; padding: 12px 6px; cursor: pointer; color: var(--ivory); transition: all .2s; }
+    .act-btn:hover { background: rgba(246,178,60,.12); border-color: var(--gold); }
+    .act-btn.active { background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; border-color: var(--gold); }
+    .act-btn.active .a-ic { color: #1a1206; }
+    .a-ic { font-size: 18px; color: var(--gold); }
+    .a-lbl { font-family: var(--display); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+
+    .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .num-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #18151f, #0e0d14); border: 1px solid rgba(185,143,82,.3); border-radius: 10px; padding: 14px 0; cursor: pointer; color: var(--gold-hi); transition: all .15s; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+    .num-btn:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(246,178,60,.15); }
+    .num-btn.dimmed { opacity: .3; pointer-events: none; }
+    .num-val { font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1; }
+    .num-rem { font-size: 10px; color: var(--ash); margin-top: 2px; }
+
+    .util-row { display: flex; gap: 10px; }
+    .u-btn { flex: 1; padding: 12px; font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); background: rgba(255,255,255,.03); border: 1px solid rgba(185,143,82,.2); border-radius: 6px; cursor: pointer; transition: all .2s; }
+    .u-btn:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.4); }
+
+    /* Picker Modal */
+    .picker-modal, .victory-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-backdrop { position: absolute; inset: 0; background: rgba(4,4,6,.8); backdrop-filter: blur(6px); }
+    .modal-card { position: relative; z-index: 2; background: #121016; border: 1px solid var(--gold); border-radius: 14px; max-width: 720px; width: 100%; max-height: 80vh; padding: 24px; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.9); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(185,143,82,.2); padding-bottom: 12px; }
+    .modal-head h2 { font-family: var(--display); font-size: 20px; color: var(--gold); }
+    .modal-close { background: none; border: none; color: var(--ash); font-size: 18px; cursor: pointer; }
+
+    .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .f-tab { padding: 6px 14px; font-family: var(--display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ash); background: rgba(0,0,0,.4); border: 1px solid rgba(185,143,82,.2); border-radius: 6px; cursor: pointer; }
+    .f-tab.active { color: #1a1206; background: var(--gold); border-color: var(--gold); font-weight: 700; }
+
+    .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; overflow-y: auto; padding-right: 6px; }
+    .p-card { background: rgba(255,255,255,.03); border: 1px solid rgba(185,143,82,.2); border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; position: relative; transition: all .2s; }
+    .p-card:hover { border-color: var(--gold); background: rgba(246,178,60,.12); }
+    .p-card.current { border-color: var(--gold); background: rgba(246,178,60,.2); }
+    .p-card.solved { border-color: var(--v2); }
+    .p-card-num { font-family: var(--display); font-size: 14px; font-weight: 700; color: var(--ivory); }
+    .p-card-tier { font-size: 9px; text-transform: uppercase; color: var(--ash); }
+    .p-card-key { font-size: 9px; color: var(--gold); margin-top: 2px; }
+    .p-card-chk { position: absolute; top: 4px; right: 4px; font-size: 10px; color: var(--v2); }
+
+    /* Victory Modal */
+    .v-card { position: relative; z-index: 2; background: linear-gradient(180deg, #1a1622, #0d0a10); border: 2px solid var(--gold); border-radius: 16px; padding: 36px; text-align: center; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.9); }
+    .v-seal { font-size: 48px; margin-bottom: 12px; }
+    .v-card h2 { font-family: var(--display); font-size: 28px; color: var(--gold-hi); margin-bottom: 6px; }
+    .v-card p { font-style: italic; color: var(--ash); margin-bottom: 20px; }
+    .v-key-box { background: rgba(246,178,60,.12); border: 1px solid var(--gold); border-radius: 10px; padding: 16px; margin-bottom: 24px; }
+    .v-k-tag { font-family: var(--display); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+    .v-k-val { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold-hi); }
+    .v-k-sub { font-size: 12px; color: var(--v2); margin-top: 4px; margin-bottom: 0 !important; }
+    .v-actions { display: flex; gap: 12px; justify-content: center; }
+    .btn-next { padding: 12px 24px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none; border-radius: 6px; cursor: pointer; }
+    .btn-sec { padding: 12px 20px; font-family: var(--display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); background: rgba(255,255,255,.05); border: 1px solid rgba(185,143,82,.3); border-radius: 6px; cursor: pointer; }
+
+    @media (max-width: 768px) {
+      .board-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</Layout>
