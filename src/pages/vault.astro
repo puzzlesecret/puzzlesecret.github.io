@@ -775,10 +775,10 @@ import Analytics from '@vercel/analytics/astro';
     const board = new THREE.Mesh(new THREE.PlaneGeometry(1.94, 1.34), new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.95 }));
     board.position.set(1.9, 2.15, -3.86); scene.add(board);
 
-    // Master framed oil painting artwork on the left wall of the Study
-    makeFramedPicture('/art/og-door.jpg', 2.1, 1.35, -3.96, 2.35, -0.2, Math.PI / 2);
-    const picLight = new THREE.PointLight(0xffd47a, 18, 6, 2);
-    picLight.position.set(-3.2, 2.8, -0.2); scene.add(picLight);
+    // (Removed 2026-07-28, Dan's call: the framed picture that hung on the left wall between
+    // the bookcases read as a big blank slab rather than artwork. Its dedicated point light
+    // went with it — on its own it was just an unexplained hotspot on bare stone.
+    // The gallery frames in Vault III are unaffected.)
 
     /* ---- bookcases (left & right walls) ---- */
     function makeBookcase(w, h, d) {
@@ -788,7 +788,12 @@ import Analytics from '@vercel/analytics/astro';
       box(0.08, h, d, M.wood, w / 2 - 0.04, h / 2, 0, 0, g);
       box(w, 0.09, d, M.wood, 0, h - 0.045, 0, 0, g);
       box(w, 0.09, d, M.wood, 0, 0.05, 0, 0, g);
-      const shelves = 4, gap = (h - 0.5) / shelves;
+      // Same rule as the library shelves: the rows have to divide the case's full inner
+      // height. With a fixed count of 4 the top row finished ~0.38m below the top board,
+      // baring a strip of back panel across the whole case.
+      const inner = h - 0.23;                                  // base board → underside of the top board
+      const shelves = Math.max(3, Math.round(inner / 0.45));
+      const gap = inner / shelves;
       for (let i = 0; i < shelves; i++) {
         const y = 0.14 + i * gap;
         if (i > 0) box(w - 0.12, 0.05, d - 0.04, M.wood, 0, y, 0, 0, g);
@@ -959,7 +964,13 @@ import Analytics from '@vercel/analytics/astro';
       box(0.1, h, d, M.wood, w / 2 - 0.05, h / 2, 0, 0, g);
       box(w, 0.1, d, M.wood, 0, h - 0.05, 0, 0, g);
       box(w, 0.14, d + 0.06, M.wood, 0, 0.07, 0, 0, g);
-      const shelves = 4, gap = (h - 0.65) / shelves;
+      // Rows must divide the unit's FULL inner height, or the top compartment is left
+      // oversized and reads as a big blank slab of back panel above the last shelf.
+      // Row count follows the height (~0.62m per compartment) so a 4.3m library unit
+      // gets six shelves like a real one, not four with a metre of bare wood on top.
+      const inner = h - 0.30;                                  // base plinth → underside of the top board
+      const shelves = Math.max(3, Math.round(inner / 0.62));
+      const gap = inner / shelves;
       for (let i = 0; i < shelves; i++) {
         const y = 0.2 + i * gap;
         if (i > 0) box(w - 0.16, 0.055, d - 0.05, M.wood, 0, y, 0, 0, g);
