@@ -59,6 +59,16 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
+  <!-- The Keeper's Story — a lifted manuscript page -->
+  <div id="pageview" hidden>
+    <div class="page-card">
+      <div class="page-no" id="pgNo">PAGE ONE</div>
+      <p class="page-body" id="pgBody"></p>
+      <div class="page-found" id="pgFound">Pages found: 1 of 9</div>
+      <button id="pageClose" class="ghost-btn">Set it back down →</button>
+    </div>
+  </div>
+
   <!-- Word entry (sealed doors — server-checked, words never in this page) -->
   <div id="wordbox" hidden>
     <div class="reward-card word-card">
@@ -173,11 +183,38 @@ import Analytics from '@vercel/analytics/astro';
     }
     #enterBtn:hover { filter: brightness(1.08); }
 
-    #reward, #fallback {
+    #reward, #fallback, #pageview {
       position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
       justify-content: center; background: rgba(4,2,0,0.6); backdrop-filter: blur(3px);
     }
-    #reward[hidden], #fallback[hidden] { display: none; }
+    #reward[hidden], #fallback[hidden], #pageview[hidden] { display: none; }
+
+    /* A lifted manuscript page — parchment, not the gold reward card, so lore
+       reads as a different kind of find from a treasure. */
+    .page-card {
+      max-width: 470px; width: calc(100% - 40px); text-align: center;
+      background: linear-gradient(180deg, #efe2c4, #ddcaa4);
+      border: 1px solid rgba(90,64,26,0.5); border-radius: 3px;
+      padding: 34px 34px 26px;
+      box-shadow: 0 0 50px rgba(246,178,60,0.16), 0 20px 55px rgba(0,0,0,0.75);
+      animation: pageLift 0.42s cubic-bezier(.2,.8,.25,1) both;
+    }
+    @keyframes pageLift { from { opacity: 0; transform: translateY(26px) rotateX(22deg) scale(.94); } }
+    @media (prefers-reduced-motion: reduce) { .page-card { animation: none; } }
+    .page-no {
+      font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.38em;
+      color: #7a5520; margin-bottom: 14px;
+    }
+    .page-body {
+      font-size: 18px; font-style: italic; line-height: 1.55; color: #2c2011;
+      margin-bottom: 20px;
+    }
+    .page-found {
+      font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.2em;
+      color: #8a6a33; margin-bottom: 16px;
+    }
+    .page-card .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,0.45); }
+    .page-card .ghost-btn:hover { color: #2c2011; border-color: rgba(90,64,26,0.8); }
     .reward-card {
       max-width: 430px; width: calc(100% - 40px); text-align: center;
       background: linear-gradient(180deg, #1d1207, #120a04);
@@ -1164,6 +1201,40 @@ import Analytics from '@vercel/analytics/astro';
     const mtLight = new THREE.PointLight(0xffd47a, 20, 7, 2);
     mtLight.position.set(0, 0.5, 0); masterTome.add(mtLight);
 
+    /* ---- THE KEEPER'S STORY: 9 scattered manuscript pages ----------------------
+       Dan's parked idea, built 2026-07-28. Numbered pages lie about all three rooms;
+       clicking one lifts it up readable and the Keeper reads it aloud. The numbers are
+       deliberately NOT in room order (Study 1,4,7 / Library 2,5,8 / Treasure 3,6,9) so
+       assembling the story means walking the whole crawl. Purely optional lore — it never
+       gates a reward. Finding all 9 unlocks a final letter that teases Volume II.
+       Copy lives in site/_content/keeper-story-pages.md. NEVER contains a secret word. */
+    const STORY_SPOTS = [
+      // [pageNo, x, z, rotY]  — on the floor, tucked beside furniture, never blocking a path
+      [1,  1.95, -1.35,  0.5],   // study: by the desk's far corner
+      [4, -2.55,  1.05, -0.7],   // study: near the bookcases, behind you on entry
+      [7,  2.35,  2.15,  1.2],   // study: back corner by the entrance frame
+      [2, LIB.minX + 1.25, -9.9,  0.35],  // library: left aisle
+      [5, LIB.maxX - 1.25, -13.6, -0.5],  // library: right aisle, deeper
+      [8, AX + 0.15,       -15.9,  0.9],  // library: far end near corridor II
+      [3, V3.minX + 1.15, -21.2,  0.6],   // treasure: left of the first pedestals
+      [6, V3.maxX - 1.15, -23.9, -0.4],   // treasure: right, near the chests
+      [9, AX + 0.2,       -25.35, 1.1],   // treasure: beneath the seals wall
+    ];
+    const storyPages = [];
+    STORY_SPOTS.forEach(([no, x, z, ry]) => {
+      const g = new THREE.Group();
+      g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+      g.userData = { kind: 'page', pageNo: no, label: 'A page in the Keeper’s hand' };
+      // the sheet itself, a hair off the floor so it never z-fights
+      const sheet = box(0.30, 0.006, 0.40, M.paperA, 0, 0.012, 0, 0, g);
+      sheet.rotation.x = 0.02;
+      // a second sheet slightly askew reads as "loose papers", not a floor decal
+      box(0.28, 0.005, 0.37, M.paperB, 0.02, 0.007, 0.015, 0.22, g);
+      // soft glow so it's findable without shouting
+      const gl = sprite(0.85, 0, 0.10, 0, g, 0.30);
+      g.userData.glow = gl;
+      storyPages.push(g);
+    });
     /* ---- dust motes ---- */
     const dustN = REDUCED ? 0 : 280;
     let dust = null;
@@ -1403,6 +1474,17 @@ import Analytics from '@vercel/analytics/astro';
       fail1:   { file: '/audio/vo/vo_fail_1.wav',         text: 'That is not the word I sealed it with.' },
       fail2:   { file: '/audio/vo/vo_fail_2.wav',         text: 'Close… or not close at all. I will never tell.' },
       fail3:   { file: '/audio/vo/vo_fail_3.wav',         text: 'Stubborn. Good — but perhaps you need my hints.' },
+      // The Keeper's Story — 9 scattered pages + the final letter (see _content/keeper-story-pages.md)
+      page1:   { file: '/audio/vo/vo_page1.wav', text: 'I was not always a keeper of vaults. I was a maker of puzzles, and a poor one, in a room exactly this size.' },
+      page2:   { file: '/audio/vo/vo_page2.wav', text: 'My first hundred were rubbish. I burned them. My second hundred were worse, so I kept those — a man should remember what bad work looks like.' },
+      page3:   { file: '/audio/vo/vo_page3.wav', text: 'The trouble with a good puzzle is that it ends. You solve it, you set it down, and the solving is gone forever. I wanted one that kept going.' },
+      page4:   { file: '/audio/vo/vo_page4.wav', text: 'So I began hiding a second puzzle inside the first. A number here. A shaded square there. Nothing a solver would notice — until they noticed everything.' },
+      page5:   { file: '/audio/vo/vo_page5.wav', text: 'They told me no one would look. They were right, mostly. But “mostly” is a wonderful word. It leaves a door open.' },
+      page6:   { file: '/audio/vo/vo_page6.wav', text: 'I built this vault for the ones who look twice. Everything in it was locked by a puzzle, and every lock was made to be opened — eventually, by somebody stubborn.' },
+      page7:   { file: '/audio/vo/vo_page7.wav', text: 'A confession: I hid one more thing than I ever announced. Not in the grids. In the letters. In the way a sentence begins.' },
+      page8:   { file: '/audio/vo/vo_page8.wav', text: 'Read the openings. That is all the help I will give, and it is more than I gave anyone else.' },
+      page9:   { file: '/audio/vo/vo_page9.wav', text: 'If you are reading this, you did not simply solve my book. You searched it. That is the rarer thing, and this vault knows the difference.' },
+      pagefinal:{ file: '/audio/vo/vo_pagefinal.wav', text: 'Nine pages, and you found every one. Most never look up from the grid. So here is the truth of it: the puzzles were never the secret. The looking was.' },
     };
     let currentVO = null, capTimer = null;
     function showCaption(text, holdMs = 5200) {
@@ -1511,9 +1593,11 @@ import Analytics from '@vercel/analytics/astro';
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     const interactables = [stack, hinge, door2, door3, door4, lectern, chestG, masterTome, sealsWall, lantern,
+      ...storyPages,
       ...sealPulse.filter(o => o.isMesh)];
     let down = null, dragging = false;
-    const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden;
+    const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden
+      || !document.getElementById('pageview').hidden;
 
     function pick(clientX, clientY, targets) {
       ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
@@ -1569,7 +1653,7 @@ import Analytics from '@vercel/analytics/astro';
       // 1) interactables first
       const hits = pick(e.clientX, e.clientY, interactables);
       const hit = hits.length ? findKind(hits[0].object) : null;
-      if (hit) { activate(hit.userData.kind); return; }
+      if (hit) { activate(hit.userData.kind, hit); return; }
       // 2) otherwise walk to the tapped floor point
       const fhits = pick(e.clientX, e.clientY, [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
       if (fhits.length) moveTo(fhits[0].point.x, fhits[0].point.z);
@@ -1633,6 +1717,67 @@ import Analytics from '@vercel/analytics/astro';
     };
     const rewardsGiven = {};
     let sealFlareT = -99;
+    /* ---- The Keeper's Story: reading + progress ---------------------------------
+       Progress lives in localStorage so a reload never costs you the hunt. Pages are
+       pure lore: they gate nothing, and finding all nine earns the final letter. */
+    const STORY_KEY = 'ps_story_v1';
+    const PAGE_WORDS = {
+      1: 'I was not always a keeper of vaults. I was a maker of puzzles — and a poor one — in a room exactly this size.',
+      2: 'My first hundred were rubbish. I burned them. My second hundred were worse, so I kept those — a man should remember what bad work looks like.',
+      3: 'The trouble with a good puzzle is that it ends. You solve it, you set it down, and the solving is gone forever. I wanted one that kept going.',
+      4: 'So I began hiding a second puzzle inside the first. A number here. A shaded square there. Nothing a solver would notice — until they noticed everything.',
+      5: 'They told me no one would look. They were right, mostly. But “mostly” is a wonderful word. It leaves a door open.',
+      6: 'I built this vault for the ones who look twice. Everything in it was locked by a puzzle, and every lock was made to be opened — eventually, by somebody stubborn.',
+      7: 'A confession: I hid one more thing than I ever announced. Not in the grids. In the letters. In the way a sentence begins.',
+      8: 'Read the openings. That is all the help I will give — and it is more than I gave anyone else.',
+      9: 'If you are reading this, you did not simply solve my book. You searched it. That is the rarer thing, and this vault knows the difference.',
+    };
+    const FINAL_LETTER =
+      'Nine pages, and you found every one. Most never look up from the grid. So here is the truth of it: ' +
+      'the puzzles were never the secret — the looking was. Keep the habit. I have hidden another chart, ' +
+      'another seam, another door. The Corsair’s Chart is already being drawn, and it will not be kinder than this one. — The Keeper';
+    const NUM_WORD = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+
+    function loadStory() {
+      try { const v = JSON.parse(localStorage.getItem(STORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+      catch { return []; }
+    }
+    function saveStory(list) {
+      try { localStorage.setItem(STORY_KEY, JSON.stringify(list)); } catch { /* private mode — fine */ }
+    }
+    let pagesFound = loadStory();
+
+    const pageviewEl = document.getElementById('pageview');
+    function openPage(no) {
+      if (!pagesFound.includes(no)) { pagesFound.push(no); saveStory(pagesFound); }
+      const n = pagesFound.length;
+      document.getElementById('pgNo').textContent = 'PAGE ' + (NUM_WORD[no] || no);
+      document.getElementById('pgBody').textContent = PAGE_WORDS[no];
+      document.getElementById('pgFound').textContent =
+        n >= 9 ? 'All nine pages found' : ('Pages found: ' + n + ' of 9');
+      pageviewEl.hidden = false;
+      keeper('page' + no);
+      dimPage(no);
+      if (n >= 9 && !pagesFound.includes('final')) {
+        // the payoff: hand over the final letter a beat after this page finishes
+        setTimeout(() => {
+          document.getElementById('pgNo').textContent = 'THE KEEPER’S LAST PAGE';
+          document.getElementById('pgBody').textContent = FINAL_LETTER;
+          document.getElementById('pgFound').textContent = 'The story is complete';
+          keeper('pagefinal');
+          burstConfetti();
+          pagesFound.push('final'); saveStory(pagesFound);
+        }, 2600);
+      }
+    }
+    function dimPage(no) {
+      const g = storyPages.find((p) => p.userData.pageNo === no);
+      if (g && g.userData.glow) g.userData.glow.material.opacity = 0.08;  // read = quiet, still visible
+    }
+    // pages already read in a past visit start dimmed
+    pagesFound.forEach((n) => { if (typeof n === 'number') dimPage(n); });
+    document.getElementById('pageClose').addEventListener('click', () => { pageviewEl.hidden = true; });
+
     function openReward(act) {
       const RW = REWARDS[act];
       document.getElementById('rwKicker').textContent = RW.kicker;
@@ -1782,7 +1927,7 @@ import Analytics from '@vercel/analytics/astro';
       if (d > 1.2) moveTo(x, z, fn); else fn();
     }
     function stackWorldPos() { const v = new THREE.Vector3(); stack.getWorldPosition(v); return v; }
-    function activate(kind) {
+    function activate(kind, hitObj) {
       if (kind === 'stack') {
         const sp = stackWorldPos();
         const d = Math.hypot(player.pos.x - sp.x, player.pos.z - sp.z);
@@ -1803,6 +1948,14 @@ import Analytics from '@vercel/analytics/astro';
         const D = DOORS[kind];
         if (D.isOpen()) return;
         goThen(D.stand.x, D.stand.z, () => openWordbox(kind));
+      } else if (kind === 'page') {
+        // walk most of the way to the page, then lift it and read
+        const g = hitObj;
+        if (!g || !g.userData.pageNo) return;
+        const p = g.position;
+        const dx = player.pos.x - p.x, dz = player.pos.z - p.z;
+        const d = Math.hypot(dx, dz) || 1;
+        goThen(p.x + (dx / d) * 0.9, p.z + (dz / d) * 0.9, () => openPage(g.userData.pageNo));
       } else if (kind === 'seals') {
         showCaption('Four seals. Four secrets still to come — the hunt continues beyond this vault.', 6200);
       } else if (kind === 'fourth') {
@@ -1892,6 +2045,10 @@ import Analytics from '@vercel/analytics/astro';
       forceDoor: (n) => openVaultDoor(n === 3 ? 'door3' : 'door2'), // test-only client force (reveals no words)
       setWord: (w) => wbSet(w),
       walkToward, get holdWalk() { return holdWalk; },     // test hooks for hold-to-walk
+      // story-page hooks (test/QA)
+      openPage, storyPages,
+      get pagesFound() { return pagesFound.slice(); },
+      resetStory: () => { pagesFound = []; saveStory(pagesFound); storyPages.forEach(g => { if (g.userData.glow) g.userData.glow.material.opacity = 0.30; }); },
       // offline-render the soundscape and measure it (headless quality loop)
       testAmbience: async (room = 'corridor', secs = 8) => {
         const sr = 44100;
