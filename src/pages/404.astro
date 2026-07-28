@@ -1,0 +1,50 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="This Corridor Is Sealed · PuzzleSecret"
+  description="That page could not be found. Return to the vault door, play free puzzles, or find your way with the Keeper's hints."
+>
+  <main class="page-404">
+    <div class="lost-hero">
+      <p class="eyebrow">Error 404</p>
+      <h1>This Corridor Is Sealed</h1>
+      <p class="lede">
+        &ldquo;You have wandered somewhere I never built a door. No shame in it &mdash;
+        the best solvers try every wall.&rdquo;
+      </p>
+      <p class="sub">The page you asked for doesn&rsquo;t exist. Here&rsquo;s the way back:</p>
+
+      <div class="lost-links">
+        <a class="btn" href="/">The vault door</a>
+        <a class="btn ghost" href="/play">Play free puzzles</a>
+        <a class="btn ghost" href="/hints">I&rsquo;m stuck</a>
+      </div>
+    </div>
+  </main>
+
+  <style>
+    .page-404 { padding-top: 120px; padding-bottom: 110px; }
+    .lost-hero { max-width: 640px; margin: 0 auto; padding: 0 24px; text-align: center; }
+    .eyebrow {
+      font-family: var(--display); font-size: 11px; letter-spacing: .34em;
+      text-transform: uppercase; color: var(--gold); opacity: .85;
+    }
+    .lost-hero h1 {
+      font-family: var(--display); font-weight: 600;
+      font-size: clamp(30px, 5.5vw, 48px); margin: 14px 0 22px;
+      text-wrap: balance;
+    }
+    .lede {
+      font-style: italic; font-size: clamp(17px, 2.2vw, 21px);
+      line-height: 1.5; color: var(--ivory); max-width: 34ch;
+      margin: 0 auto 20px;
+    }
+    .sub { color: var(--ash); font-size: 16px; margin-bottom: 30px; }
+    .lost-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    @media (max-width: 520px) {
+      .lost-links { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</Layout>

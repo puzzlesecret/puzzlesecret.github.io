@@ -1,4 +1,8 @@
 ---
+// Cookieless, no personal data, no cross-site tracking — chosen deliberately
+// because kids use this site (brief §10 "no external trackers").
+import Analytics from '@vercel/analytics/astro';
+
 export interface Props {
   title?: string;
   description?: string;
@@ -200,5 +204,6 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
       .foot-nav .amz-link { color: var(--gold); }
       .global-foot .fine { font-style: italic; font-size: 13px; color: var(--ash-dim); border-top: 1px solid rgba(255,255,255,.05); padding-top: 16px; }
     </style>
+    <Analytics />
   </body>
 </html>

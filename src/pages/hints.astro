@@ -13,10 +13,10 @@ import Layout from '../layouts/Layout.astro';
     <section class="wrap hints-body">
       <!-- Act Selector Tabs -->
       <div class="tab-row" role="tablist">
-        <button class="tab-btn active" data-act="act1" role="tab">Act I · Clever</button>
-        <button class="tab-btn" data-act="act2" role="tab">Act II · Solvers</button>
-        <button class="tab-btn" data-act="act3" role="tab">Act III · Triumph</button>
-        <button class="tab-btn" data-act="act4" role="tab">Secret · Lantern</button>
+        <button class="tab-btn active" data-act="act1" role="tab">Act I · The First Door</button>
+        <button class="tab-btn" data-act="act2" role="tab">Act II · The Burned Plate</button>
+        <button class="tab-btn" data-act="act3" role="tab">Act III · The Cipher Wheel</button>
+        <button class="tab-btn" data-act="act4" role="tab">Secret · The Fourth Door</button>
       </div>
 
       <!-- Act I Hints -->
@@ -61,7 +61,7 @@ import Layout from '../layouts/Layout.astro';
             <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act I Secret Word</summary>
             <div class="hint-content">
               <p>Are you sure? Only reveal if you are completely stuck!</p>
-              <button class="btn-reveal" data-word="CLEVER">Click to Reveal Word</button>
+              <button class="btn-reveal" data-sealed="FOHYHU">Click to Reveal Word</button>
               <div class="revealed-word"></div>
             </div>
           </details>
@@ -110,7 +110,7 @@ import Layout from '../layouts/Layout.astro';
           <details class="hint-card reveal-card">
             <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act II Secret Word</summary>
             <div class="hint-content">
-              <button class="btn-reveal" data-word="SOLVERS">Click to Reveal Word</button>
+              <button class="btn-reveal" data-sealed="VROYHUV">Click to Reveal Word</button>
               <div class="revealed-word"></div>
             </div>
           </details>
@@ -144,7 +144,7 @@ import Layout from '../layouts/Layout.astro';
           <details class="hint-card">
             <summary class="hint-title"><span class="h-step">Nudge 2</span> How does the Cipher Wheel work?</summary>
             <div class="hint-content">
-              <p>Keyplate III (page 213) features a two-ring cipher wheel. Look at the Keeper's clue: <em>"Step back three."</em> The outer ring shows the printed letter; the inner ring shows the true letter shifted back by 3 positions (D $\rightarrow$ A).</p>
+              <p>Keyplate III (page 213) features a two-ring cipher wheel. Look at the Keeper's clue: <em>"Step back three."</em> The outer ring shows the printed letter; the inner ring shows the true letter shifted back by 3 positions (D &rarr; A).</p>
             </div>
           </details>
 
@@ -158,7 +158,7 @@ import Layout from '../layouts/Layout.astro';
           <details class="hint-card reveal-card">
             <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act III Secret Word</summary>
             <div class="hint-content">
-              <button class="btn-reveal" data-word="TRIUMPH">Click to Reveal Word</button>
+              <button class="btn-reveal" data-sealed="WULXPSK">Click to Reveal Word</button>
               <div class="revealed-word"></div>
             </div>
           </details>
@@ -190,14 +190,14 @@ import Layout from '../layouts/Layout.astro';
           <details class="hint-card">
             <summary class="hint-title"><span class="h-step">Nudge 3</span> Where do I use the 4th word on the site?</summary>
             <div class="hint-content">
-              <p>In <a href="/vault" style="color:var(--gold)">The 3D Vault Crawl</a>, walk deep into Vault III (The Grand Treasure Chamber) and click on the <strong>unlit lantern</strong> on the left pedestal!</p>
+              <p>In <a href="/vault" style="color:var(--gold)">The 3D Vault Crawl</a>, walk deep into Vault III (The Grand Treasure Chamber) and look at the left pedestal. Among all that gleaming treasure, <strong>one object is not lit</strong>. Click it.</p>
             </div>
           </details>
 
           <details class="hint-card reveal-card">
             <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the 4th Secret Word</summary>
             <div class="hint-content">
-              <button class="btn-reveal" data-word="LANTERN">Click to Reveal Word</button>
+              <button class="btn-reveal" data-sealed="ODQWHUQ">Click to Reveal Word</button>
               <div class="revealed-word"></div>
             </div>
           </details>
@@ -221,13 +221,22 @@ import Layout from '../layouts/Layout.astro';
       });
     });
 
-    // Word Reveal Buttons
+    // Word Reveal Buttons.
+    // SECURITY: the answers are stored here Caesar-shifted +3 and decoded only
+    // on click — the same trick the printed book uses on its own answer-key page
+    // ("FOHYHU / VROYHUV / WULXPSK"). This keeps the real words out of page
+    // source, out of search-engine indexes, and out of a casual View Source,
+    // while still letting a genuinely stuck solver reveal them.
+    // NEVER put a plaintext secret word in client code.
+    const unshift3 = (s: string) =>
+      s.replace(/[A-Z]/g, (ch) => String.fromCharCode(((ch.charCodeAt(0) - 65 + 23) % 26) + 65));
+
     document.querySelectorAll('.btn-reveal').forEach(btn => {
       btn.addEventListener('click', () => {
-        const word = btn.getAttribute('data-word');
+        const sealed = btn.getAttribute('data-sealed') || '';
         const container = btn.nextElementSibling;
         if (container) {
-          container.innerHTML = `<div class="word-badge">${word}</div>`;
+          container.innerHTML = `<div class="word-badge">${unshift3(sealed)}</div>`;
           btn.style.display = 'none';
         }
       });

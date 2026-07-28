@@ -1,0 +1,8 @@
+# puzzlesecret.com
+User-agent: *
+Allow: /
+
+# The vaults are the payoff — don't let a search result spoil the reveal.
+Disallow: /vault
+
+Sitemap: https://puzzlesecret.com/sitemap-index.xml

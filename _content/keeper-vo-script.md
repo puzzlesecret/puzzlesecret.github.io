@@ -1,11 +1,27 @@
-# The Keeper — Voice / Caption Script (v1 draft, 2026-07-20; voice LOCKED 2026-07-21)
+# The Keeper — Voice / Caption Script (voice RE-LOCKED 2026-07-28)
 
 The Keeper is the narrator of *Sudoku with a Secret*: deep, slow, gravelly, theatrical —
 an old vault-keeper who is amused, testing, never cruel. **Every spoken line is also the
-on-screen caption** (closed captions always on). **Voice is LOCKED: Kokoro TTS, "Michael"
-(US male), 0.65× speed, natural pitch, with an inserted ~0.4s pause at sentence
-boundaries** — see "Voice production notes" at the bottom of this file for the exact,
-repeatable generation recipe. Every line below must be produced with that same recipe.
+on-screen caption** (closed captions always on).
+
+> ## 🔊 THE VOICE — ONE ANSWER, NO EXCEPTIONS
+> **Kokoro TTS · voice `bm_george` · speed `0.8` · natural pitch · + ~0.4s inserted pause at
+> sentence boundaries.**
+>
+> This supersedes ALL earlier text (in this file or any other) that says `am_michael` and/or
+> `0.65×`. Those references are stale — a 2026-07-22 fingerprint analysis found the
+> Dan-approved reference take was actually `bm_george` @ 0.8, and Dan re-confirmed `bm_george`
+> @ 0.8 as the go-forward voice on 2026-07-28.
+>
+> ✅ **The live audio is ALREADY correct — no regeneration needed.** Verified acoustically
+> 2026-07-28: all 16 `.wav` files in `site/public/audio/vo/` have a median F0 of 138–151 Hz
+> (tight single-voice cluster, mean ~144 Hz) and the Dan-approved reference
+> `vo_scene0_entry.wav` sits at 141 Hz right inside it. 15 lines were regenerated as
+> `bm_george`@0.8 on 2026-07-22; the reference itself already matched. **The site speaks with
+> one consistent voice today.** Only NEW lines need generating — `site/scripts/generate_vo_line.py`
+> already defaults to `bm_george` / 0.8.
+
+See "Voice production notes" at the bottom for the exact, repeatable generation recipe.
 
 Accuracy note: the book is **200 puzzles**; a word is **hidden among them** (you don't solve
 them all). The three words are **CLEVER / SOLVERS / TRIUMPH**; the hidden 4th is **LANTERN**
@@ -70,13 +86,15 @@ Generation: local Kokoro, `KPipeline(lang_code="a")`, `voice="bm_george"`, `spee
 10.46s — exactly a raw speed=0.8 Kokoro render (a true 0.65× render of that line is 13.0s).
 The "0.65×" in the notes below never actually shipped. Dan's ear confirmed it 2026-07-22: lines
 generated at true 0.65× sounded wrong ("different voice"); regenerated at **0.8×** they match.
-**Every future line: `am_michael`, `speed=0.8`, + ~0.35s inserted sentence-boundary pauses.**
+**Every future line: `bm_george`, `speed=0.8`, + ~0.35s inserted sentence-boundary pauses.**
+_(This line originally said `am_michael` — a typo/carryover; the block directly above it,
+and the top-of-file rule, correctly specify `bm_george`.)_
 (One deliberate exception: `vo_fourth.wav` — the lantern riddle — at 0.68× w/ pacing ellipses
 for gravitas; all lines verified 83–99% articulation match vs the reference, mean 94%.)
 
 ### ✅ GENERATED 2026-07-22 (overnight vault-crawl build) — 12 new lines
 
-All produced with the LOCAL Kokoro script (am_michael, **0.8×** per the correction above) +
+All produced with the LOCAL Kokoro script (`bm_george`, **0.8×** per the correction above) +
 automated sentence-boundary pause insertion. Live in
 `site/public/audio/vo/` and wired into `/vault` (vault.astro `VO` map) + the landing's
 `keeperAudioFiles`: `vo_vault1_entry`, `vo_vault1_reward`, `vo_vault2_door`, `vo_lib_entry`,
@@ -94,9 +112,13 @@ keeps one secret more." Also the lantern is referred to on-site only as "the fou
 
 ### Voice production notes
 
-**LOCKED 2026-07-21 — every Keeper line ships with this exact voice/speed/cadence.**
-Kokoro TTS (open-weight, Apache-2.0, 82M params), voice **"Michael" (am_michael)**, **0.65×**,
-natural pitch, +~0.4s pause at sentence breaks. Not subject to the Gemini-only image/video rule.
+**RE-LOCKED 2026-07-28 (Dan's explicit decision, supersedes the 2026-07-21 Michael lock):
+every Keeper line ships as Kokoro voice "George" (`bm_george`) @ 0.8× speed**, natural pitch,
++~0.4s pause at sentence breaks. Not subject to the Gemini-only image/video rule.
+⚠️ The 16 lines currently LIVE in `site/public/audio/vo/` are the OLD voice (Michael 0.65×)
+— regenerate ALL of them in one batch with the new settings (IMPROVEMENT-PLAN.md §1A) so the
+site speaks with one voice. `site/scripts/generate_vo_line.py` defaults are already correct
+(bm_george / 0.8).
 
 **⭐ PRIMARY METHOD (2026-07-21): Kokoro is now installed LOCALLY on Dan's PC — no rate limit,
 no website, works offline.** Use the helper script:
@@ -105,7 +127,7 @@ no website, works offline.** Use the helper script:
 ```
 - MUST use the **Python 3.12** interpreter above (Kokoro's numpy pin has no 3.13 wheel and
   fails to build on this machine; 3.12 has prebuilt wheels — installed & verified working).
-- Defaults to `am_michael` at `speed=0.65`. First run downloads the model once, then offline.
+- Defaults to `bm_george` at `speed=0.8` (correct as of 2026-07-28). First run downloads the model once, then offline.
 - Then insert the sentence-boundary pause with the ffmpeg step in the recipe below (step 7).
 - The website's first line is already done: `site/public/audio/vo/vo_scene0_entry.wav`.
 

@@ -5,6 +5,10 @@
 // Interactables: glowing puzzle stack (50-puzzle reward PDF), secret bookcase → passage
 // to the sealed Vault II door. Audio/SFX ported from the landing (Web Audio, no files).
 // Debug/screenshot params: ?cam=x,z,yaw,pitch (skips gate, no audio) ?open=1 ?panel=1
+
+// Cookieless analytics (no cookies, no personal data) — this page builds its
+// own HTML instead of using Layout.astro, so it needs its own <Analytics />.
+import Analytics from '@vercel/analytics/astro';
 ---
 <!doctype html>
 <html lang="en">
@@ -1623,7 +1627,7 @@
       },
       IV: {
         kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES',
-        text: "You found the unlit lantern and decoded what was never written. Twenty master puzzles from the Keeper's private collection.",
+        text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.",
         btn: 'Download the 20 Master Puzzles (PDF)', file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf', vo: 'fourth',
       },
     };
@@ -2045,5 +2049,6 @@
     }
     loop();
   </script>
-</body>
+  <Analytics />
+  </body>
 </html>

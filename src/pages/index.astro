@@ -24,6 +24,10 @@ const ghosts = [
   { d: "4", c: "var(--v1)" }, { d: "7", c: "var(--v1)" }, { d: "2", c: "var(--v2)" },
   { d: "9", c: "var(--v4)" }, { d: "5", c: "var(--v1)" },
 ];
+
+// Cookieless analytics (no cookies, no personal data) — this page builds its
+// own HTML instead of using Layout.astro, so it needs its own <Analytics />.
+import Analytics from '@vercel/analytics/astro';
 ---
 
 <!doctype html>
@@ -136,7 +140,7 @@ const ghosts = [
           </div>
 
           <p class="side reveal" style="--d:.62s">
-            <a href="#antechamber">I don't have the book yet</a>
+            <a href="/play">I don't have the book yet</a>
             <span>·</span>
             <a href="/hints">I'm stuck</a>
           </p>
@@ -166,8 +170,8 @@ const ghosts = [
           </article>
           <article class="card">
             <h3>Don't have it yet?</h3>
-            <p>Earn a look. Solve one small puzzle at the grate and glimpse the treasure — then decide.</p>
-            <a class="btn" href="#antechamber">Peer inside</a>
+            <p>Play 200 free Sudoku puzzles right here in your browser — no book, no sign-up. Then decide if you want the hunt.</p>
+            <a class="btn" href="/play">Play free puzzles</a>
           </article>
           <article class="card">
             <h3>Ten free puzzles a month</h3>
@@ -821,5 +825,6 @@ const ghosts = [
         .flare, .burst i { opacity: 0 !important; }
       }
     </style>
+    <Analytics />
   </body>
 </html>

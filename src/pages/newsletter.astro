@@ -35,17 +35,55 @@ import Layout from '../layouts/Layout.astro';
   </main>
 
   <script>
+    // Honest signup: we only claim success when the server actually handed the
+    // address to a real mailing-list provider. (The old version always faked it.)
     const form = document.getElementById('newsForm');
     const input = document.getElementById('emailInput') as HTMLInputElement;
     const msg = document.getElementById('newsMsg');
+    const btn = form?.querySelector('button');
 
-    form?.addEventListener('submit', (e) => {
+    const say = (text: string, tone: 'ok' | 'warn' | 'err') => {
+      if (!msg) return;
+      const color = tone === 'ok' ? 'var(--v2)' : tone === 'warn' ? 'var(--gold-hi)' : 'var(--v3)';
+      msg.innerHTML = `<span style="color:${color}">${text}</span>`;
+    };
+
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = (input?.value || '').trim();
       if (!email) return;
-      if (msg) {
-        msg.innerHTML = `<span style="color:var(--v2)">✓ Welcome to the Dispatch! Your first 10 puzzles are on their way to ${email}.</span>`;
-        input.value = '';
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+      say('Sealing your letter…', 'warn');
+
+      try {
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (data.ok) {
+          say('✓ You are on the Keeper&rsquo;s list. Watch for the Dispatch on the 1st.', 'ok');
+          if (input) input.value = '';
+        } else if (data.reason === 'not_configured') {
+          say(
+            'The Dispatch has not opened its doors yet &mdash; nothing was recorded. ' +
+            'Check back soon, and take the free bonus puzzles in the meantime.',
+            'warn'
+          );
+        } else if (data.reason === 'bad_email') {
+          say('✕ That address does not look right &mdash; check it and try again.', 'err');
+        } else if (data.reason === 'slow_down') {
+          say('✕ Too many attempts. Wait a moment and try again.', 'err');
+        } else {
+          say('✕ The letter could not be delivered just now. Please try again later.', 'err');
+        }
+      } catch {
+        say('✕ Could not reach the Keeper. Check your connection and try again.', 'err');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Subscribe Free'; }
       }
     });
   </script>

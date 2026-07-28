@@ -38,16 +38,21 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
         </div>
       </article>
 
-      <!-- Vault Winner Coupon Redeemer -->
+      <!-- Vault Winner Coupon — teaser (redemption opens with the Commissary) -->
       <article class="redeem-card">
         <div class="redeem-inner">
-          <h3>Have a Vault Coupon Code?</h3>
-          <p>Cracked a vault in the book? Enter your 10%, 20%, or 30% off secret key code below to claim your discount certificate.</p>
-          <form class="coupon-form" id="couponForm">
-            <input type="text" id="couponInput" placeholder="Enter coupon code (e.g. CLEVER10)" class="c-input" required autocomplete="off" />
-            <button type="submit" class="c-btn">Redeem Code</button>
-          </form>
-          <div id="couponMsg" class="c-msg"></div>
+          <h3>Cracked a Vault? Your Discount Is Waiting.</h3>
+          <p>
+            Every vault you open in <em>The Keeper's Vault</em> earns a discount &mdash;
+            <strong>10%</strong>, <strong>20%</strong>, then <strong>30%</strong> off.
+            The Keeper's Commissary opens soon; your earned discounts will be honoured here
+            the day it does.
+          </p>
+          <p class="redeem-note">
+            Meanwhile, every bonus puzzle pack below is <strong>already free</strong> &mdash;
+            no code, no email, no catch.
+          </p>
+          <a class="c-btn" href="/vault">Enter the Vaults &rarr;</a>
         </div>
       </article>
 
@@ -118,22 +123,11 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
     </section>
   </main>
 
-  <script>
-    const form = document.getElementById('couponForm');
-    const input = document.getElementById('couponInput') as HTMLInputElement;
-    const msg = document.getElementById('couponMsg');
-
-    form?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const code = (input?.value || '').trim().toUpperCase();
-      if (!code) return;
-      if (code.includes('CLEVER') || code.includes('10') || code.includes('SOLVER') || code.includes('TRIUMPH')) {
-        if (msg) msg.innerHTML = `<span style="color:var(--v2)">✓ Valid Coupon Code! Applies 10%–30% discount. Take your proof to <a href="/vault" style="color:var(--gold)">The Vaults</a> to redeem bonus PDFs.</span>`;
-      } else {
-        if (msg) msg.innerHTML = `<span style="color:var(--v3)">✕ Unrecognized coupon code. Crack the vaults in the book to earn valid codes!</span>`;
-      }
-    });
-  </script>
+  <!-- NOTE: the old client-side "coupon validator" was removed 2026-07-28.
+       It was fake (substring matching) AND it shipped the secret words + a
+       "CLEVER10" placeholder into the page source, spoiling the hunt.
+       Real redemption arrives with Stripe Checkout — server-side only.
+       NEVER put a secret word in client code. -->
 
   <style>
     .page-shop { padding-top: 90px; padding-bottom: 80px; }
@@ -164,7 +158,9 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
     .redeem-inner p { font-style: italic; color: var(--ash); margin-bottom: 20px; max-width: 560px; margin-left: auto; margin-right: auto; }
     .coupon-form { display: flex; gap: 10px; justify-content: center; max-width: 480px; margin: 0 auto; }
     .c-input { flex: 1; padding: 12px 16px; border: 1px solid rgba(185,143,82,.4); border-radius: 6px; background: rgba(10,10,12,.8); color: var(--gold-hi); font-family: var(--display); font-size: 14px; outline: none; }
-    .c-btn { padding: 12px 24px; background: var(--brass); color: #110d06; font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; border: none; border-radius: 6px; cursor: pointer; transition: background .2s; }
+    .redeem-note { font-size: 15px; }
+    .redeem-note strong { color: var(--gold-hi); font-style: normal; }
+    .c-btn { display: inline-block; text-decoration: none; padding: 12px 24px; background: var(--brass); color: #110d06; font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; border: none; border-radius: 6px; cursor: pointer; transition: background .2s; }
     .c-btn:hover { background: var(--brass-hi); }
     .c-msg { margin-top: 14px; font-style: italic; font-size: 14px; }
 
