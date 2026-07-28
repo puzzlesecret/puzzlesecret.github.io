@@ -631,8 +631,37 @@ import Analytics from '@vercel/analytics/astro';
       { a: 'rgba(239,154,43,1)', b: 'rgba(115,70,15,0.55)', light: 0xef9a2b },
     ];
 
+    /* Stone walls are built from separate boxes (segments either side of a doorway, the
+       lintel above it, side walls). BoxGeometry UVs are normalised 0..1 per face, so one
+       shared material paints the SAME texture across a 4.65m wall and a 1.7m lintel alike —
+       the blocks come out ~2.8x smaller on the narrow pieces. That difference framed the
+       secret bookcase and gave the door away. Re-project wall UVs from WORLD position so the
+       block grid is one continuous course across every segment, whatever its size. */
+    const WALL_REF_W = 4.65, WALL_REF_H = 4.0;   // the big study back wall = the look we match
+    function worldWallUVs(geo, w, h, d, x, y, z) {
+      const uv = geo.attributes.uv;
+      const x0 = x - w / 2, y0 = y - h / 2, z0 = z - d / 2;
+      // per BoxGeometry face order (+X, -X, +Y, -Y, +Z, -Z): the world span and origin of U,V
+      const F = [
+        [d, h, z0, y0], [d, h, z0, y0],
+        [w, d, x0, z0], [w, d, x0, z0],
+        [w, h, x0, y0], [w, h, x0, y0],
+      ];
+      for (let f = 0; f < 6; f++) {
+        const [su, sv, ou, ov] = F[f];
+        for (let k = 0; k < 4; k++) {
+          const i = f * 4 + k;
+          uv.setXY(i,
+            (ou + uv.getX(i) * su) / WALL_REF_W,
+            (ov + uv.getY(i) * sv) / WALL_REF_H);
+        }
+      }
+      uv.needsUpdate = true;
+    }
     function box(w, h, d, mat, x, y, z, ry = 0, parent = scene) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      const geo = new THREE.BoxGeometry(w, h, d);
+      if (mat === M.wall) worldWallUVs(geo, w, h, d, x, y, z);
+      const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); return m;
     }
     function sprite(scale, x, y, z, parent = scene, opacity = 0.85) {
