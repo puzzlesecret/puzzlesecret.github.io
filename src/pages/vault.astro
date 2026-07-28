@@ -235,6 +235,7 @@ import Analytics from '@vercel/analytics/astro';
       letter-spacing: 0.16em; color: rgba(232,213,174,0.65); background: none;
       border: 1px solid rgba(232,213,174,0.25); border-radius: 4px; padding: 11px 10px;
       cursor: pointer; text-decoration: none;
+      min-height: 44px;   /* thumb-sized on touch screens */
     }
     .ghost-btn:hover { color: var(--gold); border-color: rgba(246,178,60,0.5); }
 
@@ -1789,6 +1790,17 @@ import Analytics from '@vercel/analytics/astro';
       playUnlock();
       if (!rewardsGiven[act]) { keeper(RW.vo); rewardsGiven[act] = true; }
       if (act === 'III') sealFlareT = simT; // the series wall flares with the finale
+      stampVault(act);
+    }
+    /* the passport is a RECORD, not a gate — the PDFs stay open to everyone either way */
+    const VAULT_KEY = 'ps_vaults_v1';
+    function stampVault(act) {
+      try {
+        const v = JSON.parse(localStorage.getItem(VAULT_KEY) || '{}');
+        if (v[act]) return;                       // already stamped — keep the original date
+        v[act] = new Date().toISOString().slice(0, 10);
+        localStorage.setItem(VAULT_KEY, JSON.stringify(v));
+      } catch { /* private mode — the vault still works, it just won't remember */ }
     }
     document.getElementById('rewardClose').addEventListener('click', () => {
       rewardEl.hidden = true;

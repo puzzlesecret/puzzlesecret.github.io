@@ -7,7 +7,7 @@ import Layout from '../layouts/Layout.astro';
     <div class="passport-hero">
       <p class="eyebrow">Official Record</p>
       <h1>The Solver's Passport</h1>
-      <p class="lede">Every cracked vault stamps your passport. Track your progress across Volume 1 and claim your unlocked treasure packs.</p>
+      <p class="lede">Every vault you crack stamps your passport. This page remembers your own hunt — it lives in this browser, and we never see it.</p>
     </div>
 
     <section class="wrap passport-body">
@@ -25,7 +25,8 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-num">I</div>
               <div class="stamp-icon">🖋</div>
               <div class="stamp-name">The Writer's Study</div>
-              <div class="stamp-status">UNLOCKED</div>
+              <div class="stamp-status">Not yet cracked</div>
+              <span class="stamp-date"></span>
             </div>
             <a href="/rewards/PuzzleSecret-Vault-I-50-Easy.pdf" download class="stamp-dl">50 Easy PDF ⬇</a>
           </div>
@@ -36,7 +37,8 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-num">II</div>
               <div class="stamp-icon">📜</div>
               <div class="stamp-name">Library of Puzzles</div>
-              <div class="stamp-status">VAULT II</div>
+              <div class="stamp-status">Not yet cracked</div>
+              <span class="stamp-date"></span>
             </div>
             <a href="/rewards/PuzzleSecret-Vault-II-100-Medium.pdf" download class="stamp-dl">100 Med PDF ⬇</a>
           </div>
@@ -47,7 +49,8 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-num">III</div>
               <div class="stamp-icon">🏆</div>
               <div class="stamp-name">Grand Treasure Vault</div>
-              <div class="stamp-status">VAULT III</div>
+              <div class="stamp-status">Not yet cracked</div>
+              <span class="stamp-date"></span>
             </div>
             <a href="/rewards/PuzzleSecret-Vault-III-200-Hard.pdf" download class="stamp-dl">200 Hard PDF ⬇</a>
           </div>
@@ -58,7 +61,8 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-num">IV</div>
               <div class="stamp-icon">🕯</div>
               <div class="stamp-name">The Secret Sanctum</div>
-              <div class="stamp-status">SECRET</div>
+              <div class="stamp-status">Never announced</div>
+              <span class="stamp-date"></span>
             </div>
             <a href="/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf" download class="stamp-dl">20 Master PDF ⬇</a>
           </div>
@@ -67,18 +71,23 @@ import Layout from '../layouts/Layout.astro';
         <!-- Passport Stats Bar -->
         <div class="p-stats">
           <div class="stat">
-            <span class="stat-num" id="unlockedPuzzles">50</span>
-            <span class="stat-lbl">Puzzles Unlocked</span>
+            <span class="stat-num" id="unlockedPuzzles">0</span>
+            <span class="stat-lbl">Puzzles Won</span>
           </div>
           <div class="stat">
-            <span class="stat-num" id="stampsCount">1 / 4</span>
+            <span class="stat-num" id="stampsCount">0 / 4</span>
             <span class="stat-lbl">Stamps Earned</span>
           </div>
           <div class="stat">
-            <span class="stat-num" id="couponTier">10% OFF</span>
-            <span class="stat-lbl">Commissary Discount</span>
+            <span class="stat-num" id="storyPages">0 / 9</span>
+            <span class="stat-lbl">Keeper's Pages Found</span>
           </div>
         </div>
+
+        <p class="p-note">
+          Every reward pack is free to download whether or not it is stamped — the stamps are
+          simply the record of what <em>you</em> cracked.
+        </p>
       </div>
 
       <div class="passport-cta">
@@ -108,7 +117,7 @@ import Layout from '../layouts/Layout.astro';
     .stamp-num { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold); opacity: .7; }
     .stamp-icon { font-size: 32px; margin: 4px 0; }
     .stamp-name { font-family: var(--display); font-size: 13px; letter-spacing: .08em; color: var(--ivory); }
-    .stamp-status { font-family: var(--display); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--v2); }
+    .stamp-status { font-family: var(--display); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--ash-dim); }
     .stamp-dl { display: block; font-family: var(--display); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 8px; border: 1px solid rgba(246,178,60,.4); border-radius: 6px; color: var(--gold-hi); transition: background .2s; }
     .stamp-dl:hover { background: rgba(246,178,60,.2); }
 
@@ -119,8 +128,69 @@ import Layout from '../layouts/Layout.astro';
     .passport-cta { text-align: center; margin-top: 32px; }
     .btn-vault { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
 
+    .p-note { margin-top: 18px; text-align: center; font-size: 13px; font-style: italic; color: var(--ash-dim); line-height: 1.5; }
+
+    /* a sealed slot reads as an empty space waiting for ink */
+    .stamp-slot:not(.unlocked) .stamp-icon { filter: grayscale(1); opacity: .28; }
+    .stamp-slot:not(.unlocked) .stamp-name { color: var(--ash-dim); }
+    .stamp-slot.unlocked .stamp-num { opacity: 1; }
+    .stamp-slot.unlocked .stamp-status { color: var(--gold-hi); }
+    .stamp-date { display: block; font-family: var(--display); font-size: 9px; letter-spacing: .14em; color: var(--brass); margin-top: 5px; min-height: 1px; }
+
+    /* the press: a stamp landing on the page for the first time */
+    @keyframes stampPress {
+      0%   { transform: scale(2.4) rotate(-14deg); opacity: 0; }
+      55%  { transform: scale(.92) rotate(3deg);   opacity: 1; }
+      75%  { transform: scale(1.04) rotate(-1deg); }
+      100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+    }
+    .stamp-slot.just-earned .stamp-inner { animation: stampPress .62s cubic-bezier(.2,.9,.3,1.2) both; }
+    @media (prefers-reduced-motion: reduce) {
+      .stamp-slot.just-earned .stamp-inner { animation: none; }
+    }
+
     @media (max-width: 600px) {
       .p-stats { grid-template-columns: 1fr; }
     }
   </style>
+
+  <script is:inline>
+    (function () {
+      // The passport reads the hunt this browser remembers. Nothing is sent anywhere.
+      var read = function (k, d) {
+        try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; }
+        catch (e) { return d; }
+      };
+      var vaults = read('ps_vaults_v1', {}) || {};
+      var story  = read('ps_story_v1', []) || [];
+      var seen   = read('ps_stamps_seen_v1', []) || [];
+
+      var PUZZLES = { I: 50, II: 100, III: 200, IV: 20 };
+      var ACTS = ['I', 'II', 'III', 'IV'];
+      var earned = 0, puzzles = 0, fresh = [];
+
+      ACTS.forEach(function (act, i) {
+        var slot = document.getElementById('slot-v' + (i + 1));
+        if (!slot) return;
+        var when = vaults[act];
+        if (!when) return;
+        earned++; puzzles += PUZZLES[act];
+        slot.classList.add('unlocked');
+        slot.querySelector('.stamp-status').textContent = 'Cracked';
+        slot.querySelector('.stamp-date').textContent = String(when);
+        if (seen.indexOf(act) === -1) { fresh.push(act); slot.classList.add('just-earned'); }
+      });
+
+      var pages = story.filter(function (n) { return typeof n === 'number'; }).length;
+      document.getElementById('unlockedPuzzles').textContent = String(puzzles);
+      document.getElementById('stampsCount').textContent = earned + ' / 4';
+      document.getElementById('storyPages').textContent = pages + ' / 9';
+
+      // remember which stamps we've already celebrated, so the press only plays once
+      if (fresh.length) {
+        try { localStorage.setItem('ps_stamps_seen_v1', JSON.stringify(seen.concat(fresh))); }
+        catch (e) { /* private mode — it'll just animate again next visit */ }
+      }
+    })();
+  </script>
 </Layout>

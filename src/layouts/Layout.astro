@@ -41,9 +41,9 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
         <button class="chip muted" id="soundToggle" aria-pressed="false" title="Sound on/off">
           <span class="ic" aria-hidden="true">○</span><span class="lbl">sound</span>
         </button>
-        <a class="chip" href="/play" title="Play 200 Sudokus"><span class="ic" aria-hidden="true">🎮</span><span class="lbl-desktop">Play</span></a>
-        <a class="chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span><span class="lbl-desktop">Passport</span></a>
-        <a class="chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span><span class="lbl-desktop">Shop</span></a>
+        <a class="chip nav-chip" href="/play" title="Play 200 Sudokus"><span class="ic" aria-hidden="true">🎮</span><span class="lbl-desktop">Play</span></a>
+        <a class="chip nav-chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span><span class="lbl-desktop">Passport</span></a>
+        <a class="chip nav-chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span><span class="lbl-desktop">Shop</span></a>
         <button class="chip" id="menuBtn" aria-label="Open Menu"><span class="ic" aria-hidden="true">≡</span></button>
       </div>
     </header>
@@ -170,6 +170,17 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
       .chip .key { color: var(--brass-hi); }
       @media (max-width: 600px) {
         .lbl-desktop { display: none; }
+      }
+      /* Phones: five chips + the wordmark overflow a 375px screen, so the header keeps only
+         brand · sound · menu. Every destination it drops already lives in the drawer. */
+      @media (max-width: 640px) {
+        .chrome { padding: 12px 14px; gap: 10px; }
+        .chrome-right { gap: 6px; }
+        .chip { height: 34px; padding: 0 11px; font-size: 10px; letter-spacing: .12em; }
+        .chip .wm { letter-spacing: .12em; }
+        .chrome-right .chip.nav-chip { display: none; }
+        #soundToggle .lbl { display: none; }
+        #soundToggle { padding: 0 12px; }
       }
 
       /* Slide-out Navigation Drawer */
