@@ -550,22 +550,54 @@ import Analytics from '@vercel/analytics/astro';
 
     /* ---- texture loaders for high-res bump maps and PBR materials ---- */
     const texLoader = new THREE.TextureLoader();
-    const wallBumpTex = texLoader.load('/art/stone_wall_bump.png');
-    wallBumpTex.wrapS = wallBumpTex.wrapT = THREE.RepeatWrapping;
-    wallBumpTex.repeat.set(4, 2);
+    function loadTex(url, rx = 1, ry = 1) {
+      const t = texLoader.load(url);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(rx, ry);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      return t;
+    }
+    /* Painted textures upgrade a procedurally-drawn surface WITHOUT being able to break it:
+       if the file is missing or fails to decode, the canvas texture it replaces stays on the
+       material, so the room always renders. This is what lets the art tier land room by room. */
+    let paintedCount = 0, paintedMissing = 0;
+    function paintedTex(url, fallback, rx = 1, ry = 1) {
+      // start life as the procedural texture, so a missing file is simply "not upgraded yet"
+      const t = fallback.clone();
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(rx, ry);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;   // grazing-angle floors alias into phantom blocks without this
+      texLoader.load(
+        url,
+        (img) => { t.image = img.image; t.needsUpdate = true; paintedCount++; },
+        undefined,
+        () => { paintedMissing++; }   // keeps the canvas texture already in place
+      );
+      return t;
+    }
+    const wallBumpTex = loadTex('/art/stone_wall_bump.webp', 4, 2);
+    const woodMatTex = loadTex('/art/mahogany_wood.webp', 2, 2);
+    const goldFoilTex = loadTex('/art/gold_foil_bg.webp', 1, 1);
+    wallBumpTex.colorSpace = THREE.NoColorSpace;   // a bump map carries height, not colour
 
-    const woodMatTex = texLoader.load('/art/mahogany_wood.png');
-    woodMatTex.wrapS = woodMatTex.wrapT = THREE.RepeatWrapping;
-    woodMatTex.repeat.set(2, 2);
+    /* ---- the painted art tier (Phase 1B) ----
+       Highest-leverage surfaces first: the ones that fill the most screen as you walk.
+       Each falls back to its procedural texture until the painted file exists. */
+    // Repeat counts are set by REAL-WORLD scale, not by the procedural textures they replace:
+    // the study floor is ~8m across, so ~1.6 repeats puts the planks at a believable width,
+    // and the library's herringbone blocks need to stay coarse enough not to alias at range.
+    const floorTexP   = paintedTex('/art/tex/study_floor.webp',   floorTex,   1.6, 1.6);
+    const parquetTexP = paintedTex('/art/tex/library_floor.webp', parquetTex, 1.3, 1.3);
+    const wallTexP    = paintedTex('/art/tex/stone_wall.webp',    wallTex,    2.2, 1.35);
+    const spineTexP   = paintedTex('/art/tex/book_spines.webp',   spineTex,   1, 1);
 
-    const goldFoilTex = texLoader.load('/art/gold_foil_bg.png');
-    goldFoilTex.wrapS = goldFoilTex.wrapT = THREE.RepeatWrapping;
-    goldFoilTex.repeat.set(1, 1);
 
     /* ================= materials ================= */
     const M = {
-      floor: new THREE.MeshStandardMaterial({ map: floorTex, bumpMap: wallBumpTex, bumpScale: 0.03, roughness: 0.88 }),
-      wall: new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallBumpTex, bumpScale: 0.05, roughness: 0.9 }),
+      floor: new THREE.MeshStandardMaterial({ map: floorTexP, bumpMap: wallBumpTex, bumpScale: 0.03, roughness: 0.88 }),
+      wall: new THREE.MeshStandardMaterial({ map: wallTexP, bumpMap: wallBumpTex, bumpScale: 0.05, roughness: 0.9 }),
       wood: new THREE.MeshStandardMaterial({ map: woodMatTex, roughness: 0.55, metalness: 0.1 }),
       woodDark: new THREE.MeshStandardMaterial({ map: woodMatTex, color: 0x6a4a2c, roughness: 0.65 }),
       gold: new THREE.MeshStandardMaterial({ map: goldFoilTex, color: 0xe6b84c, metalness: 0.9, roughness: 0.25 }),
@@ -573,12 +605,12 @@ import Analytics from '@vercel/analytics/astro';
       iron: new THREE.MeshStandardMaterial({ color: 0x2c2620, metalness: 0.65, roughness: 0.55 }),
       paperA: new THREE.MeshStandardMaterial({ map: paperTexA, roughness: 0.9 }),
       paperB: new THREE.MeshStandardMaterial({ map: paperTexB, roughness: 0.9 }),
-      spines: new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.85 }),
+      spines: new THREE.MeshStandardMaterial({ map: spineTexP, roughness: 0.85 }),
       candle: new THREE.MeshStandardMaterial({ color: 0xe9e2ce, roughness: 0.6 }),
       flame: new THREE.MeshStandardMaterial({ color: 0xffc060, emissive: 0xff9a30, emissiveIntensity: 1.5 }),
       stack: new THREE.MeshStandardMaterial({ color: 0xcaa24e, emissive: 0xffb43c, emissiveIntensity: 0.8, roughness: 0.45, metalness: 0.25 }),
       dark: new THREE.MeshStandardMaterial({ color: 0x0a0705, roughness: 1 }),
-      parquet: new THREE.MeshStandardMaterial({ map: parquetTex, roughness: 0.7 }),
+      parquet: new THREE.MeshStandardMaterial({ map: parquetTexP, roughness: 0.7 }),
       frieze: new THREE.MeshStandardMaterial({ map: friezeTex, bumpMap: wallBumpTex, bumpScale: 0.04, roughness: 0.92 }),
       checker: new THREE.MeshStandardMaterial({ map: checkerTex, roughness: 0.7 }),
       enigma: new THREE.MeshStandardMaterial({ map: enigmaTex, roughness: 0.65 }),
