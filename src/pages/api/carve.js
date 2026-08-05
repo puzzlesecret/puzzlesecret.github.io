@@ -24,6 +24,7 @@ const RE = /^[A-Z]{2,3}$/;
 const BLOCK = ['ASS', 'FAG', 'FUK', 'FCK', 'FUX', 'FKU', 'KKK', 'NIG', 'NGR', 'CUM', 'TIT',
   'SEX', 'DIK', 'DCK', 'COK', 'KOK', 'PIS', 'VAG', 'HOE', 'JIZ', 'FAP', 'KYS'];
 
+const CARVE_TOKEN = SALT ? crypto.createHash('sha256').update(SALT + '|carve-proof-v1').digest('hex') : '';
 const norm = (w) => String(w || '').toUpperCase().replace(/[^A-Z]/g, '');
 const hash = (w) => crypto.createHash('sha256').update(SALT + '|' + w).digest('hex');
 
@@ -67,27 +68,42 @@ export async function POST({ request, clientAddress }) {
   if (!RE.test(initials)) return json({ ok: false, reason: 'bad_initials' });
   if (BLOCK.includes(initials)) return json({ ok: false, reason: 'bad_initials' });
 
-  // proof: only someone holding the fourth word may carve
+  // proof: either the fourth word itself, OR the persisted token minted when it was solved.
   const word = norm(body.word);
-  if (word.length < 4 || word.length > 12 || hash(word) !== FOURTH_HASH) {
+  const wordOk = word.length >= 4 && word.length <= 12 && hash(word) === FOURTH_HASH;
+  const tokenOk = CARVE_TOKEN && body.token === CARVE_TOKEN;
+  if (!wordOk && !tokenOk) {
     return json({ ok: false, reason: 'no_proof' }, 403);
   }
 
+  // The Apps Script relay usually answers in ~2s but occasionally stalls for 60-100s on
+  // Google's side \u2014 long enough to blow the serverless timeout and hand the client a
+  // non-JSON error page, even though the row was already appended (the write happens before
+  // Google's slow RESPONSE). So bound the wait, and treat a TIMEOUT as the success it almost
+  // certainly is rather than telling a solver their mark failed when it's on the wall.
+  wallCache = { t: 0, data: null };              // whatever happens, the wall may have changed
   try {
     const r = await fetch(HOOK, {
       method: 'POST',
       redirect: 'follow',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ initials, auth: AUTH }),
+      signal: AbortSignal.timeout(6000),
     });
     const d = await r.json();
     if (d && d.ok) {
-      wallCache = { t: 0, data: null };          // the wall just changed
       await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${country(request)} \u00b7 carved \u201c${initials}\u201d \u2014 mark #${d.count}`);
       return json({ ok: true, count: d.count });
     }
     return json({ ok: false, reason: d && d.reason ? d.reason : 'refused' });
-  } catch {
+  } catch (e) {
+    // AbortError = the request WAS sent and the append almost certainly landed; report the
+    // optimistic success (count unknown) so the mark reads as cut. A pre-flight failure
+    // (never reached Google) is the only true failure.
+    if (e && e.name === 'TimeoutError') {
+      await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${country(request)} \u00b7 carved \u201c${initials}\u201d (relay slow)`);
+      return json({ ok: true, count: null, pending: true });
+    }
     return json({ ok: false, reason: 'wall_unreachable' }, 502);
   }
 }

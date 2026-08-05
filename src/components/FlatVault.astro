@@ -369,7 +369,10 @@
           if (shell) { shell.classList.remove('shake'); void shell.offsetWidth; shell.classList.add('shake'); }
           return;
         }
-        if (out.d.act === 'IV') fourthWord = word;   // in memory only — the carve proof
+        if (out.d.act === 'IV') {
+          fourthWord = word;                                 // in-memory proof for this session
+          try { if (out.d.carveToken) localStorage.setItem('ps_carve', out.d.carveToken); } catch (e) {}
+        }
         var had = !!readOpen()[out.d.act];
         stamp(out.d.act);
         input.value = '';
@@ -416,16 +419,22 @@
       fetch('/api/carve', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ initials: initials, word: fourthWord, vid: psVid() }),
+        body: JSON.stringify({ initials: initials, word: fourthWord,
+          token: (function () { try { return localStorage.getItem('ps_carve') || ''; } catch (e) { return ''; } })(),
+          vid: psVid() }),
       }).then(function (r) { return r.json(); }).then(function (d) {
         fcBusy = false;
         if (d && d.ok) {
           try { localStorage.setItem('ps_mark_v1', initials); } catch (err) {}
           $('fcForm').hidden = true;
-          $('fcLine').textContent = 'Your mark — ' + initials + ' — is cut into the register, one of ' + d.count + '.';
+          // count is null when the relay was slow but the write almost certainly landed
+          $('fcLine').textContent = d.count
+            ? 'Your mark — ' + initials + ' — is cut into the register, one of ' + d.count + '.'
+            : 'Your mark — ' + initials + ' — is being cut into the register.';
           m.className = 'good'; m.textContent = 'Stone remembers what paper forgets.';
         } else if (d && d.reason === 'no_proof') {
-          m.textContent = 'Speak the fourth word above once more, then carve.';
+          m.textContent = 'First speak the fourth word in the box above — then carve.';
+          var wb = $('flatWord'); if (wb) { try { wb.scrollIntoView({ block: 'center' }); wb.focus(); } catch (e) {} }
         } else if (d && d.reason === 'bad_initials') {
           m.textContent = 'The stone refuses those letters.';
         } else if (d && d.reason === 'slow_down') {

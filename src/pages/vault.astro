@@ -2403,7 +2403,10 @@ import Analytics from '@vercel/analytics/astro';
       const D = DOORS[wbTarget];
       if (j.ok && j.act === D.act) {
         const key = wbTarget;
-        if (key === 'fourth') fourthWord = wbWord;   // held in memory only — the carve proof
+        if (key === 'fourth') {
+          fourthWord = wbWord;                              // in-memory proof for this session
+          try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); } catch (e) {}
+        }
         closeWordbox();
         if (key === 'fourth') lanternSuccess();
         else openVaultDoor(key);
@@ -2477,7 +2480,7 @@ import Analytics from '@vercel/analytics/astro';
       try {
         const r = await fetch('/api/carve', {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ initials, word: fourthWord, vid: psVid() }),
+          body: JSON.stringify({ initials, word: fourthWord, token: (function(){ try { return localStorage.getItem('ps_carve') || ''; } catch (e) { return ''; } })(), vid: psVid() }),
         });
         j = await r.json();
       } catch (e) { /* offline */ }
