@@ -128,6 +128,20 @@ import webPuzzles from '../data/web_puzzles.json';
         </div>
       </div>
     </div>
+
+    <!-- 2B lead magnet: a one-time Keeper nudge after a few free solves -->
+    <div class="victory-modal" id="nudgeModal" hidden>
+      <div class="v-card nudge-card">
+        <div class="v-seal">🗝</div>
+        <h2>Nicely solved.</h2>
+        <p class="nudge-lede">These are practice puzzles — free, forever. But the <em>real</em> hunt hides in the book: twenty of its puzzles conceal a password, and speaking it opens vaults of treasure and 350 more free puzzles.</p>
+        <div class="v-actions nudge-actions">
+          <a class="btn-next" id="nudgeBuy" href="https://amzn.to/4flLyPR" target="_blank" rel="noopener">Get the book on Amazon ↗</a>
+          <button class="btn-sec" id="nudgeClose">Keep playing free</button>
+        </div>
+        <p class="nudge-fine">Or join <a href="/newsletter">the Keeper's list</a> for ten free puzzles a month. Email always optional.</p>
+      </div>
+    </div>
   </main>
 
   <script define:vars={{ webPuzzles }}>
@@ -447,7 +461,22 @@ import webPuzzles from '../data/web_puzzles.json';
 
       modal.hidden = false;
       updateStats();
+      maybeNudge();
     }
+
+    // 2B: once a newcomer has solved a few, offer the book — one time only, never nags.
+    function maybeNudge() {
+      try {
+        if (solvedSet.size < 3) return;
+        if (localStorage.getItem('ps_play_nudge')) return;
+        localStorage.setItem('ps_play_nudge', '1');
+        // let the victory modal be seen first, then raise the nudge behind it
+        setTimeout(() => { document.getElementById('nudgeModal').hidden = false; }, 400);
+      } catch (e) { /* private mode — skip the nudge */ }
+    }
+    document.getElementById('nudgeClose').addEventListener('click', () => {
+      document.getElementById('nudgeModal').hidden = true;
+    });
 
     // Timer Logic
     function startTimer() {
@@ -689,6 +718,14 @@ import webPuzzles from '../data/web_puzzles.json';
     .v-actions { display: flex; gap: 12px; justify-content: center; }
     .btn-next { padding: 12px 24px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none; border-radius: 6px; cursor: pointer; }
     .btn-sec { padding: 12px 20px; font-family: var(--display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); background: rgba(255,255,255,.05); border: 1px solid rgba(185,143,82,.3); border-radius: 6px; cursor: pointer; }
+    a.btn-next { display: inline-block; text-decoration: none; }
+    .nudge-card { max-width: 460px; }
+    .nudge-lede { font-style: normal !important; color: var(--ash) !important; line-height: 1.55; font-size: 16px; }
+    .nudge-lede em { color: var(--gold-hi); font-style: italic; }
+    .nudge-actions { flex-direction: column; }
+    .nudge-actions .btn-next, .nudge-actions .btn-sec { width: 100%; text-align: center; }
+    .nudge-fine { font-size: 13px !important; margin: 16px 0 0 !important; color: var(--ash-dim) !important; }
+    .nudge-fine a { color: var(--gold); text-decoration: underline; }
 
     @media (max-width: 768px) {
       .board-layout { grid-template-columns: 1fr; }
