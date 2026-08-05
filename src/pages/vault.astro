@@ -1,4 +1,5 @@
 ---
+import FlatVault from '../components/FlatVault.astro';
 // VAULT I — THE WRITER'S STUDY. First-person walkable 3D room (Three.js r155).
 // Look reference: assets/vault_concepts/vault1_writers_study_v4.jpg (Dan-approved).
 // Movement: drag to look, tap floor to walk, W/▲/scroll glides forward (no free WASD).
@@ -44,6 +45,7 @@ import Analytics from '@vercel/analytics/astro';
       <div class="gate-sub">I · The Writer's Study</div>
       <p class="gate-line">The first door stands open. Two more wait in the dark — each sealed with a word.</p>
       <button id="enterBtn">⟡ &nbsp;Step inside</button>
+      <a id="gate2d" href="/vault?flat=1">or walk it as illustrated panels</a>
     </div>
   </div>
 
@@ -85,34 +87,7 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
-  <!-- The flat vault: the full hunt without WebGL. Shown when the 3D crawl can't run,
-       and reachable on purpose via /vault?flat=1. Every word and every reward works here —
-       nobody who solved the book is ever locked out because of their device. -->
-  <div id="fallback" hidden>
-    <div class="reward-card flat-card">
-      <div class="reward-kicker">THE KEEPER'S VAULTS</div>
-      <h2>SPEAK THE WORD</h2>
-      <p id="flatLede">
-        Your device can't open the 3D crawl, so the Keeper will hear you here instead.
-        Say any word you decoded — it does not matter which vault it belongs to.
-      </p>
-
-      <form id="flatForm" autocomplete="off">
-        <input id="flatWord" type="text" inputmode="latin" autocapitalize="characters"
-               spellcheck="false" maxlength="12" placeholder="a word from the book"
-               aria-label="Enter a word you decoded from the book" />
-        <button class="gold-btn" type="submit" id="flatGo">Speak it</button>
-      </form>
-      <p id="flatMsg" role="status" aria-live="polite"></p>
-
-      <div id="flatVaults" class="flat-vaults"></div>
-
-      <p class="flat-foot">
-        Stuck on a word? <a href="/hints">The hint chamber</a> will nudge you without spoiling it.
-      </p>
-      <a class="ghost-btn" href="/">← back to the landing</a>
-    </div>
-  </div>
+  <FlatVault />
 
   <canvas id="confetti"></canvas>
   <div id="fade"></div>
@@ -200,12 +175,32 @@ import Analytics from '@vercel/analytics/astro';
       box-shadow: 0 0 34px rgba(246,178,60,0.35);
     }
     #enterBtn:hover { filter: brightness(1.08); }
+    #gate2d {
+      display: block; margin: 18px auto 0; font-size: 14px; font-style: italic;
+      color: rgba(232,213,174,0.5); text-decoration: underline; text-underline-offset: 3px;
+    }
+    #gate2d:hover { color: var(--gold); }
+    #slowBar {
+      position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 30;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px;
+      padding: 12px 16px; border-radius: 8px;
+      background: rgba(12,8,4,0.94); border: 1px solid rgba(246,178,60,0.4);
+      box-shadow: 0 10px 34px rgba(0,0,0,0.7);
+      font-size: 14px; font-style: italic; color: rgba(232,213,174,0.85);
+    }
+    #slowBar .ghost-btn { margin-bottom: 0; width: auto; padding: 10px 16px; min-height: 44px; display: flex; align-items: center; }
+    #slowDismiss {
+      background: none; border: none; cursor: pointer; min-height: 44px; padding: 0 8px;
+      font-family: Cinzel, serif; font-size: 12px; letter-spacing: 0.12em;
+      color: rgba(232,213,174,0.5); text-transform: uppercase;
+    }
+    #slowDismiss:hover { color: var(--gold); }
 
-    #reward, #fallback, #pageview {
+    #reward, #pageview {
       position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
       justify-content: center; background: rgba(4,2,0,0.6); backdrop-filter: blur(3px);
     }
-    #reward[hidden], #fallback[hidden], #pageview[hidden] { display: none; }
+    #reward[hidden], #pageview[hidden] { display: none; }
 
     /* A lifted manuscript page — parchment, not the gold reward card, so lore
        reads as a different kind of find from a treasure. */
@@ -233,6 +228,53 @@ import Analytics from '@vercel/analytics/astro';
     }
     .page-card .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,0.45); }
     .page-card .ghost-btn:hover { color: #2c2011; border-color: rgba(90,64,26,0.8); }
+    .reward-card {
+      max-width: 430px; width: calc(100% - 40px); text-align: center;
+      background: linear-gradient(180deg, #1d1207, #120a04);
+      border: 1px solid rgba(246,178,60,0.45); border-radius: 8px;
+      padding: 34px 30px 28px; box-shadow: 0 0 60px rgba(246,178,60,0.18), 0 18px 50px rgba(0,0,0,0.7);
+    }
+    .reward-kicker { font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.38em; color: var(--gold-dim); margin-bottom: 12px; }
+    .reward-card h2 { font-family: Cinzel, serif; font-size: 24px; letter-spacing: 0.12em; color: var(--gold); margin-bottom: 12px; }
+    .reward-card p { font-size: 17px; font-style: italic; color: rgba(232,213,174,0.8); margin-bottom: 22px; line-height: 1.45; }
+    .gold-btn {
+      display: block; font-family: Cinzel, serif; font-size: 13px; letter-spacing: 0.16em;
+      color: var(--ink); background: linear-gradient(180deg, #ffd37a, #d99a2b);
+      border-radius: 4px; padding: 14px 10px; text-decoration: none; margin-bottom: 12px;
+      box-shadow: 0 0 24px rgba(246,178,60,0.3); border: none; cursor: pointer;
+    }
+    .ghost-btn {
+      display: block; width: 100%; font-family: Cinzel, serif; font-size: 12px;
+      letter-spacing: 0.16em; color: rgba(232,213,174,0.65); background: none;
+      border: 1px solid rgba(232,213,174,0.25); border-radius: 4px; padding: 11px 10px;
+      cursor: pointer; text-decoration: none;
+      min-height: 44px;   /* thumb-sized on touch screens */
+    }
+    .ghost-btn:hover { color: var(--gold); border-color: rgba(246,178,60,0.5); }
+
+    /* ---- word entry ---- */
+    #wordbox { position: fixed; inset: 0; z-index: 16; display: flex; align-items: center;
+      justify-content: center; background: rgba(4,2,0,0.65); backdrop-filter: blur(3px); }
+    #wordbox[hidden] { display: none; }
+    .word-card { max-width: 480px; }
+    .word-line { font-size: 18px; font-style: italic; color: rgba(232,213,174,0.85); margin-bottom: 20px; }
+    #tiles { display: flex; justify-content: center; gap: 8px; margin-bottom: 6px; }
+    .tile {
+      width: 46px; height: 56px; border: 1px solid rgba(246,178,60,0.45); border-radius: 5px;
+      background: rgba(20,12,4,0.7); display: flex; align-items: center; justify-content: center;
+      font-family: Cinzel, serif; font-size: 26px; font-weight: 700; color: var(--gold);
+      text-shadow: 0 0 12px rgba(246,178,60,0.5); transition: border-color .15s, background .15s;
+    }
+    .tile.filled { border-color: var(--gold); background: rgba(246,178,60,0.12); }
+    #wordbox.shake .word-card { animation: wbshake .45s; }
+    @keyframes wbshake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-9px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(4px)} }
+    #wbInput { position: absolute; opacity: 0.01; height: 1px; width: 1px; pointer-events: none; }
+    .word-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+    .word-actions .gold-btn, .word-actions .ghost-btn { margin-bottom: 0; }
+    #wbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
+    #speakBtn.listening { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
+    @media (max-width: 480px) { .tile { width: 38px; height: 48px; font-size: 21px; } }
+
     .reward-card {
       max-width: 430px; width: calc(100% - 40px); text-align: center;
       background: linear-gradient(180deg, #1d1207, #120a04);
@@ -331,147 +373,6 @@ import Analytics from '@vercel/analytics/astro';
     }
   </style>
 
-  <!-- The flat vault runs on its own, with no dependency on three.js, because the module
-       below aborts entirely when WebGL is missing. Kept inline so it works even if the
-       bundled 3D script fails to load at all. -->
-  <script is:inline>
-    (function () {
-      var VAULTS = [
-        { rn: 'I',   name: 'The Writer’s Study',   sub: '50 bonus easy puzzles',
-          file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf',        dl: '50 Easy' },
-        { rn: 'II',  name: 'The Library of Puzzles',    sub: '100 bonus medium puzzles',
-          file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf',    dl: '100 Med' },
-        { rn: 'III', name: 'The Grand Treasure Vault',  sub: '200 bonus hard puzzles',
-          file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf',     dl: '200 Hard' },
-        { rn: 'IV',  name: 'The Secret Sanctum',        sub: 'never announced',
-          file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf', dl: '20 Master' },
-      ];
-      var KEY = 'ps_vaults_v1';                 // shared with the 3D crawl and /passport
-      function readOpen() {
-        try { var v = JSON.parse(localStorage.getItem(KEY)); return (v && typeof v === 'object') ? v : {}; }
-        catch (e) { return {}; }
-      }
-      function stamp(act) {
-        try {
-          var v = readOpen();
-          if (!v[act]) { v[act] = new Date().toISOString().slice(0, 10); localStorage.setItem(KEY, JSON.stringify(v)); }
-        } catch (e) { /* private mode — the reward still works, it just isn't remembered */ }
-      }
-
-      var shown = false;
-      function render() {
-        var open = readOpen();
-        var wrap = document.getElementById('flatVaults');
-        if (!wrap) return;
-        wrap.innerHTML = '';
-        VAULTS.forEach(function (v) {
-          var isOpen = !!open[v.rn];
-          var row = document.createElement('div');
-          row.className = 'fv' + (isOpen ? ' open' : '');
-          var rn = document.createElement('div'); rn.className = 'fv-rn'; rn.textContent = v.rn;
-          var body = document.createElement('div'); body.className = 'fv-body';
-          var nm = document.createElement('div'); nm.className = 'fv-name'; nm.textContent = v.name;
-          var sb = document.createElement('div'); sb.className = 'fv-sub';
-          sb.textContent = isOpen ? v.sub : 'sealed — speak its word';
-          body.appendChild(nm); body.appendChild(sb);
-          row.appendChild(rn); row.appendChild(body);
-          if (isOpen) {
-            var a = document.createElement('a');
-            a.className = 'fv-dl'; a.href = v.file; a.setAttribute('download', '');
-            a.textContent = v.dl + ' ⬇';
-            row.appendChild(a);
-          }
-          wrap.appendChild(row);
-        });
-      }
-
-      function show(reason) {
-        var el = document.getElementById('fallback');
-        if (!el) return;
-        el.hidden = false;
-        if (reason === 'chosen') {
-          var lede = document.getElementById('flatLede');
-          if (lede) lede.textContent =
-            'The plain-text vault. Say any word you decoded — it does not matter which vault it belongs to.';
-        }
-        var gate = document.getElementById('gate');
-        if (gate) gate.style.display = 'none';
-        var fade = document.getElementById('fade');
-        if (fade) { fade.style.transition = 'none'; fade.style.display = 'none'; }
-        if (!shown) { shown = true; render(); }
-        var w = document.getElementById('flatWord');
-        if (w) setTimeout(function () { try { w.focus(); } catch (e) {} }, 60);
-      }
-      window.__showFlatVault = show;
-
-      function msg(text, cls) {
-        var m = document.getElementById('flatMsg');
-        if (!m) return;
-        m.textContent = text;
-        m.className = cls || '';
-      }
-
-      var busy = false;
-      function submit(e) {
-        if (e) e.preventDefault();
-        if (busy) return;
-        var input = document.getElementById('flatWord');
-        var word = (input.value || '').replace(/[^A-Za-z]/g, '');
-        if (word.length < 4) { msg('That is too short to be one of my words.', 'bad'); return; }
-        busy = true; msg('The Keeper is listening…', '');
-        fetch('/api/unlock', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ word: word }),
-        }).then(function (r) {
-          return r.json().then(function (d) { return { status: r.status, d: d }; });
-        }).then(function (res) {
-          busy = false;
-          if (res.status === 429) { msg('Too many tries at once. Take a breath, then speak again.', 'bad'); return; }
-          if (res.d && res.d.error === 'vault_offline') { msg('The vault door is jammed on my side. Try again shortly.', 'bad'); return; }
-          if (!res.d || !res.d.ok) {
-            msg('That word means nothing here.', 'bad');
-            var card = document.querySelector('.flat-card');
-            if (card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); }
-            return;
-          }
-          stamp(res.d.act);
-          render();
-          input.value = '';
-          msg('The ' + (res.d.act === 'I' ? 'first' : res.d.act === 'II' ? 'second' : res.d.act === 'III' ? 'third' : 'last')
-              + ' door opens — ' + res.d.reward + ' is yours.', 'good');
-        }).catch(function () {
-          busy = false;
-          msg('I could not reach the vault. Check your connection and speak again.', 'bad');
-        });
-      }
-
-      // DECIDE SYNCHRONOUSLY. This script is parsed before the 3D module, but module
-      // scripts are deferred and run BEFORE DOMContentLoaded — so deciding on DOM-ready
-      // would be too late and the whole scene would be built behind the panel.
-      var qp = new URLSearchParams(location.search);
-      var reason = null;
-      if (qp.get('flat') === '1') reason = 'chosen';
-      else {
-        var ok = false;
-        try {
-          var c = document.createElement('canvas');
-          ok = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
-        } catch (e) { ok = false; }
-        if (!ok) reason = 'nowebgl';
-      }
-      if (reason) window.__flatMode = true;
-
-      function init() {
-        var f = document.getElementById('flatForm');
-        if (f) f.addEventListener('submit', submit);
-        if (reason) show(reason);
-      }
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-      else init();
-    })();
-  </script>
-
   <script>
     import * as THREE from 'three';
 
@@ -480,6 +381,7 @@ import Analytics from '@vercel/analytics/astro';
     const DEBUG_CAM = qs.get('cam');            // "x,z,yaw,pitch" — skip gate, no audio
     const FORCE_OPEN = qs.get('open') === '1';  // bookcase pre-opened (screenshots)
     const FORCE_PANEL = qs.get('panel') === '1';
+    const FORCE_SLOW = qs.get('slowtest') === '1';  // exercise the slow-device offer
     const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const stage = document.getElementById('stage');
@@ -2296,7 +2198,9 @@ import Analytics from '@vercel/analytics/astro';
     }
 
     /* ================= entry / gate ================= */
+    let entered = false;
     function begin(withAudio) {
+      entered = true;
       gate.classList.add('gone');
       fadeEl.classList.add('clear');
       if (withAudio) {
@@ -2394,9 +2298,43 @@ import Analytics from '@vercel/analytics/astro';
       tick(Math.min(clock.getDelta(), 0.1));
     }
     let simT = 0;
+    /* Some devices start WebGL happily and then crawl through a ~900-draw-call scene.
+       Sample the first few seconds after entering and OFFER the illustrated vault — never
+       yank someone out of the room they are standing in. */
+    let fpsFrames = 0, fpsT0 = 0, fpsChecked = false;
+    function watchFrameRate() {
+      if (fpsChecked || !entered) return;
+      // Never judge a backgrounded tab: rAF is throttled there, and because dt is capped at
+      // 0.1s the accumulated-time version of this read ~10fps for a perfectly fast machine
+      // that had simply been left in another tab. Measure wall-clock, and restart the sample
+      // whenever the page comes back to the foreground.
+      if (FORCE_SLOW) { fpsChecked = true; offerFlat(12); return; }   // debug hook only
+      if (document.hidden) { fpsT0 = 0; fpsFrames = 0; return; }
+      const now = performance.now();
+      if (!fpsT0) { fpsT0 = now; fpsFrames = 0; return; }
+      fpsFrames++;
+      const elapsed = (now - fpsT0) / 1000;
+      if (elapsed < 4) return;
+      fpsChecked = true;
+      const fps = fpsFrames / elapsed;
+      if (fps < 20) offerFlat(Math.round(fps));
+    }
+    function offerFlat(fps) {
+      if (document.getElementById('slowBar')) return;
+      const bar = document.createElement('div');
+      bar.id = 'slowBar';
+      bar.innerHTML = '<span>This is running at about ' + fps +
+        ' frames a second on your device.</span>' +
+        '<a class="ghost-btn" href="/vault?flat=1">Switch to the illustrated vault</a>' +
+        '<button id="slowDismiss" aria-label="Keep the 3D vault">Stay in 3D</button>';
+      document.body.appendChild(bar);
+      document.getElementById('slowDismiss').addEventListener('click', () => bar.remove());
+    }
+
     function tick(dt) {
       simT += dt;
       const t = simT;
+      watchFrameRate();
 
       // destination ring breathes while holding
       if (walkRing.visible) {

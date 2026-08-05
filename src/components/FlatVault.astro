@@ -1,0 +1,348 @@
+---
+// The illustrated 2D vault crawl — the whole hunt without WebGL.
+//
+// Shown when the 3D crawl can't run (no WebGL), when a device looks too weak for it, or
+// on purpose via /vault?flat=1. It is deliberately self-contained: markup, styles and an
+// INLINE script with no three.js dependency, because the 3D module aborts entirely when
+// WebGL is missing and this has to survive that — including the 3D bundle never loading.
+//
+// Room art is the concept art Dan approved (study v4 / library v3 / treasure v2), cleaned
+// of the Gemini sparkle and re-exported to WebP in public/art/rooms/.
+---
+
+<div id="fallback" hidden>
+  <div class="flat-shell">
+    <div class="flat-room" id="flatRoom">
+      <img id="flatArt" alt="" hidden />
+      <div class="flat-artshade"></div>
+      <div class="flat-roomtag" id="flatTag">THE KEEPER'S VAULTS</div>
+    </div>
+
+    <div class="flat-body">
+      <h2 id="flatTitle">SPEAK THE WORD</h2>
+      <p id="flatLede">
+        Your device can't open the 3D crawl, so the Keeper will hear you here instead.
+        Say any word you decoded — it does not matter which vault it belongs to.
+      </p>
+
+      <a id="flatReward" class="gold-btn" href="#" download hidden></a>
+
+      <form id="flatForm" autocomplete="off">
+        <input id="flatWord" type="text" inputmode="latin" autocapitalize="characters"
+               spellcheck="false" maxlength="12" placeholder="a word from the book"
+               aria-label="Enter a word you decoded from the book" />
+        <button class="gold-btn" type="submit" id="flatGo">Speak it</button>
+      </form>
+      <p id="flatMsg" role="status" aria-live="polite"></p>
+
+      <div id="flatVaults" class="flat-vaults"></div>
+
+      <p class="flat-foot">
+        Stuck on a word? <a href="/hints">The hint chamber</a> will nudge you without spoiling it.
+      </p>
+      <div class="flat-actions">
+        <a class="ghost-btn" href="/">← back to the landing</a>
+        <a class="ghost-btn" id="flatTo3D" href="/vault" hidden>Try the 3D vault →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  #fallback {
+    position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
+    justify-content: center; background: rgba(4,2,0,0.72); backdrop-filter: blur(3px);
+    padding: 16px; overflow-y: auto;
+  }
+  #fallback[hidden] { display: none; }
+
+  .flat-shell {
+    max-width: 620px; width: 100%; margin: auto;
+    background: linear-gradient(180deg, #1d1207, #100903);
+    border: 1px solid rgba(246,178,60,0.45); border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 60px rgba(246,178,60,0.16), 0 18px 50px rgba(0,0,0,0.75);
+  }
+
+  /* the room plate */
+  .flat-room { position: relative; background: #0b0704; line-height: 0; }
+  .flat-room img { width: 100%; height: auto; display: block; }
+  .flat-room.empty { height: 96px; }
+  .flat-artshade {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0) 38%, rgba(16,9,3,0.92));
+  }
+  .flat-roomtag {
+    position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
+    font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.34em;
+    color: rgba(246,178,60,0.92); line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+  }
+  .flat-room.reveal img { animation: flatReveal 0.7s ease both; }
+  @keyframes flatReveal { from { opacity: 0; transform: scale(1.04); } }
+  @media (prefers-reduced-motion: reduce) { .flat-room.reveal img { animation: none; } }
+
+  .flat-body { padding: 22px 24px 20px; text-align: center; }
+  .flat-body h2 {
+    font-family: Cinzel, serif; font-size: 22px; letter-spacing: 0.12em;
+    color: var(--gold, #f6b23c); margin-bottom: 10px;
+  }
+  .flat-body p {
+    font-size: 16px; font-style: italic; line-height: 1.45;
+    color: rgba(232,213,174,0.8); margin-bottom: 16px;
+  }
+
+  #flatForm { display: flex; gap: 8px; margin-bottom: 4px; }
+  #flatWord {
+    flex: 1; min-width: 0; font-family: Cinzel, serif; font-size: 16px; letter-spacing: 0.16em;
+    text-align: center; text-transform: uppercase; color: var(--gold, #f6b23c);
+    background: rgba(0,0,0,0.45); border: 1px solid rgba(246,178,60,0.4);
+    border-radius: 4px; padding: 13px 10px; min-height: 46px;
+  }
+  #flatWord::placeholder { color: rgba(232,213,174,0.3); text-transform: none; letter-spacing: 0.04em; font-style: italic; }
+  #flatWord:focus { outline: none; border-color: var(--gold, #f6b23c); box-shadow: 0 0 16px rgba(246,178,60,0.3); }
+  #flatGo { margin-bottom: 0; white-space: nowrap; min-height: 46px; padding: 0 18px; }
+  #flatReward { display: block; margin-bottom: 16px; }
+  #flatMsg { min-height: 24px; margin: 6px 0 14px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.72); }
+  #flatMsg.bad { color: #e08a6a; }
+  #flatMsg.good { color: var(--gold, #f6b23c); }
+  .flat-shell.shake { animation: wbshake 0.4s; }
+
+  .flat-vaults { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; text-align: left; }
+  .fv {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 5px;
+    border: 1px dashed rgba(246,178,60,0.25); background: rgba(0,0,0,0.28);
+  }
+  .fv.open { border-style: solid; border-color: rgba(246,178,60,0.6); background: rgba(246,178,60,0.08); }
+  .fv-rn { font-family: Cinzel, serif; font-size: 13px; color: rgba(246,178,60,0.6); width: 26px; flex: none; }
+  .fv.open .fv-rn { color: var(--gold, #f6b23c); }
+  .fv-body { flex: 1; min-width: 0; }
+  .fv-name { font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.12em; color: rgba(232,213,174,0.85); }
+  .fv-sub { font-size: 13px; font-style: italic; color: rgba(232,213,174,0.45); }
+  .fv.open .fv-sub { color: rgba(232,213,174,0.75); }
+  .fv-dl {
+    flex: none; font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, #ffd37a, #d99a2b);
+    border-radius: 4px; padding: 9px 11px; min-height: 38px; display: flex; align-items: center;
+  }
+  .flat-foot { font-size: 14px !important; margin-bottom: 14px !important; }
+  .flat-foot a { color: var(--gold, #f6b23c); text-decoration: underline; }
+  .flat-actions { display: flex; flex-direction: column; gap: 8px; }
+  .flat-actions .ghost-btn { margin-bottom: 0; }
+
+  @media (max-width: 430px) {
+    .flat-body { padding: 18px 16px 16px; }
+    #flatForm { flex-direction: column; }
+    .fv { flex-wrap: wrap; }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var ROOMS = {
+      I:   { name: 'The Writer’s Study',        art: '/art/rooms/study.webp',
+             sub: '50 bonus easy puzzles',   dl: '50 Easy',
+             file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf',
+             btn: 'Take the 50 puzzles (PDF)', vo: '/audio/vo/vo_vault1_reward.wav',
+             line: 'My study. Every puzzle I ever set began on that desk — and the first fifty are yours.' },
+      II:  { name: 'The Library of Puzzles',    art: '/art/rooms/library.webp',
+             sub: '100 bonus medium puzzles', dl: '100 Med',
+             file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf',
+             btn: 'Take the 100 puzzles (PDF)', vo: '/audio/vo/vo_vault2_reward.wav',
+             line: 'A hundred more, bound for the readers of my letter. The library approves of you.' },
+      III: { name: 'The Grand Treasure Vault',  art: '/art/rooms/treasure.webp',
+             sub: '200 bonus hard puzzles',  dl: '200 Hard',
+             file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf',
+             btn: 'Take the 200 puzzles (PDF)', vo: '/audio/vo/vo_vault3_finale.wav',
+             line: 'The deepest hoard is open. And on the wall — four seals, four secrets still to come.' },
+      IV:  { name: 'The Secret Sanctum',        art: null,
+             sub: '20 master puzzles',       dl: '20 Master',
+             file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf',
+             btn: 'Take the 20 master puzzles (PDF)', vo: '/audio/vo/vo_fourth.wav',
+             line: 'You found what was never lit, and decoded what was never written.' },
+    };
+    var ORDER = ['I', 'II', 'III', 'IV'];
+    var KEY = 'ps_vaults_v1';            // shared with the 3D crawl and /passport
+
+    function readOpen() {
+      try { var v = JSON.parse(localStorage.getItem(KEY)); return (v && typeof v === 'object') ? v : {}; }
+      catch (e) { return {}; }
+    }
+    function stamp(act) {
+      try {
+        var v = readOpen();
+        if (!v[act]) { v[act] = new Date().toISOString().slice(0, 10); localStorage.setItem(KEY, JSON.stringify(v)); }
+      } catch (e) { /* private mode — the reward still works, it just isn't remembered */ }
+    }
+    function deepest(open) {
+      var d = null;
+      ORDER.forEach(function (rn) { if (open[rn]) d = rn; });
+      return d;
+    }
+
+    var $ = function (id) { return document.getElementById(id); };
+    var shown = false, lastRoom = null;
+
+    function playVO(src) {
+      try {
+        var a = new Audio(src);
+        a.volume = 0.9;
+        var p = a.play();
+        if (p && p.catch) p.catch(function () { /* autoplay refused — captions carry it */ });
+      } catch (e) { /* no audio on this device — fine */ }
+    }
+
+    function render(justOpened) {
+      var open = readOpen();
+      var cur = deepest(open);
+
+      // the room plate
+      var roomEl = $('flatRoom'), art = $('flatArt'), tag = $('flatTag');
+      var r = cur ? ROOMS[cur] : null;
+      if (r && r.art) {
+        if (lastRoom !== cur) {
+          art.src = r.art; art.hidden = false;
+          roomEl.classList.remove('empty');
+          roomEl.classList.remove('reveal'); void roomEl.offsetWidth; roomEl.classList.add('reveal');
+        }
+        tag.textContent = 'VAULT ' + cur + ' — ' + r.name.toUpperCase();
+      } else if (r) {                       // Vault IV has no illustration by design
+        art.hidden = true; roomEl.classList.add('empty');
+        tag.textContent = 'VAULT IV — ' + r.name.toUpperCase();
+      } else {
+        art.hidden = true; roomEl.classList.add('empty');
+        tag.textContent = "THE KEEPER'S VAULTS";
+      }
+
+      // headline, the Keeper's line, and the reward for the room you're standing in
+      var title = $('flatTitle'), lede = $('flatLede'), rw = $('flatReward');
+      if (r) {
+        title.textContent = r.name.toUpperCase();
+        lede.textContent = r.line;
+        rw.hidden = false; rw.href = r.file; rw.textContent = r.btn;
+      } else {
+        rw.hidden = true;
+      }
+
+      // the four-vault ledger
+      var wrap = $('flatVaults');
+      wrap.innerHTML = '';
+      ORDER.forEach(function (rn) {
+        var v = ROOMS[rn], isOpen = !!open[rn];
+        var row = document.createElement('div');
+        row.className = 'fv' + (isOpen ? ' open' : '');
+        var n = document.createElement('div'); n.className = 'fv-rn'; n.textContent = rn;
+        var body = document.createElement('div'); body.className = 'fv-body';
+        var nm = document.createElement('div'); nm.className = 'fv-name'; nm.textContent = v.name;
+        var sb = document.createElement('div'); sb.className = 'fv-sub';
+        sb.textContent = isOpen ? v.sub : 'sealed — speak its word';
+        body.appendChild(nm); body.appendChild(sb);
+        row.appendChild(n); row.appendChild(body);
+        if (isOpen) {
+          var a = document.createElement('a');
+          a.className = 'fv-dl'; a.href = v.file; a.setAttribute('download', '');
+          a.textContent = v.dl + ' ⬇';
+          row.appendChild(a);
+        }
+        wrap.appendChild(row);
+      });
+
+      if (justOpened && r && lastRoom !== cur) playVO(r.vo);
+      lastRoom = cur;
+    }
+
+    function show(reason) {
+      var el = $('fallback');
+      if (!el) return;
+      el.hidden = false;
+      if (reason === 'chosen' || reason === 'slow') {
+        var lede = $('flatLede');
+        if (lede && !deepest(readOpen())) {
+          lede.textContent = reason === 'slow'
+            ? 'The illustrated vault — kinder to your device. Say any word you decoded.'
+            : 'The illustrated vault. Say any word you decoded — it does not matter which vault it belongs to.';
+        }
+      }
+      // stand alone: the 3D module may never run, so clear its gate and fade ourselves
+      var gate = $('gate'); if (gate) gate.style.display = 'none';
+      var fade = $('fade'); if (fade) { fade.style.transition = 'none'; fade.style.display = 'none'; }
+      if (!shown) {
+        shown = true;
+        render(false);
+        if (window.__hasWebGL && reason !== 'nowebgl') { var b = $('flatTo3D'); if (b) b.hidden = false; }
+      }
+      var w = $('flatWord');
+      if (w) setTimeout(function () { try { w.focus(); } catch (e) {} }, 60);
+    }
+    window.__showFlatVault = show;
+
+    function msg(text, cls) {
+      var m = $('flatMsg');
+      if (!m) return;
+      m.textContent = text; m.className = cls || '';
+    }
+
+    var busy = false;
+    function submit(e) {
+      if (e) e.preventDefault();
+      if (busy) return;
+      var input = $('flatWord');
+      var word = (input.value || '').replace(/[^A-Za-z]/g, '');
+      if (word.length < 4) { msg('That is too short to be one of my words.', 'bad'); return; }
+      busy = true; msg('The Keeper is listening…', '');
+      fetch('/api/unlock', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ word: word }),
+      }).then(function (res) {
+        return res.json().then(function (d) { return { status: res.status, d: d }; });
+      }).then(function (out) {
+        busy = false;
+        if (out.status === 429) { msg('Too many tries at once. Take a breath, then speak again.', 'bad'); return; }
+        if (out.d && out.d.error === 'vault_offline') { msg('The vault door is jammed on my side. Try again shortly.', 'bad'); return; }
+        if (!out.d || !out.d.ok) {
+          msg('That word means nothing here.', 'bad');
+          var shell = document.querySelector('.flat-shell');
+          if (shell) { shell.classList.remove('shake'); void shell.offsetWidth; shell.classList.add('shake'); }
+          return;
+        }
+        var had = !!readOpen()[out.d.act];
+        stamp(out.d.act);
+        input.value = '';
+        render(true);
+        msg(had ? 'That door was already open to you.' : 'The door swings wide.', 'good');
+      }).catch(function () {
+        busy = false;
+        msg('I could not reach the vault. Check your connection and speak again.', 'bad');
+      });
+    }
+
+    // ---- mode decision, made SYNCHRONOUSLY -------------------------------------------
+    // Module scripts are deferred and execute BEFORE DOMContentLoaded, so deciding on
+    // DOM-ready would be too late — the whole 3D scene would build behind this panel.
+    var qp = new URLSearchParams(location.search);
+    var webgl = false;
+    try {
+      var c = document.createElement('canvas');
+      webgl = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+    } catch (e) { webgl = false; }
+    window.__hasWebGL = webgl;
+
+    var reason = null;
+    if (qp.get('flat') === '1') reason = 'chosen';
+    else if (!webgl) reason = 'nowebgl';
+    else if (qp.get('flat') !== '0') {
+      // A device that CAN start WebGL but will crawl through a 900-draw-call scene.
+      // Conservative: only route when the hardware says so outright.
+      var mem = navigator.deviceMemory, cores = navigator.hardwareConcurrency;
+      if ((typeof mem === 'number' && mem <= 2) || (typeof cores === 'number' && cores <= 2)) reason = 'slow';
+    }
+    if (reason) window.__flatMode = true;
+
+    function init() {
+      var f = $('flatForm');
+      if (f) f.addEventListener('submit', submit);
+      if (reason) show(reason);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+</script>
