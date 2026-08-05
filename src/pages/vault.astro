@@ -1217,8 +1217,39 @@ import Analytics from '@vercel/analytics/astro';
     box(0.26, 2.8, 0.3, M.goldGlow, AX + 1.02, 1.4, -19.68);
     box(2.3, 0.26, 0.3, M.goldGlow, AX, 2.72, -19.68);
     // floor / ceiling / walls (carved frieze stone)
-    const v3Floor = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 6.6), M.floor);
-    v3Floor.rotation.x = -Math.PI / 2; v3Floor.position.set(AX, 0.001, -22.8); scene.add(v3Floor);
+    /* The treasure floor is built in four pieces around the hidden stairwell mouth, so the
+       stair can genuinely drop through it. STAIR is the single source of truth for the
+       opening -- floor pieces, walk zones, the ramp height and the slab all derive from it. */
+    const STAIR = { x0: AX - 3.25, x1: AX - 2.05, zTop: -21.2, zBot: -24.2, depth: 2.4 };
+    STAIR.cx = (STAIR.x0 + STAIR.x1) / 2;
+    STAIR.cz = (STAIR.zTop + STAIR.zBot) / 2;
+    /* Splitting a floor into pieces re-creates the wall problem: PlaneGeometry UVs are 0..1
+       per piece, so each piece squeezes the whole texture into its own size and the seams
+       show as a change of plank scale. Project from world position instead, exactly as the
+       walls do -- which ALSO makes the secret slab vanish, because its stone lines up with
+       the floor around it instead of sitting there as an obvious rectangle. */
+    const FLOOR_REF = 7.8;
+    function worldFloorUVs(geo, x0, x1, z0, z1) {
+      const uv = geo.attributes.uv;                            // plane: 4 verts, TL TR BL BR
+      const u0 = x0 / FLOOR_REF, u1 = x1 / FLOOR_REF;
+      const v0 = z0 / FLOOR_REF, v1 = z1 / FLOOR_REF;
+      uv.setXY(0, u0, v1); uv.setXY(1, u1, v1);
+      uv.setXY(2, u0, v0); uv.setXY(3, u1, v0);
+      uv.needsUpdate = true;
+    }
+    function floorSlab(x0, x1, z0, z1, parent) {               // z0 = far, z1 = near
+      const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0);
+      worldFloorUVs(geo, x0, x1, z0, z1);
+      const m = new THREE.Mesh(geo, M.floor);
+      m.rotation.x = -Math.PI / 2;
+      m.position.set((x0 + x1) / 2, 0.001, (z0 + z1) / 2);
+      (parent || scene).add(m); return m;
+    }
+    const V3F = { x0: AX - 3.9, x1: AX + 3.9, z0: -26.1, z1: -19.5 };
+    const v3Floor  = floorSlab(STAIR.x1, V3F.x1, V3F.z0, V3F.z1);        // everything right of it
+    const v3FloorL = floorSlab(V3F.x0, STAIR.x0, V3F.z0, V3F.z1);        // thin strip left of it
+    const v3FloorB = floorSlab(STAIR.x0, STAIR.x1, V3F.z0, STAIR.zBot);  // behind the mouth
+    const v3FloorF = floorSlab(STAIR.x0, STAIR.x1, STAIR.zTop, V3F.z1);  // in front of the mouth
     const v3Ceil = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 6.6), new THREE.MeshStandardMaterial({ map: wallTex, color: 0x5a4630, roughness: 1 }));
     v3Ceil.rotation.x = Math.PI / 2; v3Ceil.position.set(AX, V3.H, -22.8); scene.add(v3Ceil);
     box(0.2, V3.H, 6.6, M.frieze, V3.minX - 0.1, V3.H / 2, -22.8);
@@ -1356,28 +1387,90 @@ import Analytics from '@vercel/analytics/astro';
     const galleryLight = new THREE.PointLight(0xffd47a, 20, 8, 2);
     galleryLight.position.set(AX, 3.2, -24.5); scene.add(galleryLight);
 
-    /* ---- VAULT IV — THE SECRET SANCTUM (z -25.9 … -31.2, x AX±3.2, H 4.2) ---- */
-    const door4 = makeVaultDoor(-25.85, 'door4', 'The fourth door — secret wall passage');
+    /* ---- VAULT IV -- THE SECRET SANCTUM, now BENEATH the treasure vault ----
+       Dan's call: no wall passage and no teleport. A slab in the floor grinds aside and a
+       stone stair goes down. It is walkable in BOTH directions -- nothing is ever locked
+       behind you. Everything below lives in sanctumG, one storey down. */
+    const V4Y = -STAIR.depth;
+    const sanctumG = new THREE.Group(); sanctumG.position.y = V4Y; scene.add(sanctumG);
+
+    // -- the flight: 12 steps over a 3m run and a 2.4m drop (~39 degrees)
+    const STEPS = 12, RUN = (STAIR.zTop - STAIR.zBot) / STEPS, RISE = STAIR.depth / STEPS;
+    const stairG = new THREE.Group(); scene.add(stairG);
+    for (let i = 0; i < STEPS; i++) {
+      const treadY = -RISE * (i + 1);
+      const z = STAIR.zTop - (i + 0.5) * RUN;
+      box(STAIR.x1 - STAIR.x0, 0.26, RUN + 0.015, M.stonePed, STAIR.cx, treadY - 0.13, z, 0, stairG);
+      // a worn brass nosing catches the light so each tread reads on the way down
+      box(STAIR.x1 - STAIR.x0 - 0.1, 0.012, 0.03, M.brass, STAIR.cx, treadY + 0.007, z - RUN / 2 + 0.02, 0, stairG);
+    }
+    // shaft walls, so you descend through cut rock rather than mid-air
+    const SHAFT_H = STAIR.depth + 0.3, SHAFT_L = STAIR.zTop - STAIR.zBot + 0.5;
+    box(0.16, SHAFT_H, SHAFT_L, M.wall, STAIR.x0 - 0.08, -SHAFT_H / 2 + 0.02, STAIR.cz, 0, stairG);
+    box(0.16, SHAFT_H, SHAFT_L, M.wall, STAIR.x1 + 0.08, -SHAFT_H / 2 + 0.02, STAIR.cz, 0, stairG);
+    box(STAIR.x1 - STAIR.x0 + 0.32, SHAFT_H, 0.16, M.wall, STAIR.cx, -SHAFT_H / 2 + 0.02, STAIR.zTop + 0.08, 0, stairG);
+    // a raised kerb around the mouth so nobody steps into an invisible hole
+    const KERB = 0.09;
+    box(STAIR.x1 - STAIR.x0 + 0.3, KERB, 0.14, M.stonePed, STAIR.cx, KERB / 2, STAIR.zTop + 0.07, 0, stairG);
+    box(0.14, KERB, STAIR.zTop - STAIR.zBot, M.stonePed, STAIR.x0 - 0.07, KERB / 2, STAIR.cz, 0, stairG);
+    box(0.14, KERB, STAIR.zTop - STAIR.zBot, M.stonePed, STAIR.x1 + 0.07, KERB / 2, STAIR.cz, 0, stairG);
+    // light spilling up out of the opening -- the first thing you see when it grinds aside
+    const stairLight = new THREE.PointLight(0xffc472, 0, 7, 2);
+    stairLight.position.set(STAIR.cx, -STAIR.depth + 1.1, STAIR.zBot + 0.6); scene.add(stairLight);
+    // a bracket lamp just inside the mouth: something to walk toward on the way down,
+    // and the reason the shaft is not pitch black the moment the slab moves
+    const stairSconce = new THREE.Group(); stairSconce.position.set(STAIR.x1 - 0.06, -0.55, STAIR.zTop - 0.55);
+    stairG.add(stairSconce);
+    box(0.06, 0.16, 0.06, M.iron, 0, 0, 0, 0, stairSconce);
+    box(0.12, 0.05, 0.12, M.brass, -0.07, 0.09, 0, 0, stairSconce);
+    const stairFlame = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.13, 8), M.flame);
+    stairFlame.position.set(-0.07, 0.17, 0); stairSconce.add(stairFlame);
+    const stairSconceLight = new THREE.PointLight(0xffb559, 0, 3.6, 2);
+    stairSconceLight.position.set(-0.07, 0.2, 0); stairSconce.add(stairSconceLight);
+    stairG.visible = false;                                   // hidden until the slab moves
+
+    // -- the slab hiding it: flush flagstone, indistinguishable until it moves
+    const slab = new THREE.Group(); scene.add(slab);
+    slab.position.set(STAIR.cx, -0.055, STAIR.cz);
+    box(STAIR.x1 - STAIR.x0 + 0.02, 0.11, STAIR.zTop - STAIR.zBot + 0.02, M.stonePed, 0, 0, 0, 0, slab);
+    // its face carries the SAME world-projected stone as the floor it sits in, so while it is
+    // shut there is nothing to see -- the lantern is the only way to know it is there.
+    const slabTop = floorSlab(STAIR.x0, STAIR.x1, STAIR.zBot, STAIR.zTop, slab);
+    slabTop.position.set(0, 0.056, 0);
+
+    // -- the tunnel from the stair foot through to the sanctum (under the treasure floor)
+    const tunG = new THREE.Group(); scene.add(tunG); tunG.visible = false;
+    const tunZ0 = -26.1, tunZ1 = STAIR.zBot, tunMid = (tunZ0 + tunZ1) / 2, tunLen = tunZ1 - tunZ0;
+    box(STAIR.x1 - STAIR.x0 + 0.3, 0.12, tunLen, M.floor, STAIR.cx, V4Y - 0.06, tunMid, 0, tunG);
+    box(0.16, 2.0, tunLen, M.wall, STAIR.x0 - 0.08, V4Y + 1.0, tunMid, 0, tunG);
+    box(0.16, 2.0, tunLen, M.wall, STAIR.x1 + 0.08, V4Y + 1.0, tunMid, 0, tunG);
+    box(STAIR.x1 - STAIR.x0 + 0.3, 0.14, tunLen, M.wall, STAIR.cx, V4Y + 2.0, tunMid, 0, tunG);
+
     const v4Floor = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 5.3), M.floor);
-    v4Floor.rotation.x = -Math.PI / 2; v4Floor.position.set(AX, 0.001, -28.55); scene.add(v4Floor);
+    v4Floor.rotation.x = -Math.PI / 2; v4Floor.position.set(AX, 0.001, -28.55); sanctumG.add(v4Floor);
     const v4Ceil = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 5.3), new THREE.MeshStandardMaterial({ map: wallTex, color: 0x4a3420, roughness: 0.95 }));
-    v4Ceil.rotation.x = Math.PI / 2; v4Ceil.position.set(AX, 4.2, -28.55); scene.add(v4Ceil);
-    box(0.2, 4.2, 5.3, M.frieze, AX - 3.2, 2.1, -28.55);
-    box(0.2, 4.2, 5.3, M.frieze, AX + 3.2, 2.1, -28.55);
-    box(6.4, 4.2, 0.2, M.frieze, AX, 2.1, -31.2);
+    v4Ceil.rotation.x = Math.PI / 2; v4Ceil.position.set(AX, 2.75, -28.55); sanctumG.add(v4Ceil);
+    box(0.2, 2.75, 5.3, M.frieze, AX - 3.2, 1.375, -28.55, 0, sanctumG);
+    box(0.2, 2.75, 5.3, M.frieze, AX + 3.2, 1.375, -28.55, 0, sanctumG);
+    box(6.4, 2.75, 0.2, M.frieze, AX, 1.375, -31.2, 0, sanctumG);
+    // front wall of the sanctum, with the tunnel mouth cut out of it
+    box(STAIR.x0 - (AX - 3.2), 2.75, 0.2, M.frieze, ((AX - 3.2) + STAIR.x0) / 2, 1.375, -26.1, 0, sanctumG);
+    box((AX + 3.2) - STAIR.x1, 2.75, 0.2, M.frieze, (STAIR.x1 + (AX + 3.2)) / 2, 1.375, -26.1, 0, sanctumG);
+    box(STAIR.x1 - STAIR.x0, 0.75, 0.2, M.frieze, STAIR.cx, 2.375, -26.1, 0, sanctumG);
 
     // Master Altar Tapestry of original still art on the back wall of Vault IV
-    makeFramedPicture('/art/door-v10.webp', 3.8, 2.5, AX, 2.4, -31.05);
-    const sanctumLight = new THREE.PointLight(0xffd47a, 35, 10, 2);
-    sanctumLight.position.set(AX, 2.8, -29.5); scene.add(sanctumLight);
+    makeFramedPicture('/art/door-v10.webp', 3.8, 2.5, AX, 1.5, -31.05, 0, sanctumG);
+    // dialled back from 35: the ceiling is 2.75m here, not 4.2m, so the lamp sits far closer
+    const sanctumLight = new THREE.PointLight(0xffd47a, 16, 7.5, 2);
+    sanctumLight.position.set(AX, V4Y + 1.9, -29.5); scene.add(sanctumLight);
 
     // central golden pedestal holding the Master Secret Tome
-    const ped4 = pedestal(AX, -28.5);
+    const ped4 = pedestal(AX, -28.5); sanctumG.add(ped4);
     const masterTome = new THREE.Group(); masterTome.position.set(0, 1.05, 0); ped4.add(masterTome);
     masterTome.userData = { kind: 'masterTome', label: "The Secret Sanctum — Master Reward" };
     box(0.48, 0.09, 0.36, M.stack, 0, 0.05, 0, 0, masterTome);
     sprite(1.5, 0, 0.3, 0, masterTome, 0.95);
-    const mtLight = new THREE.PointLight(0xffd47a, 20, 7, 2);
+    const mtLight = new THREE.PointLight(0xffd47a, 9, 4.5, 2);
     mtLight.position.set(0, 0.5, 0); masterTome.add(mtLight);
 
     /* ---- THE KEEPER'S STORY: 9 scattered manuscript pages ----------------------
@@ -1728,9 +1821,17 @@ import Analytics from '@vercel/analytics/astro';
       { minX: LIB.minX + 0.75, maxX: LIB.maxX - 0.75, minZ: -16.55, maxZ: -8.1, ok: () => door2Open }, // the library
       { minX: AX - 0.62, maxX: AX + 0.62, minZ: -19.15, maxZ: -16.55, ok: () => door2Open },        // corridor II
       { minX: AX - 0.5, maxX: AX + 0.5, minZ: -20.3, maxZ: -19.15, ok: () => door3Open },           // through Door III
-      { minX: V3.minX + 0.45, maxX: V3.maxX - 0.45, minZ: -25.45, maxZ: -20.3, ok: () => door3Open }, // the treasure vault
-      { minX: AX - 0.5, maxX: AX + 0.5, minZ: -26.5, maxZ: -25.45, ok: () => door4Open },           // through Door IV
-      { minX: AX - 2.8, maxX: AX + 2.8, minZ: -30.8, maxZ: -26.5, ok: () => door4Open },            // the secret sanctum
+      // the treasure vault, in three pieces so nobody stands on the stairwell opening
+      { minX: STAIR.x1, maxX: V3.maxX - 0.45, minZ: -25.45, maxZ: -20.3, ok: () => door3Open },
+      { minX: V3.minX + 0.45, maxX: STAIR.x0, minZ: -25.45, maxZ: -20.3, ok: () => door3Open },
+      { minX: STAIR.x0, maxX: STAIR.x1, minZ: -25.45, maxZ: STAIR.zBot, ok: () => door3Open },
+      { minX: STAIR.x0, maxX: STAIR.x1, minZ: STAIR.zTop, maxZ: -20.3, ok: () => door3Open },
+      // ...except while the slab is still closed, when it is simply floor
+      { minX: STAIR.x0, maxX: STAIR.x1, minZ: STAIR.zBot, maxZ: STAIR.zTop, ok: () => !door4Open },
+      // the stair, the tunnel at its foot, and the sanctum -- open in BOTH directions
+      { minX: STAIR.x0 + 0.1, maxX: STAIR.x1 - 0.1, minZ: STAIR.zBot, maxZ: STAIR.zTop, ok: () => door4Open },
+      { minX: STAIR.x0 + 0.1, maxX: STAIR.x1 - 0.1, minZ: -26.1, maxZ: STAIR.zBot, ok: () => door4Open },
+      { minX: AX - 2.8, maxX: AX + 2.8, minZ: -30.8, maxZ: -26.1, ok: () => door4Open },
     ];
     const OBSTACLES = [
       { x: 0.5, z: -0.55, r: 1.55 },                                   // desk + chair
@@ -1742,6 +1843,20 @@ import Analytics from '@vercel/analytics/astro';
       { x: AX - 1.9, z: -23.6, r: 0.62 }, { x: AX + 1.75, z: -23.9, r: 0.62 }, // side chests
       { x: AX, z: -28.5, r: 0.65 },                                    // master pedestal
     ];
+    /* How high the ground is under a given spot. Everything above y=0 is the vaults proper;
+       only the stair, its tunnel and the sanctum go below, and only once the slab has moved.
+       The stair is treated as a smooth ramp underfoot while it RENDERS as real steps --
+       standard practice, and it keeps the descent from juddering tread by tread. */
+    function floorYAt(x, z) {
+      if (!door4Open) return 0;
+      const inShaft = x > STAIR.x0 - 0.25 && x < STAIR.x1 + 0.25;
+      if (inShaft && z <= STAIR.zTop && z >= STAIR.zBot) {
+        return -STAIR.depth * ((STAIR.zTop - z) / (STAIR.zTop - STAIR.zBot));
+      }
+      if (inShaft && z < STAIR.zBot && z > -26.1) return -STAIR.depth;   // the tunnel
+      if (z <= -26.1) return -STAIR.depth;                                // the sanctum
+      return 0;
+    }
     function clampPos(p) {
       let bx = 0, bz = 0, bd = Infinity;
       for (const z of ZONES) {
@@ -1771,7 +1886,7 @@ import Analytics from '@vercel/analytics/astro';
     /* ---- pointer: drag = look, tap = interact/walk ---- */
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
-    const interactables = [stack, hinge, door2, door3, door4, lectern, chestG, masterTome, sealsWall, lantern,
+    const interactables = [stack, hinge, door2, door3, lectern, chestG, masterTome, sealsWall, lantern,
       ...storyPages,
       ...sealPulse.filter(o => o.isMesh)];
     let down = null, dragging = false;
@@ -1991,8 +2106,9 @@ import Analytics from '@vercel/analytics/astro';
                kicker: 'THE SECOND DOOR', vo: 'door2', isOpen: () => door2Open, setOpen: () => { door2Open = true; }, obj: door2 },
       door3: { act: 'III', stand: { x: AX, z: -18.55 }, inside: { x: AX, z: -21.0 },
                kicker: 'THE THIRD DOOR', vo: 'door3', isOpen: () => door3Open, setOpen: () => { door3Open = true; }, obj: door3 },
+      // The fourth secret has no door object any more -- lanternSuccess() opens the FLOOR.
       fourth: { act: 'IV', stand: { x: V3.minX + 1.2, z: -24.8 }, inside: { x: AX, z: -28.5 },
-               kicker: 'THE FOURTH SECRET', vo: 'fourth', isOpen: () => door4Open, setOpen: () => { door4Open = true; }, obj: door4 },
+               kicker: 'THE FOURTH SECRET', vo: 'fourth', isOpen: () => door4Open, setOpen: () => { door4Open = true; }, obj: null },
     };
     const doorAnims = [];
     function openVaultDoor(key) {
@@ -2103,12 +2219,25 @@ import Analytics from '@vercel/analytics/astro';
         rec.start();
       } catch (e) { /* ignore */ }
     });
+    let slabAnim = null;                  // {start, dur} -- the slab grinding aside
     function lanternSuccess() {
       lanternGlim.material.opacity = 1.0;
       door4Open = true;
-      openVaultDoor('fourth');
+      stairG.visible = true; tunG.visible = true;
+      slabAnim = { start: performance.now(), dur: 2600 };
+      playBoom && playBoom();
       burstConfetti();
-      showCaption('So. You heard the whole of it. The secret sanctum stands open.', 8000);
+      showCaption('The floor answers. A stair, cut long before this vault was sealed \u2014 go down, and come back up when you please.', 9000);
+    }
+    function tickSlab() {
+      if (!slabAnim) return;
+      const e = Math.min(1, (performance.now() - slabAnim.start) / slabAnim.dur);
+      const k = e < 0.5 ? 2 * e * e : 1 - Math.pow(-2 * e + 2, 2) / 2;   // easeInOutQuad
+      slab.position.x = STAIR.cx + k * ((STAIR.x1 - STAIR.x0) + 0.05);   // slides under its neighbours
+      slab.position.y = -0.055 - k * 0.16;
+      stairLight.intensity = 16 * k;
+      stairSconceLight.intensity = 7 * k;
+      if (e >= 1) { slabAnim = null; slab.visible = false; }
     }
 
     /* ---- what clicking things does ---- */
@@ -2134,7 +2263,7 @@ import Analytics from '@vercel/analytics/astro';
       } else if (kind === 'bookcase') {
         if (doorAnim || doorAmt > 0.5) return;
         openBookcase();
-      } else if (kind === 'door2' || kind === 'door3' || kind === 'door4') {
+      } else if (kind === 'door2' || kind === 'door3') {
         const D = DOORS[kind];
         if (D.isOpen()) return;
         goThen(D.stand.x, D.stand.z, () => openWordbox(kind));
@@ -2150,7 +2279,9 @@ import Analytics from '@vercel/analytics/astro';
         showCaption('Four seals. Four secrets still to come — the hunt continues beyond this vault.', 6200);
       } else if (kind === 'fourth') {
         if (door4Open) {
-          goThen(AX, -27.6, () => openReward('IV'));
+          // walk them to the head of the stair and let them take it themselves
+          goThen(STAIR.cx, STAIR.zTop + 0.9,
+            () => showCaption('The stair is open. Walk down \u2014 and back up whenever you like.', 5200));
         } else {
           lanternGlim.material.opacity = 0.5;
           goThen(V3.minX + 1.3, -24.8, () => openWordbox('fourth'));
@@ -2231,6 +2362,7 @@ import Analytics from '@vercel/analytics/astro';
     window.__vault = {
       scene, camera, renderer,
       player, moveTo, openBookcase, openReward, activate, openWordbox, submitWord,
+      floorYAt, get door4Open() { return door4Open; }, STAIR,
       get doorAmt() { return doorAmt; },
       get door2Open() { return door2Open; },
       get door3Open() { return door3Open; },
@@ -2298,6 +2430,7 @@ import Analytics from '@vercel/analytics/astro';
       tick(Math.min(clock.getDelta(), 0.1));
     }
     let simT = 0;
+    let eyeY = 1.6;                       // smoothed eye height, so stairs read as a walk
     /* Some devices start WebGL happily and then crawl through a ~900-draw-call scene.
        Sample the first few seconds after entering and OFFER the illustrated vault — never
        yank someone out of the room they are standing in. */
@@ -2335,6 +2468,7 @@ import Analytics from '@vercel/analytics/astro';
       simT += dt;
       const t = simT;
       watchFrameRate();
+      tickSlab();
 
       // destination ring breathes while holding
       if (walkRing.visible) {
@@ -2349,7 +2483,10 @@ import Analytics from '@vercel/analytics/astro';
       if (pendingAction && player.pos.distanceTo(player.target) < 0.18) {
         const a = pendingAction; pendingAction = null; a();
       }
-      camera.position.set(player.pos.x, 1.6, player.pos.z);
+      // eye height follows the ground; eased so the lip of the stair does not snap
+      const groundY = floorYAt(player.pos.x, player.pos.z);
+      eyeY += (groundY + 1.6 - eyeY) * Math.min(1, dt * 9);
+      camera.position.set(player.pos.x, eyeY, player.pos.z);
       camera.rotation.set(pitch, yaw, 0);
 
       // auto-open the bookcase as you draw near
@@ -2403,7 +2540,11 @@ import Analytics from '@vercel/analytics/astro';
       });
       // room label + first-entry lines
       const zp = player.pos.z;
-      const label = zp > -7.2 ? "VAULT I — THE WRITER'S STUDY" : zp > -19.4 ? 'VAULT II — THE LIBRARY OF PUZZLES' : 'VAULT III — THE GRAND TREASURE VAULT';
+      const label = player.pos.y < -0.4 || (door4Open && floorYAt(player.pos.x, zp) < -0.4)
+        ? 'VAULT IV — THE SECRET SANCTUM'
+        : zp > -7.2 ? "VAULT I — THE WRITER'S STUDY"
+        : zp > -19.4 ? 'VAULT II — THE LIBRARY OF PUZZLES'
+        : 'VAULT III — THE GRAND TREASURE VAULT';
       if (roomNameEl.textContent !== label) roomNameEl.textContent = label;
       if (!seenLib && zp < -8.0) { seenLib = true; keeper('libentry'); }
       if (!seenV3 && zp < -20.2) { seenV3 = true; keeper('v3entry'); }
