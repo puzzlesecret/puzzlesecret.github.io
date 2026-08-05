@@ -85,13 +85,31 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
-  <!-- WebGL fallback -->
+  <!-- The flat vault: the full hunt without WebGL. Shown when the 3D crawl can't run,
+       and reachable on purpose via /vault?flat=1. Every word and every reward works here —
+       nobody who solved the book is ever locked out because of their device. -->
   <div id="fallback" hidden>
-    <div class="reward-card">
-      <div class="reward-kicker">THE STUDY IS SEALED… FOR NOW</div>
-      <h2>YOUR DEVICE CAN'T OPEN THE 3D VAULT</h2>
-      <p>A lighter version of the vault is on its way. The Keeper's gift is still yours:</p>
-      <a class="gold-btn" href="/rewards/PuzzleSecret-Vault-I-50-Easy.pdf" download>Download the 50 puzzles (PDF)</a>
+    <div class="reward-card flat-card">
+      <div class="reward-kicker">THE KEEPER'S VAULTS</div>
+      <h2>SPEAK THE WORD</h2>
+      <p id="flatLede">
+        Your device can't open the 3D crawl, so the Keeper will hear you here instead.
+        Say any word you decoded — it does not matter which vault it belongs to.
+      </p>
+
+      <form id="flatForm" autocomplete="off">
+        <input id="flatWord" type="text" inputmode="latin" autocapitalize="characters"
+               spellcheck="false" maxlength="12" placeholder="a word from the book"
+               aria-label="Enter a word you decoded from the book" />
+        <button class="gold-btn" type="submit" id="flatGo">Speak it</button>
+      </form>
+      <p id="flatMsg" role="status" aria-live="polite"></p>
+
+      <div id="flatVaults" class="flat-vaults"></div>
+
+      <p class="flat-foot">
+        Stuck on a word? <a href="/hints">The hint chamber</a> will nudge you without spoiling it.
+      </p>
       <a class="ghost-btn" href="/">← back to the landing</a>
     </div>
   </div>
@@ -262,6 +280,47 @@ import Analytics from '@vercel/analytics/astro';
     #speakBtn.listening { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
     @media (max-width: 480px) { .tile { width: 38px; height: 48px; font-size: 21px; } }
 
+    /* ---- the flat vault (no WebGL required) ---- */
+    .flat-card { max-width: 460px; max-height: calc(100vh - 32px); overflow-y: auto; }
+    #flatForm { display: flex; gap: 8px; margin-bottom: 6px; }
+    #flatWord {
+      flex: 1; min-width: 0; font-family: Cinzel, serif; font-size: 16px; letter-spacing: 0.16em;
+      text-align: center; text-transform: uppercase; color: var(--gold);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(246,178,60,0.4);
+      border-radius: 4px; padding: 13px 10px; min-height: 46px;
+    }
+    #flatWord::placeholder { color: rgba(232,213,174,0.3); text-transform: none; letter-spacing: 0.04em; font-style: italic; }
+    #flatWord:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 16px rgba(246,178,60,0.3); }
+    #flatGo { margin-bottom: 0; white-space: nowrap; min-height: 46px; padding: 0 18px; }
+    #flatMsg { min-height: 24px; margin: 4px 0 14px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.72); }
+    #flatMsg.bad { color: #e08a6a; }
+    #flatMsg.good { color: var(--gold); }
+    .flat-card.shake { animation: wbshake 0.4s; }
+
+    .flat-vaults { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; text-align: left; }
+    .fv {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 5px;
+      border: 1px dashed rgba(246,178,60,0.25); background: rgba(0,0,0,0.28);
+    }
+    .fv.open { border-style: solid; border-color: rgba(246,178,60,0.6); background: rgba(246,178,60,0.08); }
+    .fv-rn { font-family: Cinzel, serif; font-size: 13px; color: var(--gold-dim); width: 26px; flex: none; }
+    .fv.open .fv-rn { color: var(--gold); }
+    .fv-body { flex: 1; min-width: 0; }
+    .fv-name { font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.12em; color: rgba(232,213,174,0.85); }
+    .fv-sub { font-size: 13px; font-style: italic; color: rgba(232,213,174,0.45); }
+    .fv.open .fv-sub { color: rgba(232,213,174,0.75); }
+    .fv-dl {
+      flex: none; font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--ink); background: linear-gradient(180deg, #ffd37a, #d99a2b);
+      border-radius: 4px; padding: 9px 11px; min-height: 38px; display: flex; align-items: center;
+    }
+    .flat-foot { font-size: 14px !important; margin-bottom: 16px !important; }
+    .flat-foot a { color: var(--gold); text-decoration: underline; }
+    @media (max-width: 420px) {
+      #flatForm { flex-direction: column; }
+      .fv { flex-wrap: wrap; }
+    }
+
     #confetti { position: fixed; inset: 0; z-index: 18; pointer-events: none; }
     #fade { position: fixed; inset: 0; z-index: 8; background: #000; opacity: 1; pointer-events: none; transition: opacity 2.2s; }
     #fade.clear { opacity: 0; }
@@ -271,6 +330,147 @@ import Analytics from '@vercel/analytics/astro';
       #brand { font-size: 9px; letter-spacing: 0.22em; }
     }
   </style>
+
+  <!-- The flat vault runs on its own, with no dependency on three.js, because the module
+       below aborts entirely when WebGL is missing. Kept inline so it works even if the
+       bundled 3D script fails to load at all. -->
+  <script is:inline>
+    (function () {
+      var VAULTS = [
+        { rn: 'I',   name: 'The Writer’s Study',   sub: '50 bonus easy puzzles',
+          file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf',        dl: '50 Easy' },
+        { rn: 'II',  name: 'The Library of Puzzles',    sub: '100 bonus medium puzzles',
+          file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf',    dl: '100 Med' },
+        { rn: 'III', name: 'The Grand Treasure Vault',  sub: '200 bonus hard puzzles',
+          file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf',     dl: '200 Hard' },
+        { rn: 'IV',  name: 'The Secret Sanctum',        sub: 'never announced',
+          file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf', dl: '20 Master' },
+      ];
+      var KEY = 'ps_vaults_v1';                 // shared with the 3D crawl and /passport
+      function readOpen() {
+        try { var v = JSON.parse(localStorage.getItem(KEY)); return (v && typeof v === 'object') ? v : {}; }
+        catch (e) { return {}; }
+      }
+      function stamp(act) {
+        try {
+          var v = readOpen();
+          if (!v[act]) { v[act] = new Date().toISOString().slice(0, 10); localStorage.setItem(KEY, JSON.stringify(v)); }
+        } catch (e) { /* private mode — the reward still works, it just isn't remembered */ }
+      }
+
+      var shown = false;
+      function render() {
+        var open = readOpen();
+        var wrap = document.getElementById('flatVaults');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        VAULTS.forEach(function (v) {
+          var isOpen = !!open[v.rn];
+          var row = document.createElement('div');
+          row.className = 'fv' + (isOpen ? ' open' : '');
+          var rn = document.createElement('div'); rn.className = 'fv-rn'; rn.textContent = v.rn;
+          var body = document.createElement('div'); body.className = 'fv-body';
+          var nm = document.createElement('div'); nm.className = 'fv-name'; nm.textContent = v.name;
+          var sb = document.createElement('div'); sb.className = 'fv-sub';
+          sb.textContent = isOpen ? v.sub : 'sealed — speak its word';
+          body.appendChild(nm); body.appendChild(sb);
+          row.appendChild(rn); row.appendChild(body);
+          if (isOpen) {
+            var a = document.createElement('a');
+            a.className = 'fv-dl'; a.href = v.file; a.setAttribute('download', '');
+            a.textContent = v.dl + ' ⬇';
+            row.appendChild(a);
+          }
+          wrap.appendChild(row);
+        });
+      }
+
+      function show(reason) {
+        var el = document.getElementById('fallback');
+        if (!el) return;
+        el.hidden = false;
+        if (reason === 'chosen') {
+          var lede = document.getElementById('flatLede');
+          if (lede) lede.textContent =
+            'The plain-text vault. Say any word you decoded — it does not matter which vault it belongs to.';
+        }
+        var gate = document.getElementById('gate');
+        if (gate) gate.style.display = 'none';
+        var fade = document.getElementById('fade');
+        if (fade) { fade.style.transition = 'none'; fade.style.display = 'none'; }
+        if (!shown) { shown = true; render(); }
+        var w = document.getElementById('flatWord');
+        if (w) setTimeout(function () { try { w.focus(); } catch (e) {} }, 60);
+      }
+      window.__showFlatVault = show;
+
+      function msg(text, cls) {
+        var m = document.getElementById('flatMsg');
+        if (!m) return;
+        m.textContent = text;
+        m.className = cls || '';
+      }
+
+      var busy = false;
+      function submit(e) {
+        if (e) e.preventDefault();
+        if (busy) return;
+        var input = document.getElementById('flatWord');
+        var word = (input.value || '').replace(/[^A-Za-z]/g, '');
+        if (word.length < 4) { msg('That is too short to be one of my words.', 'bad'); return; }
+        busy = true; msg('The Keeper is listening…', '');
+        fetch('/api/unlock', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ word: word }),
+        }).then(function (r) {
+          return r.json().then(function (d) { return { status: r.status, d: d }; });
+        }).then(function (res) {
+          busy = false;
+          if (res.status === 429) { msg('Too many tries at once. Take a breath, then speak again.', 'bad'); return; }
+          if (res.d && res.d.error === 'vault_offline') { msg('The vault door is jammed on my side. Try again shortly.', 'bad'); return; }
+          if (!res.d || !res.d.ok) {
+            msg('That word means nothing here.', 'bad');
+            var card = document.querySelector('.flat-card');
+            if (card) { card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); }
+            return;
+          }
+          stamp(res.d.act);
+          render();
+          input.value = '';
+          msg('The ' + (res.d.act === 'I' ? 'first' : res.d.act === 'II' ? 'second' : res.d.act === 'III' ? 'third' : 'last')
+              + ' door opens — ' + res.d.reward + ' is yours.', 'good');
+        }).catch(function () {
+          busy = false;
+          msg('I could not reach the vault. Check your connection and speak again.', 'bad');
+        });
+      }
+
+      // DECIDE SYNCHRONOUSLY. This script is parsed before the 3D module, but module
+      // scripts are deferred and run BEFORE DOMContentLoaded — so deciding on DOM-ready
+      // would be too late and the whole scene would be built behind the panel.
+      var qp = new URLSearchParams(location.search);
+      var reason = null;
+      if (qp.get('flat') === '1') reason = 'chosen';
+      else {
+        var ok = false;
+        try {
+          var c = document.createElement('canvas');
+          ok = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+        } catch (e) { ok = false; }
+        if (!ok) reason = 'nowebgl';
+      }
+      if (reason) window.__flatMode = true;
+
+      function init() {
+        var f = document.getElementById('flatForm');
+        if (f) f.addEventListener('submit', submit);
+        if (reason) show(reason);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
+    })();
+  </script>
 
   <script>
     import * as THREE from 'three';
@@ -292,10 +492,14 @@ import Analytics from '@vercel/analytics/astro';
 
     let renderer = null;
     try {
+      // The inline flat-vault script already decided this visit is text-only (no WebGL, or
+      // ?flat=1). Don't build a scene nobody will see.
+      if (window.__flatMode) throw new Error('flat vault');
       renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
       if (!renderer.getContext()) throw new Error('no ctx');
     } catch (e) {
-      document.getElementById('fallback').hidden = false;
+      if (window.__showFlatVault) window.__showFlatVault('nowebgl');
+      else document.getElementById('fallback').hidden = false;
       gate.style.display = 'none';
       fadeEl.classList.add('clear');
       throw e;
