@@ -208,6 +208,13 @@
 
     var $ = function (id) { return document.getElementById(id); };
     var shown = false, lastRoom = null, fourthWord = '';
+    function psVid() {
+      try {
+        var v = localStorage.getItem('ps_vid');
+        if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(4))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join(''); localStorage.setItem('ps_vid', v); }
+        return v;
+      } catch (e) { return ''; }
+    }
 
     function playVO(src) {
       try {
@@ -317,6 +324,13 @@
       var fade = $('fade'); if (fade) { fade.style.transition = 'none'; fade.style.display = 'none'; }
       if (!shown) {
         shown = true;
+        try {
+          if (!sessionStorage.getItem('ps_visited')) {
+            sessionStorage.setItem('ps_visited', '1');
+            fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ vid: psVid(), mode: 'flat' }) }).catch(function () {});
+          }
+        } catch (e) { /* private mode */ }
         render(false);
         if (window.__hasWebGL && reason !== 'nowebgl') { var b = $('flatTo3D'); if (b) b.hidden = false; }
       }
@@ -342,7 +356,7 @@
       fetch('/api/unlock', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ word: word }),
+        body: JSON.stringify({ word: word, vid: psVid() }),
       }).then(function (res) {
         return res.json().then(function (d) { return { status: res.status, d: d }; });
       }).then(function (out) {
@@ -402,7 +416,7 @@
       fetch('/api/carve', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ initials: initials, word: fourthWord }),
+        body: JSON.stringify({ initials: initials, word: fourthWord, vid: psVid() }),
       }).then(function (r) { return r.json(); }).then(function (d) {
         fcBusy = false;
         if (d && d.ok) {

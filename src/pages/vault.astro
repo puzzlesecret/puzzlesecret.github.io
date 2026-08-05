@@ -2277,7 +2277,7 @@ import Analytics from '@vercel/analytics/astro';
       try {
         const r = await fetch('/api/unlock', {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ word: wbWord }),
+          body: JSON.stringify({ word: wbWord, vid: psVid() }),
         });
         j = await r.json();
       } catch (e) { /* offline / static preview */ }
@@ -2326,6 +2326,13 @@ import Analytics from '@vercel/analytics/astro';
         rec.start();
       } catch (e) { /* ignore */ }
     });
+    function psVid() {
+      try {
+        let v = localStorage.getItem('ps_vid');
+        if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(4))).map((b) => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem('ps_vid', v); }
+        return v;
+      } catch (e) { return ''; }
+    }
     let fourthWord = '';                  // in memory only, never persisted anywhere
     /* ---- the carve panel ---- */
     const carveboxEl = document.getElementById('carvebox');
@@ -2353,7 +2360,7 @@ import Analytics from '@vercel/analytics/astro';
       try {
         const r = await fetch('/api/carve', {
           method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ initials, word: fourthWord }),
+          body: JSON.stringify({ initials, word: fourthWord, vid: psVid() }),
         });
         j = await r.json();
       } catch (e) { /* offline */ }
@@ -2498,6 +2505,13 @@ import Analytics from '@vercel/analytics/astro';
     let entered = false;
     function begin(withAudio) {
       entered = true;
+      try {
+        if (!sessionStorage.getItem('ps_visited')) {
+          sessionStorage.setItem('ps_visited', '1');
+          fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ vid: psVid(), mode: '3d' }) }).catch(() => {});
+        }
+      } catch (e) { /* private mode */ }
       gate.classList.add('gone');
       fadeEl.classList.add('clear');
       if (withAudio) {

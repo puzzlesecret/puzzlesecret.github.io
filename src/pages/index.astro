@@ -467,6 +467,13 @@ import Analytics from '@vercel/analytics/astro';
 
       function fillTiles(letters) { tileEls.forEach((t, i) => { t.value = letters[i] || ''; }); }
 
+      function psVid() {
+        try {
+          let v = localStorage.getItem('ps_vid');
+          if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(4))).map((b) => b.toString(16).padStart(2, '0')).join(''); localStorage.setItem('ps_vid', v); }
+          return v;
+        } catch (e) { return ''; }
+      }
       // Word-check is SERVER-SIDE (/api/unlock). The answers never live in this bundle.
       let submitting = false;
       let misses = 0;
@@ -517,7 +524,7 @@ import Analytics from '@vercel/analytics/astro';
         const word = tileEls.map((t) => t.value).join('');
         try {
           const res = await fetch('/api/unlock', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word }),
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word, vid: psVid() }),
           });
           const data = await res.json();
           if (data.ok) onCorrect(data); else onWrong();

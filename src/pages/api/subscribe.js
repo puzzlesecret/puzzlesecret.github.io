@@ -12,6 +12,8 @@
 // page tells the truth ("the list isn't open yet") instead of faking success.
 export const prerender = false;
 
+import { notify } from '../../lib/keeper-telegram.js';
+
 const WEBHOOK = import.meta.env.NEWSLETTER_WEBHOOK ?? process.env.NEWSLETTER_WEBHOOK;
 const AUTH = import.meta.env.NEWSLETTER_AUTH ?? process.env.NEWSLETTER_AUTH;
 
@@ -58,7 +60,7 @@ export async function POST({ request, clientAddress }) {
       body: JSON.stringify({ email, source: 'puzzlesecret.com/newsletter', ts: new Date().toISOString() }),
     });
     if (!res.ok) return json({ ok: false, reason: 'provider_error' }, 502);
-    return json({ ok: true });
+    { const at = email.indexOf('@'); await notify(`\u2709\uFE0F ${email[0]}***${email.slice(at)} joined the dispatch`); } return json({ ok: true });
   } catch {
     return json({ ok: false, reason: 'provider_error' }, 502);
   }

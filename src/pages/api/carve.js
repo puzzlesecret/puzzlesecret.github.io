@@ -10,6 +10,7 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
+import { notify, solverTag, country } from '../../lib/keeper-telegram.js';
 
 const SALT = import.meta.env.VAULT_SALT ?? process.env.VAULT_SALT;
 const HOOK = import.meta.env.SANCTUM_WEBHOOK ?? process.env.SANCTUM_WEBHOOK;
@@ -82,6 +83,7 @@ export async function POST({ request, clientAddress }) {
     const d = await r.json();
     if (d && d.ok) {
       wallCache = { t: 0, data: null };          // the wall just changed
+      await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${country(request)} \u00b7 carved \u201c${initials}\u201d \u2014 mark #${d.count}`);
       return json({ ok: true, count: d.count });
     }
     return json({ ok: false, reason: d && d.reason ? d.reason : 'refused' });
