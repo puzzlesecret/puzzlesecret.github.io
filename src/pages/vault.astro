@@ -87,6 +87,22 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
+  <!-- The Keeper's register (initials only, 2-3 letters, by design) -->
+  <div id="carvebox" hidden>
+    <div class="reward-card word-card">
+      <div class="reward-kicker">THE KEEPER'S REGISTER</div>
+      <p class="word-line">Leave no name. Names are for the world above. Down here, a mark is enough.</p>
+      <input id="cbInput" type="text" autocomplete="off" autocapitalize="characters"
+             spellcheck="false" maxlength="3" placeholder="your initials"
+             aria-label="Your initials, two or three letters" />
+      <div class="word-actions">
+        <button id="cbSubmit" class="gold-btn">Carve it</button>
+        <button id="cbCancel" class="ghost-btn">Step back</button>
+      </div>
+      <div id="cbMsg"></div>
+    </div>
+  </div>
+
   <FlatVault />
 
   <canvas id="confetti"></canvas>
@@ -273,6 +289,20 @@ import Analytics from '@vercel/analytics/astro';
     .word-actions .gold-btn, .word-actions .ghost-btn { margin-bottom: 0; }
     #wbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
     #speakBtn.listening { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
+    #carvebox {
+      position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
+      justify-content: center; background: rgba(4,2,0,0.6); backdrop-filter: blur(3px);
+    }
+    #carvebox[hidden] { display: none; }
+    #cbInput {
+      width: 100%; font-family: Cinzel, serif; font-size: 26px; letter-spacing: 0.5em;
+      text-align: center; text-transform: uppercase; color: var(--gold);
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(246,178,60,0.4);
+      border-radius: 4px; padding: 14px 8px 14px 18px; margin-top: 14px; min-height: 52px;
+    }
+    #cbInput::placeholder { color: rgba(232,213,174,0.3); letter-spacing: 0.05em; text-transform: none; font-size: 16px; font-style: italic; }
+    #cbInput:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 16px rgba(246,178,60,0.3); }
+    #cbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
     @media (max-width: 480px) { .tile { width: 38px; height: 48px; font-size: 21px; } }
 
     .reward-card {
@@ -1464,6 +1494,82 @@ import Analytics from '@vercel/analytics/astro';
     const sanctumLight = new THREE.PointLight(0xffd47a, 16, 7.5, 2);
     sanctumLight.position.set(AX, V4Y + 1.9, -29.5); scene.add(sanctumLight);
 
+    /* ---- THE KEEPER'S REGISTER ----
+       A polished slab on the sanctum's left wall carrying the carved initials of everyone
+       who found the fourth word. Initials only, 2-3 letters -- the server enforces it, the
+       Apps Script behind it enforces it again, and the fiction explains it: nobody carves
+       their full name into vault stone. */
+    const wallCanvas = document.createElement('canvas');
+    wallCanvas.width = 1024; wallCanvas.height = 472;
+    const wallTexReg = new THREE.CanvasTexture(wallCanvas);
+    wallTexReg.colorSpace = THREE.SRGBColorSpace;
+    let wallMarks = [], wallCount = 0;
+    function drawRegister() {
+      const g = wallCanvas.getContext('2d');
+      const W = wallCanvas.width, H = wallCanvas.height;
+      const grad = g.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#41301d'); grad.addColorStop(1, '#241708');
+      g.fillStyle = grad; g.fillRect(0, 0, W, H);
+      g.strokeStyle = 'rgba(217,168,80,0.55)'; g.lineWidth = 3; g.strokeRect(14, 14, W - 28, H - 28);
+      g.strokeStyle = 'rgba(217,168,80,0.22)'; g.lineWidth = 1; g.strokeRect(24, 24, W - 48, H - 48);
+      g.textAlign = 'center';
+      try { g.letterSpacing = '7px'; } catch (e) { /* older canvas */ }
+      g.fillStyle = '#d9a850'; g.font = '600 34px Cinzel, serif';
+      g.fillText("THE KEEPER'S REGISTER", W / 2, 72);
+      g.fillStyle = 'rgba(232,213,174,0.55)'; g.font = 'italic 21px "Cormorant Garamond", serif';
+      try { g.letterSpacing = '1px'; } catch (e) { /* older canvas */ }
+      g.fillText('those who found what was never lit', W / 2, 106);
+      const marks = wallMarks.slice(-240);
+      if (marks.length) {
+        const areaTop = 138, areaH = H - areaTop - 56;
+        const cols = Math.max(6, Math.ceil(Math.sqrt(marks.length * 2.6)));
+        const rows = Math.max(1, Math.ceil(marks.length / cols));
+        const cw = (W - 70) / cols, ch = areaH / rows;
+        const fpx = Math.max(15, Math.min(42, ch * 0.6, cw / 2.3));
+        g.font = '600 ' + fpx + 'px Cinzel, serif';
+        try { g.letterSpacing = '2px'; } catch (e) { /* older canvas */ }
+        marks.forEach((m, i) => {
+          const cx = 35 + (i % cols) * cw + cw / 2;
+          const cy = areaTop + Math.floor(i / cols) * ch + ch / 2;
+          const j = (i * 2654435761 % 97) / 97;              // stable per-slot jitter
+          g.save();
+          g.translate(cx + (j - 0.5) * 6, cy + (j - 0.5) * 5);
+          g.rotate((j - 0.5) * 0.09);
+          g.fillStyle = 'rgba(255,214,150,0.3)';             // chisel light on the lower edge
+          g.fillText(m, 0, 1.8);
+          g.fillStyle = '#150c04';                            // the cut itself
+          g.fillText(m, 0, 0);
+          g.restore();
+        });
+      }
+      g.font = 'italic 19px "Cormorant Garamond", serif';
+      g.fillStyle = 'rgba(217,168,80,0.7)';
+      g.fillText(wallCount > 0
+        ? (wallCount === 1 ? 'one mark, cut into the stone' : wallCount + ' marks, cut into the stone')
+        : 'the stone is bare — be the first', W / 2, H - 30);
+      wallTexReg.needsUpdate = true;
+    }
+    if (document.fonts && document.fonts.load) {
+      Promise.all([document.fonts.load('600 34px Cinzel'), document.fonts.load('italic 21px "Cormorant Garamond"')])
+        .then(drawRegister).catch(drawRegister);
+    } else drawRegister();
+    const wall4 = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.75),
+      new THREE.MeshStandardMaterial({ map: wallTexReg, roughness: 0.62, metalness: 0.08 }));
+    wall4.rotation.y = Math.PI / 2;
+    wall4.position.set(AX - 3.08, 1.35, -28.9);
+    wall4.userData = { kind: 'wall4', label: "The Keeper's register" };
+    sanctumG.add(wall4);
+    const wallLamp = new THREE.PointLight(0xffca70, 7, 4.5, 2);
+    wallLamp.position.set(AX - 2.3, V4Y + 2.2, -28.9); scene.add(wallLamp);
+    let wallFetched = false;
+    function fetchWall() {
+      if (wallFetched) return;
+      wallFetched = true;
+      fetch('/api/carve').then((r) => r.json()).then((d) => {
+        if (d && d.ok) { wallMarks = d.marks || []; wallCount = d.count || 0; drawRegister(); }
+      }).catch(() => { /* the wall stays bare; carving may still work */ });
+    }
+
     // central golden pedestal holding the Master Secret Tome
     const ped4 = pedestal(AX, -28.5); sanctumG.add(ped4);
     const masterTome = new THREE.Group(); masterTome.position.set(0, 1.05, 0); ped4.add(masterTome);
@@ -1886,7 +1992,7 @@ import Analytics from '@vercel/analytics/astro';
     /* ---- pointer: drag = look, tap = interact/walk ---- */
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
-    const interactables = [stack, hinge, door2, door3, lectern, chestG, masterTome, sealsWall, lantern,
+    const interactables = [stack, hinge, door2, door3, wall4, lectern, chestG, masterTome, sealsWall, lantern,
       ...storyPages,
       ...sealPulse.filter(o => o.isMesh)];
     let down = null, dragging = false;
@@ -2180,6 +2286,7 @@ import Analytics from '@vercel/analytics/astro';
       const D = DOORS[wbTarget];
       if (j.ok && j.act === D.act) {
         const key = wbTarget;
+        if (key === 'fourth') fourthWord = wbWord;   // held in memory only — the carve proof
         closeWordbox();
         if (key === 'fourth') lanternSuccess();
         else openVaultDoor(key);
@@ -2219,6 +2326,56 @@ import Analytics from '@vercel/analytics/astro';
         rec.start();
       } catch (e) { /* ignore */ }
     });
+    let fourthWord = '';                  // in memory only, never persisted anywhere
+    /* ---- the carve panel ---- */
+    const carveboxEl = document.getElementById('carvebox');
+    const cbInput = document.getElementById('cbInput');
+    const cbMsg = document.getElementById('cbMsg');
+    const cbSubmit = document.getElementById('cbSubmit');
+    let cbBusy = false;
+    function openCarvebox() {
+      cbMsg.textContent = '';
+      cbInput.value = '';
+      carveboxEl.hidden = false;
+      setTimeout(() => { try { cbInput.focus(); } catch (e) {} }, 60);
+    }
+    cbInput.addEventListener('input', () => {
+      cbInput.value = cbInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    });
+    document.getElementById('cbCancel').addEventListener('click', () => { carveboxEl.hidden = true; });
+    cbInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') cbSubmit.click(); });
+    cbSubmit.addEventListener('click', async () => {
+      if (cbBusy) return;
+      const initials = cbInput.value;
+      if (initials.length < 2) { cbMsg.textContent = 'Two or three letters — no more, no less.'; return; }
+      cbBusy = true; cbSubmit.textContent = 'The chisel bites…';
+      let j = null;
+      try {
+        const r = await fetch('/api/carve', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ initials, word: fourthWord }),
+        });
+        j = await r.json();
+      } catch (e) { /* offline */ }
+      cbBusy = false; cbSubmit.textContent = 'Carve it';
+      if (!j) { cbMsg.textContent = 'The stone will not take the mark right now. Try again shortly.'; return; }
+      if (!j.ok) {
+        cbMsg.textContent =
+          j.reason === 'bad_initials' ? 'The stone refuses those letters.' :
+          j.reason === 'no_proof' ? 'Only those who spoke the fourth word may carve. Find what was never lit, and say it.' :
+          j.reason === 'slow_down' ? 'The chisel needs a rest. A moment, please.' :
+          'The stone will not take the mark right now. Try again shortly.';
+        return;
+      }
+      try { localStorage.setItem('ps_mark_v1', initials); } catch (e) { /* private mode */ }
+      wallMarks.push(initials);
+      wallCount = j.count || wallCount + 1;
+      drawRegister();
+      carveboxEl.hidden = true;
+      burstConfetti();
+      showCaption('Stone remembers what paper forgets. Yours is mark ' + wallCount + '.', 7000);
+    });
+
     let slabAnim = null;                  // {start, dur} -- the slab grinding aside
     function lanternSuccess() {
       lanternGlim.material.opacity = 1.0;
@@ -2227,6 +2384,7 @@ import Analytics from '@vercel/analytics/astro';
       slabAnim = { start: performance.now(), dur: 2600 };
       playBoom && playBoom();
       burstConfetti();
+      fetchWall();
       showCaption('The floor answers. A stair, cut long before this vault was sealed \u2014 go down, and come back up when you please.', 9000);
     }
     function tickSlab() {
@@ -2277,6 +2435,14 @@ import Analytics from '@vercel/analytics/astro';
         goThen(p.x + (dx / d) * 0.9, p.z + (dz / d) * 0.9, () => openPage(g.userData.pageNo));
       } else if (kind === 'seals') {
         showCaption('Four seals. Four secrets still to come — the hunt continues beyond this vault.', 6200);
+      } else if (kind === 'wall4') {
+        goThen(AX - 2.15, -28.9, () => {
+          const mine = localStorage.getItem('ps_mark_v1');
+          if (mine) {
+            showCaption('Your mark — ' + mine + ' — is on this wall' +
+              (wallCount > 1 ? ', one of ' + wallCount + '.' : '. The first.'), 6200);
+          } else openCarvebox();
+        });
       } else if (kind === 'fourth') {
         if (door4Open) {
           // walk them to the head of the stair and let them take it themselves
