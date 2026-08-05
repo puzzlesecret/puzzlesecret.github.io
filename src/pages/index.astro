@@ -7,6 +7,7 @@
 // Gemini crack video + Keeper voice composite into LIVE in the next step.
 const keeperFirstLine =
   "Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening.";
+const AMAZON_URL = "https://amzn.to/4flLyPR";   // Volume 1 on Amazon, $14.99
 const tiles = 6;
 const volumes = [
   { rn: "I", c: "var(--v1)", rgb: "255,180,72", img: "/art/door-v10.webp", name: "The Keeper's Vault", active: true },
@@ -140,7 +141,9 @@ import Analytics from '@vercel/analytics/astro';
           </div>
 
           <p class="side reveal" style="--d:.62s">
-            <a href="/play">I don't have the book yet</a>
+            <a class="side-buy" href={AMAZON_URL} target="_blank" rel="noopener">New here? Get the book ↗</a>
+            <span>·</span>
+            <a href="/play">Play 200 free</a>
             <span>·</span>
             <a href="/hints">I'm stuck</a>
           </p>
@@ -168,10 +171,13 @@ import Analytics from '@vercel/analytics/astro';
             <p>Speak your first word at the door above. Each vault you crack drops its rewards and stamps your passport.</p>
             <a class="btn ghost" href="#top">To the door ↑</a>
           </article>
-          <article class="card">
+          <article class="card card-buy">
             <h3>Don't have it yet?</h3>
-            <p>Play 200 free Sudoku puzzles right here in your browser — no book, no sign-up. Then decide if you want the hunt.</p>
-            <a class="btn" href="/play">Play free puzzles</a>
+            <p><strong>Sudoku with a Secret · Volume 1</strong> — 200 puzzles, 3 vaults, one hidden password. $14.99 in paperback. Or try 200 free puzzles here first.</p>
+            <div class="card-actions">
+              <a class="btn" href={AMAZON_URL} target="_blank" rel="noopener">Get the book on Amazon ↗</a>
+              <a class="btn ghost" href="/play">Play 200 free first</a>
+            </div>
           </article>
           <article class="card">
             <h3>Ten free puzzles a month</h3>
@@ -729,6 +735,9 @@ import Analytics from '@vercel/analytics/astro';
       .side a { color: var(--ash); border-bottom: 1px solid rgba(154,146,127,.3); padding-bottom: 1px; transition: color .3s, border-color .3s; }
       .side a:hover { color: var(--gold-hi); border-color: var(--gold); }
       .side span { margin: 0 10px; opacity: .5; }
+      /* the newcomer buy path — brighter than the other side links, it's the conversion */
+      .side .side-buy { color: var(--gold-hi); border-color: rgba(246,178,60,.5); font-style: normal; }
+      .side .side-buy:hover { color: #fff; border-color: var(--gold); }
 
       /* DESKTOP: door right, console in left negative space */
       @media (min-width: 920px) {
@@ -776,6 +785,10 @@ import Analytics from '@vercel/analytics/astro';
       .card { padding: 26px 24px; border: 1px solid rgba(185,143,82,.18); border-radius: 12px; background: linear-gradient(180deg, rgba(24,24,30,.6), rgba(12,12,16,.6)); }
       .card h3 { font-family: var(--display); font-weight: 600; font-size: 20px; color: var(--ivory); margin-bottom: 10px; }
       .card p { color: var(--ash); font-size: 16.5px; line-height: 1.5; margin-bottom: 18px; }
+      .card p strong { color: var(--ivory); }
+      .card-buy { border-color: rgba(246,178,60,.35); background: linear-gradient(180deg, rgba(40,32,18,.6), rgba(16,12,6,.6)); }
+      .card-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+      .card-actions .btn { width: 100%; text-align: center; }
       .btn { display: inline-block; padding: 10px 20px; border-radius: 7px; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--brass-hi), var(--brass)); box-shadow: 0 6px 16px rgba(0,0,0,.4); transition: filter .25s, transform .15s; }
       .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
       .btn.ghost { color: var(--gold-hi); background: none; border: 1px solid rgba(246,178,60,.4); box-shadow: none; }

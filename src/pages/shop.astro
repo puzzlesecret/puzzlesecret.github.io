@@ -1,10 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
 const AMAZON_URL = "https://amzn.to/4flLyPR";
+const BOOK_LD = {"@context": "https://schema.org", "@type": "Book", "name": "Sudoku with a Secret", "alternateName": "Sudoku with a Secret, Volume 1: The Keeper's Vault", "bookFormat": "https://schema.org/Paperback", "author": {"@type": "Person", "name": "Dan Herlehy"}, "publisher": {"@type": "Organization", "name": "PuzzleSecret"}, "inLanguage": "en", "numberOfPages": 252, "image": "https://puzzlesecret.com/art/door-v10.webp", "description": "200 honest Sudoku puzzles (70 Easy, 80 Medium, 50 Hard). Twenty hide a shaded cipher digit; decode the words they spell to open three online vaults of free bonus puzzles. Answer keys and a new-to-Sudoku primer included.", "url": "https://puzzlesecret.com/shop", "offers": {"@type": "Offer", "price": "14.99", "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": "https://amzn.to/4flLyPR"}};
 ---
 
 <Layout title="The Keeper's Commissary · PuzzleSecret Shop" description="Get Sudoku with a Secret Volume 1 on Amazon or download standalone bonus puzzle packs from the Keeper's commissary.">
   <main class="page-shop">
+    <script type="application/ld+json" set:html={JSON.stringify(BOOK_LD)} />
     <div class="shop-hero">
       <p class="eyebrow">The Commissary</p>
       <h1>Books &amp; Vault Rewards</h1>
