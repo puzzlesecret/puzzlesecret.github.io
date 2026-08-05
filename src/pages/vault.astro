@@ -1579,6 +1579,122 @@ import Analytics from '@vercel/analytics/astro';
     const mtLight = new THREE.PointLight(0xffd47a, 9, 4.5, 2);
     mtLight.position.set(0, 0.5, 0); masterTome.add(mtLight);
 
+    /* ---- THE LAMP, LIT (fourth-vault keystone) ----
+       The reward line promises "you found what was never lit." So the fourth vault's light
+       IS a lantern, hung above the reward, finally burning. The generic sanctum fill was
+       dialled down (16 -> 6) so this reads as the true source of the room's warmth. */
+    sanctumLight.intensity = 6;
+    const hangL = new THREE.Group(); hangL.position.set(AX, 2.75, -28.5); sanctumG.add(hangL);
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.62, 6), M.iron);
+    chain.position.y = -0.31; hangL.add(chain);
+    const lanternBody = new THREE.Group(); lanternBody.position.y = -0.78; hangL.add(lanternBody);
+    box(0.19, 0.03, 0.19, M.iron, 0, 0.13, 0, 0, lanternBody);          // cap
+    box(0.17, 0.03, 0.17, M.iron, 0, -0.15, 0, 0, lanternBody);         // base
+    [[-0.075, -0.075], [0.075, -0.075], [-0.075, 0.075], [0.075, 0.075]].forEach(([x, z]) =>
+      box(0.016, 0.28, 0.016, M.iron, x, -0.01, z, 0, lanternBody));    // corner posts
+    const lantGlass = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.14),
+      new THREE.MeshStandardMaterial({ color: 0xffcf82, emissive: 0xffb347, emissiveIntensity: 1.6, transparent: true, opacity: 0.82 }));
+    lantGlass.position.y = -0.01; lanternBody.add(lantGlass);
+    const lantFlame = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 8), M.flame);
+    lantFlame.position.y = -0.03; lanternBody.add(lantFlame);
+    sprite(0.95, 0, -0.01, 0, lanternBody, 0.5);                        // soft halo
+    const lantLight = new THREE.PointLight(0xffc266, 22, 6.5, 2);
+    lantLight.position.y = -0.02; lanternBody.add(lantLight);
+    const ringM = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 6, 14), M.iron);
+    ringM.position.y = 0.16; ringM.rotation.x = Math.PI / 2; lanternBody.add(ringM);
+
+    /* ---- THE KEEPER'S THREE LETTERS, with the gilded acrostic ----
+       Post-solve reveal on the right wall: three framed letters, one gilded capital at the
+       start of seven thoughts. Read down, they are the acrostic the P.S. promised. The
+       capitals are stored as SEPARATE characters and drawn one at a time -- the answer word
+       never exists as a string in this bundle. */
+    const ACROSTIC = [
+      { cap: 'L', rest: 'ong before this vault was ever sealed,' },
+      { cap: 'A', rest: ' puzzle, I always believed, should not end.' },
+      { cap: 'N', rest: 'ever did I make an easy thing look hard.' },
+      { cap: 'T', rest: 'hose who look twice will always find more.' },
+      { cap: 'E', rest: 'very shaded square was a choice, not chance.' },
+      { cap: 'R', rest: 'emember this: the looking was the secret.' },
+      { cap: 'N', rest: 'ow you hold what almost no one ever will.' },
+    ];
+    const lettersCanvas = document.createElement('canvas');
+    lettersCanvas.width = 1024; lettersCanvas.height = 460;
+    const lettersTex = new THREE.CanvasTexture(lettersCanvas);
+    lettersTex.colorSpace = THREE.SRGBColorSpace;
+    function drawLetters() {
+      const g = lettersCanvas.getContext('2d'), W = lettersCanvas.width, H = lettersCanvas.height;
+      const grad = g.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#efe2c4'); grad.addColorStop(1, '#dcc79c');
+      g.fillStyle = grad; g.fillRect(0, 0, W, H);
+      g.strokeStyle = 'rgba(120,86,32,0.55)'; g.lineWidth = 3; g.strokeRect(16, 16, W - 32, H - 32);
+      g.textAlign = 'left';
+      g.fillStyle = '#5a4020'; g.font = 'italic 24px "Cormorant Garamond", serif';
+      g.textAlign = 'center';
+      g.fillText("From the Keeper's three letters", W / 2, 52);
+      g.textAlign = 'left';
+      const x0 = 70, top = 92, lh = (H - top - 46) / ACROSTIC.length;
+      ACROSTIC.forEach((row, i) => {
+        const y = top + i * lh + lh * 0.5;
+        g.font = '700 40px Cinzel, serif';
+        g.fillStyle = '#b8860b';                                  // the gilded capital
+        g.fillText(row.cap, x0, y + 6);
+        const capW = g.measureText(row.cap).width;
+        g.font = 'italic 27px "Cormorant Garamond", serif';
+        g.fillStyle = 'rgba(60,44,20,0.78)';                      // the faded rest
+        g.fillText(row.rest, x0 + capW + 2, y);
+      });
+      g.textAlign = 'center';
+      g.font = 'italic 20px "Cormorant Garamond", serif';
+      g.fillStyle = 'rgba(120,86,32,0.85)';
+      g.fillText('one letter, hidden at the start of every thought', W / 2, H - 24);
+      lettersTex.needsUpdate = true;
+    }
+    if (document.fonts && document.fonts.load) {
+      Promise.all([document.fonts.load('700 40px Cinzel'), document.fonts.load('italic 27px "Cormorant Garamond"')])
+        .then(drawLetters).catch(drawLetters);
+    } else drawLetters();
+    const letters4 = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 1.7),
+      new THREE.MeshStandardMaterial({ map: lettersTex, roughness: 0.85 }));
+    letters4.rotation.y = -Math.PI / 2;
+    letters4.position.set(AX + 3.08, 1.4, -28.5);
+    letters4.userData = { kind: 'letters4', label: "The Keeper's three letters" };
+    sanctumG.add(letters4);
+    // a gold frame + its own soft lamp so it reads as a hung document, not a poster
+    box(0.06, 1.86, 3.96, M.goldGlow, AX + 3.14, 1.4, -28.5, 0, sanctumG);
+    const lettersLamp = new THREE.PointLight(0xffe0a0, 5, 4, 2);
+    lettersLamp.position.set(AX + 2.3, V4Y + 2.2, -28.5); scene.add(lettersLamp);
+
+    /* ---- THE CORSAIR'S CHART, under a dust cloth ----
+       Volume II as an OBJECT in the room, not a button: an easel holding a covered board,
+       the cloth half-thrown so a corner of a sea-chart shows. Clicking teases Vol II. */
+    const easel = new THREE.Group(); easel.position.set(AX - 2.25, 0, -30.25);
+    easel.rotation.y = 0.62; sanctumG.add(easel);
+    box(0.05, 1.5, 0.05, M.woodDark, -0.32, 0.75, 0.1, 0.12, easel);    // front legs
+    box(0.05, 1.5, 0.05, M.woodDark, 0.32, 0.75, 0.1, -0.12, easel);
+    box(0.05, 1.55, 0.05, M.woodDark, 0, 0.77, -0.28, 0, easel);        // rear leg
+    box(0.72, 0.05, 0.05, M.woodDark, 0, 0.62, 0.08, 0, easel);         // ledge
+    const chartBoard = new THREE.Mesh(new THREE.BoxGeometry(0.86, 1.02, 0.04), M.woodDark);
+    chartBoard.position.set(0, 1.12, 0.03); chartBoard.rotation.x = -0.09; easel.add(chartBoard);
+    // a corner of the chart peeking out from under the cloth
+    const chartFace = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.96),
+      new THREE.MeshStandardMaterial({ map: paperTexA, color: 0xcaa870, roughness: 0.9 }));
+    chartFace.position.set(0, 1.12, 0.052); chartFace.rotation.x = -0.09; easel.add(chartFace);
+    // the dust cloth, thrown over most of it
+    const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.8, 0.14),
+      new THREE.MeshStandardMaterial({ color: 0x9a8d6f, roughness: 1 }));
+    cloth.position.set(0, 1.32, 0.02); cloth.rotation.x = -0.09; easel.add(cloth);
+    box(0.98, 0.5, 0.13, new THREE.MeshStandardMaterial({ color: 0x8a7d60, roughness: 1 }), 0, 1.02, 0.02, 0, easel);
+    // brass plate on the ledge
+    box(0.4, 0.02, 0.08, M.brass, 0, 0.66, 0.11, 0, easel);
+    const chart4 = new THREE.Group(); chart4.position.copy(easel.position);
+    chart4.userData = { kind: 'chart', label: 'Something half-covered on an easel' };
+    // invisible click target sized to the whole easel
+    const chartHit = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.7, 0.6),
+      new THREE.MeshBasicMaterial({ visible: false }));
+    chartHit.position.set(0, 0.9, 0); chart4.add(chartHit);
+    chart4.rotation.y = 0.62; sanctumG.add(chart4);
+
+
     /* ---- THE KEEPER'S STORY: 9 scattered manuscript pages ----------------------
        Dan's parked idea, built 2026-07-28. Numbered pages lie about all three rooms;
        clicking one lifts it up readable and the Keeper reads it aloud. The numbers are
@@ -1948,6 +2064,7 @@ import Analytics from '@vercel/analytics/astro';
       { x: AX, z: -24.5, r: 0.88 },                                    // the grand chest
       { x: AX - 1.9, z: -23.6, r: 0.62 }, { x: AX + 1.75, z: -23.9, r: 0.62 }, // side chests
       { x: AX, z: -28.5, r: 0.65 },                                    // master pedestal
+      { x: AX - 2.25, z: -30.25, r: 0.55 },                            // the Corsair's Chart easel
     ];
     /* How high the ground is under a given spot. Everything above y=0 is the vaults proper;
        only the stair, its tunnel and the sanctum go below, and only once the slab has moved.
@@ -1992,7 +2109,7 @@ import Analytics from '@vercel/analytics/astro';
     /* ---- pointer: drag = look, tap = interact/walk ---- */
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
-    const interactables = [stack, hinge, door2, door3, wall4, lectern, chestG, masterTome, sealsWall, lantern,
+    const interactables = [stack, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, lantern,
       ...storyPages,
       ...sealPulse.filter(o => o.isMesh)];
     let down = null, dragging = false;
@@ -2450,6 +2567,12 @@ import Analytics from '@vercel/analytics/astro';
               (wallCount > 1 ? ', one of ' + wallCount + '.' : '. The first.'), 6200);
           } else openCarvebox();
         });
+      } else if (kind === 'letters4') {
+        goThen(AX + 2.2, -28.5, () =>
+          showCaption('The secret you cracked, laid bare: one gilded letter at the start of every thought. Read them down.', 8000));
+      } else if (kind === 'chart') {
+        goThen(AX - 1.7, -29.9, () =>
+          showCaption("Under the cloth, a chart still being drawn \u2014 The Corsair's Chart. Volume II. The hunt is not over.", 8000));
       } else if (kind === 'fourth') {
         if (door4Open) {
           // walk them to the head of the stair and let them take it themselves
