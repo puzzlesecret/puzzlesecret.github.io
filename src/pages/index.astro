@@ -202,6 +202,7 @@ import Analytics from '@vercel/analytics/astro';
           <a href="/the-keeper">The Keeper</a><a href="/faq">FAQ</a><a href="/privacy">Privacy</a>
         </nav>
         <p class="fine">Sudoku with a Secret · Volume 1 — the vaults are bonus treasure, not a prize of chance.</p>
+        <p class="fine disclosure">As an Amazon Associate we earn from qualifying purchases.</p>
       </footer>
     </section>
 
@@ -808,6 +809,8 @@ import Analytics from '@vercel/analytics/astro';
       .foot nav a { font-size: 15px; color: var(--ash); transition: color .3s; }
       .foot nav a:hover { color: var(--gold-hi); }
       .fine { font-style: italic; font-size: 14px; color: var(--ash-dim); }
+      /* Amazon Associates disclosure: quiet fine print, but must stay legible (legal requirement) */
+      .fine.disclosure { font-size: 11.5px; color: var(--ash); opacity: .6; margin-top: 6px; }
 
       @media (max-width: 720px) {
         .cards { grid-template-columns: 1fr; }

@@ -99,6 +99,7 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
           </nav>
         </div>
         <p class="fine">Sudoku with a Secret · Volume 1 — the vaults are bonus treasure, not a prize of chance.</p>
+        <p class="fine disclosure">As an Amazon Associate we earn from qualifying purchases.</p>
       </div>
     </footer>
 
@@ -214,6 +215,8 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
       .foot-nav a:hover { color: var(--gold-hi); }
       .foot-nav .amz-link { color: var(--gold); }
       .global-foot .fine { font-style: italic; font-size: 13px; color: var(--ash-dim); border-top: 1px solid rgba(255,255,255,.05); padding-top: 16px; }
+      /* Amazon Associates disclosure: quiet fine print, but must stay legible (legal requirement) */
+      .global-foot .fine.disclosure { font-size: 11.5px; color: var(--ash); opacity: .6; border-top: 0; padding-top: 0; margin-top: -18px; }
     </style>
     <Analytics />
   </body>
