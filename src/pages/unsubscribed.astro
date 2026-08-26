@@ -1,0 +1,114 @@
+---
+// The landing page every Dispatch unsubscribe link points at.
+//
+// The removal itself is a POST to /api/unsubscribe, fired here on the reader's
+// behalf, because mail clients and security appliances prefetch GET links — a
+// GET-triggered removal would unsubscribe people who never clicked. Humans get
+// their one click; scanners change nothing.
+import Layout from '../layouts/Layout.astro';
+
+// ?state=done / ?state=error come back from the no-JS <form> fallback below.
+const state = Astro.url.searchParams.get('state') || '';
+---
+
+<Layout
+  title="Leaving the Dispatch · PuzzleSecret"
+  description="Remove your address from the Keeper's Dispatch."
+>
+  <main class="page-unsub">
+    <div class="wrap">
+      <div class="parchment-card">
+        <div class="seal-mark">✦</div>
+        <h1>The Keeper's Dispatch</h1>
+
+        <p class="status" id="status" data-state={state}>
+          {state === 'done'
+            ? 'Your address has been struck from the register. No further Dispatch will reach you.'
+            : state === 'error'
+              ? 'The register could not be reached just now. Please try the button below once more.'
+              : 'Striking your address from the register…'}
+        </p>
+
+        <noscript>
+          <form method="POST" action="/api/unsubscribe" class="unsub-form">
+            <input type="hidden" name="t" value={Astro.url.searchParams.get('t') || ''} />
+            <button type="submit" class="n-btn">Confirm Unsubscribe</button>
+          </form>
+        </noscript>
+
+        <div id="retry" class="unsub-form" hidden>
+          <button type="button" class="n-btn" id="retryBtn">Try Again</button>
+        </div>
+
+        <p class="tail">
+          The vaults stay open regardless — every bonus puzzle pack at
+          <a href="/vault">the Keeper's Vault</a> is free and was never gated behind email.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Removal runs here, not on page request, so link scanners cannot unsubscribe
+    // a reader who only received the mail.
+    const el = document.getElementById('status');
+    const retry = document.getElementById('retry');
+    const token = new URLSearchParams(location.search).get('t') || '';
+
+    const say = (msg, failed) => {
+      el.textContent = msg;
+      el.dataset.state = failed ? 'error' : 'done';
+      retry.hidden = !failed;
+    };
+
+    async function unsubscribe() {
+      if (!token) {
+        say('That link is missing its token. Reply to any Dispatch and it will be handled by hand.', false);
+        retry.hidden = true;
+        return;
+      }
+      el.textContent = 'Striking your address from the register…';
+      el.dataset.state = '';
+      retry.hidden = true;
+      try {
+        const res = await fetch('/api/unsubscribe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ t: token }),
+        });
+        const data = await res.json();
+        if (data && data.ok) {
+          say('Your address has been struck from the register. No further Dispatch will reach you.', false);
+        } else {
+          say('The register could not be reached just now. Please try again.', true);
+        }
+      } catch {
+        say('The register could not be reached just now. Please try again.', true);
+      }
+    }
+
+    document.getElementById('retryBtn').addEventListener('click', unsubscribe);
+    // Skip the call when the no-JS form already did the work.
+    if (!['done', 'error'].includes(el.dataset.state)) unsubscribe();
+  </script>
+
+  <style>
+    .page-unsub { padding-top: 110px; padding-bottom: 90px; }
+    .wrap { max-width: 620px; margin: 0 auto; padding: 0 20px; }
+
+    .parchment-card { background: linear-gradient(180deg, #16121a, #0d0a10); border: 1px solid rgba(246,178,60,.35); border-radius: 14px; padding: 46px 32px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+    .seal-mark { font-size: 32px; color: var(--gold); margin-bottom: 12px; }
+    .parchment-card h1 { font-family: var(--display); font-size: clamp(24px, 4vw, 30px); font-weight: 600; color: var(--gold-hi); margin-bottom: 18px; }
+
+    .status { font-style: italic; font-size: 16.5px; color: var(--ash); line-height: 1.55; min-height: 52px; }
+    .status[data-state="done"] { color: var(--gold-hi); }
+    .status[data-state="error"] { color: #e08d7a; }
+
+    .unsub-form { margin-top: 22px; }
+    .n-btn { padding: 14px 24px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; transition: transform .2s; }
+    .n-btn:hover { transform: translateY(-1px); }
+
+    .tail { margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.06); font-size: 14px; color: var(--ash-dim); line-height: 1.6; }
+    .tail a { color: var(--brass-hi); }
+  </style>
+</Layout>
