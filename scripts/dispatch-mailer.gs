@@ -23,7 +23,7 @@
 // ---------------------------------------------------------------- configuration
 
 const CFG = {
-  SHEET_NAME: 'Subscribers',      // tab holding the addresses
+  SHEET_NAME: 'Sheet1',           // tab holding the addresses (intake writes here)
   SUBJECT_MARKER: 'DISPATCH:',    // draft subject prefix that arms an issue
   FROM_NAME: "The Keeper's Dispatch",
   SITE: 'https://puzzlesecret.com',
@@ -36,7 +36,10 @@ const CFG = {
   SEND_ATTACHMENTS: false,        // link to PDFs instead - attachments hurt delivery
 };
 
-const COLS = ['Email', 'Joined', 'Source', 'Status', 'Token', 'LastIssue', 'LastSent'];
+// Only the columns the SENDER needs. The intake script owns Timestamp/Email/Source
+// and names them its own way, so they are deliberately not listed here - setupDispatch()
+// appends what is missing and never renames or reorders what is already there.
+const COLS = ['Email', 'Status', 'Token', 'LastIssue', 'LastSent'];
 
 // ---------------------------------------------------------------- sheet helpers
 
@@ -64,7 +67,7 @@ function headerMap_(sh) {
  * give every subscriber an unguessable unsubscribe token, default blank statuses
  * to active, and drop duplicate addresses. Idempotent - run it whenever.
  */
-function setupSheet() {
+function setupDispatch() {
   const sh = sheet_();
   let map = headerMap_(sh);
 
@@ -171,7 +174,7 @@ function sendDispatch() {
   const iIssue = map['lastissue'], iSent = map['lastsent'];
 
   if (iToken === undefined || iStatus === undefined || iIssue === undefined) {
-    throw new Error('Run setupSheet() once before sending.');
+    throw new Error('Run setupDispatch() once before sending.');
   }
 
   const budgetStart = Math.min(CFG.DAILY_CAP, MailApp.getRemainingDailyQuota());
@@ -184,7 +187,10 @@ function sendDispatch() {
     const row = data[n];
     const email = String(row[iEmail] || '').trim().toLowerCase();
     if (!email) continue;
-    if (String(row[iStatus]).toLowerCase() !== 'active') { skipped++; continue; }
+    // A BLANK status means active. The intake webhook writes only Timestamp/Email/
+    // Source, so every new signup arrives with Status empty; treating blank as
+    // inactive would silently drop each new subscriber from every issue.
+    if (String(row[iStatus] || 'active').toLowerCase() !== 'active') { skipped++; continue; }
     if (String(row[iIssue]) === issue) { skipped++; continue; }   // already got it
 
     if (!row[iToken]) row[iToken] = Utilities.getUuid();
@@ -211,7 +217,7 @@ function sendDispatch() {
   range.setValues(data);
 
   const remaining = data.filter(function (r) {
-    return String(r[iStatus]).toLowerCase() === 'active' && String(r[iIssue]) !== issue;
+    return String(r[iStatus] || 'active').toLowerCase() === 'active' && String(r[iIssue]) !== issue;
   }).length;
 
   Logger.log('Issue "' + subject + '" (' + issue + '): sent ' + sent +
@@ -258,9 +264,11 @@ function listStats() {
  * token. The token is an opaque UUID, so the link cannot be guessed and no email
  * address ever travels in a URL.
  *
- * Deploy: Deploy > New deployment > Web app > Execute as ME, access ANYONE.
+ * NOT named doGet on purpose: Code.gs already owns doGet for the signup webhook,
+ * and this project has exactly one web-app deployment. Code.gs delegates here when
+ * a ?t= parameter is present, so signup and unsubscribe share the one /exec URL.
  */
-function doGet(e) {
+function handleUnsubscribe_(e) {
   function out(obj) {
     return ContentService.createTextOutput(JSON.stringify(obj))
       .setMimeType(ContentService.MimeType.JSON);
