@@ -22,6 +22,11 @@ import Layout from '../layouts/Layout.astro';
             <button type="submit" class="n-btn">Subscribe Free</button>
           </form>
 
+          <label class="age-gate">
+            <input type="checkbox" id="ageOk" />
+            <span>I am 13 years of age or older.</span>
+          </label>
+
           <div id="newsMsg" class="n-msg"></div>
 
           <ul class="promise-list">
@@ -52,6 +57,12 @@ import Layout from '../layouts/Layout.astro';
       e.preventDefault();
       const email = (input?.value || '').trim();
       if (!email) return;
+
+      const ageOk = document.getElementById('ageOk') as HTMLInputElement | null;
+      if (!ageOk?.checked) {
+        say('Please confirm you are 13 or older before joining the list.', 'warn');
+        return;
+      }
 
       if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
       say('Sealing your letter…', 'warn');
@@ -102,7 +113,11 @@ import Layout from '../layouts/Layout.astro';
     .parchment-card h2 { font-family: var(--display); font-size: 26px; color: var(--gold-hi); margin-bottom: 10px; }
     .parchment-card p { font-style: italic; font-size: 16px; color: var(--ash); margin-bottom: 28px; line-height: 1.5; }
 
-    .news-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto 20px; }
+    .news-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto 14px; }
+    .age-gate { display: flex; align-items: center; justify-content: center; gap: 9px;
+      max-width: 480px; margin: 0 auto 20px; font-size: 13.5px; color: var(--gold-hi);
+      opacity: .85; cursor: pointer; }
+    .age-gate input { width: 16px; height: 16px; accent-color: var(--gold); cursor: pointer; flex: none; }
     .n-input { flex: 1; padding: 14px 18px; border: 1px solid rgba(185,143,82,.4); border-radius: 8px; background: rgba(10,10,12,.8); color: var(--gold-hi); font-size: 15px; outline: none; }
     .n-btn { padding: 14px 24px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; transition: transform .2s; }
     .n-btn:hover { transform: translateY(-1px); }

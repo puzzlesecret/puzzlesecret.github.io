@@ -95,6 +95,7 @@ import Analytics from '@vercel/analytics/astro';
       <input id="cbInput" type="text" autocomplete="off" autocapitalize="characters"
              spellcheck="false" maxlength="3" placeholder="your initials"
              aria-label="Your initials, two or three letters" />
+      <label class="cb-age"><input type="checkbox" id="cbAge" /> <span>I am 13 or older.</span></label>
       <div class="word-actions">
         <button id="cbSubmit" class="gold-btn">Carve it</button>
         <button id="cbCancel" class="ghost-btn">Step back</button>
@@ -286,6 +287,9 @@ import Analytics from '@vercel/analytics/astro';
     @keyframes wbshake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-9px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(4px)} }
     #wbInput { position: absolute; opacity: 0.01; height: 1px; width: 1px; pointer-events: none; }
     .word-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+    .cb-age { display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 14px; font-size: 13px; color: var(--gold-hi, #e8cfa0); opacity: .85; cursor: pointer; }
+    .cb-age input { width: 15px; height: 15px; accent-color: #b98f52; cursor: pointer; flex: none; }
     .word-actions .gold-btn, .word-actions .ghost-btn { margin-bottom: 0; }
     #wbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
     #speakBtn.listening { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
@@ -2475,6 +2479,8 @@ import Analytics from '@vercel/analytics/astro';
       if (cbBusy) return;
       const initials = cbInput.value;
       if (initials.length < 2) { cbMsg.textContent = 'Two or three letters — no more, no less.'; return; }
+      var cbAgeEl = document.getElementById('cbAge');
+      if (!cbAgeEl || !cbAgeEl.checked) { cbMsg.textContent = 'Confirm you are 13 or older before you carve.'; return; }
       cbBusy = true; cbSubmit.textContent = 'The chisel bites…';
       let j = null;
       try {

@@ -274,7 +274,7 @@ import Analytics from '@vercel/analytics/astro';
           ro.connect(rg).connect(master); ro.start(t + 0.01); ro.stop(t + 0.7);
         });
       }
-      // Played only when a word is CORRECT — a deep resonant thud + a warm triumphant swell.
+      // Played only when a word is CORRECT — a deep resonant thud + a warm victorious swell.
       function playUnlock() {
         if (!audioReady || muted) return;
         const t = actx.currentTime;
@@ -511,7 +511,7 @@ import Analytics from '@vercel/analytics/astro';
       function onCorrect(data) {
         misses = 0;
         playBoom();                  // this vault's door cracks open too
-        playUnlock();                // the deep thud + triumphant swell — only on a correct word
+        playUnlock();                // the deep thud + victorious swell — only on a correct word
         scene.classList.remove('igniting'); void scene.offsetWidth; scene.classList.add('igniting');
         setTimeout(() => scene.classList.remove('igniting'), 1400);
         typeCaption(successLines[data.act] || 'The vault opens.');
