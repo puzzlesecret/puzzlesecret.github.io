@@ -6,14 +6,51 @@ import Analytics from '@vercel/analytics/astro';
 export interface Props {
   title?: string;
   description?: string;
+  ogImage?: string;
+  noindex?: boolean;
 }
 
 const {
   title = "Sudoku with a Secret — The Keeper's Vault",
-  description = "You solved the book. Now crack the vault. Speak the words hidden in Sudoku with a Secret and open vaults of treasure and free bonus puzzles."
+  description = "You solved the book. Now crack the vault. Speak the words hidden in Sudoku with a Secret and open vaults of treasure and free bonus puzzles.",
+  ogImage = "/art/og-door.jpg",
+  noindex = false
 } = Astro.props;
 
-const AMAZON_URL = "https://amzn.to/4flLyPR";
+// Canonical + absolute social image. Relative og:image is ignored by most
+// scrapers, which is why these are resolved against Astro.site.
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImageAbs = new URL(ogImage, Astro.site).href;
+
+// Clean product URL, not a shortener. The old amzn.to link carried a stale
+// search session (crid/qid/sprefix, and a "soduku" typo in its keywords), and
+// shorteners strip Amazon Attribution tags — so per-channel sales data would
+// have been lost the moment those tags are created. tag= is the Associates ID.
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=genxvsai-20";
+
+// Sitewide identity. Book/FAQ schema stays on the pages that own those facts.
+const SITE_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://puzzlesecret.com/#org",
+      "name": "PuzzleSecret",
+      "url": "https://puzzlesecret.com",
+      "logo": "https://puzzlesecret.com/art/og-door.jpg",
+      "founder": { "@type": "Person", "name": "Dan Herlehy" },
+      "description": "Print puzzle books that hide a solvable secret — solve the puzzles, decode the cipher, open a real online vault."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://puzzlesecret.com/#website",
+      "url": "https://puzzlesecret.com",
+      "name": "PuzzleSecret",
+      "publisher": { "@id": "https://puzzlesecret.com/#org" },
+      "inLanguage": "en-US"
+    }
+  ]
+};
 ---
 
 <!doctype html>
@@ -24,12 +61,25 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex
+      ? <meta name="robots" content="noindex, follow" />
+      : <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content="/art/og-door.jpg" />
+    <meta property="og:image" content={ogImageAbs} />
+    <meta property="og:url" content={canonical} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PuzzleSecret" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageAbs} />
+    <meta name="author" content="Dan Herlehy" />
     <meta name="theme-color" content="#0a0a0c" />
     <link rel="stylesheet" href="/fonts/fonts.css" />
+    <script type="application/ld+json" set:html={JSON.stringify(SITE_LD)} />
   </head>
 
   <body>
@@ -61,14 +111,15 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
           <a href="/" class="d-link"><span class="d-num">01</span> The Front Door <span class="d-arrow">→</span></a>
           <a href="/vault" class="d-link"><span class="d-num">02</span> The 3D Vault Crawl <span class="d-arrow">→</span></a>
           <a href="/play" class="d-link"><span class="d-num">03</span> Play 200 Sudokus <span class="d-arrow">→</span></a>
-          <a href="/shop" class="d-link"><span class="d-num">04</span> The Commissary <span class="d-arrow">→</span></a>
-          <a href="/passport" class="d-link"><span class="d-num">05</span> Solver's Passport <span class="d-arrow">→</span></a>
-          <a href="/hints" class="d-link"><span class="d-num">06</span> Hint Chamber <span class="d-arrow">→</span></a>
-          <a href="/the-keeper" class="d-link"><span class="d-num">07</span> The Keeper's Story <span class="d-arrow">→</span></a>
-          <a href="/newsletter" class="d-link"><span class="d-num">08</span> Free Monthly Dispatch <span class="d-arrow">→</span></a>
-          <a href="/faq" class="d-link"><span class="d-num">09</span> FAQ & Help <span class="d-arrow">→</span></a>
-          <a href="/privacy" class="d-link"><span class="d-num">10</span> Privacy Policy <span class="d-arrow">→</span></a>
-          <a href="/terms" class="d-link"><span class="d-num">11</span> Terms of Service <span class="d-arrow">→</span></a>
+          <a href="/escape-room-sudoku-book" class="d-link"><span class="d-num">04</span> What Is This Book? <span class="d-arrow">→</span></a>
+          <a href="/shop" class="d-link"><span class="d-num">05</span> The Commissary <span class="d-arrow">→</span></a>
+          <a href="/passport" class="d-link"><span class="d-num">06</span> Solver's Passport <span class="d-arrow">→</span></a>
+          <a href="/hints" class="d-link"><span class="d-num">07</span> Hint Chamber <span class="d-arrow">→</span></a>
+          <a href="/the-keeper" class="d-link"><span class="d-num">08</span> The Keeper's Story <span class="d-arrow">→</span></a>
+          <a href="/newsletter" class="d-link"><span class="d-num">09</span> Free Monthly Dispatch <span class="d-arrow">→</span></a>
+          <a href="/faq" class="d-link"><span class="d-num">10</span> FAQ & Help <span class="d-arrow">→</span></a>
+          <a href="/privacy" class="d-link"><span class="d-num">11</span> Privacy Policy <span class="d-arrow">→</span></a>
+          <a href="/terms" class="d-link"><span class="d-num">12</span> Terms of Service <span class="d-arrow">→</span></a>
         </nav>
         <div class="drawer-foot">
           <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amazon">
@@ -88,6 +139,7 @@ const AMAZON_URL = "https://amzn.to/4flLyPR";
           <span class="wordmark">PUZZLE<span>SECRET</span></span>
           <nav class="foot-nav">
             <a href="/play">Play</a>
+            <a href="/escape-room-sudoku-book">Escape Room Sudoku</a>
             <a href="/shop">Shop</a>
             <a href="/hints">Hints</a>
             <a href="/passport">Passport</a>

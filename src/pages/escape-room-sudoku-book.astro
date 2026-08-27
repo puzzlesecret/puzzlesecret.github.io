@@ -1,0 +1,263 @@
+---
+import Layout from '../layouts/Layout.astro';
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=genxvsai-20";
+
+// This page exists for one reason: every other page on this site speaks to
+// someone who ALREADY owns the book. This one speaks to someone still asking
+// "is there a sudoku book with an escape room in it?" — a question with real
+// search demand and, as of 2026, no strong commercial page answering it.
+const PAGE_TITLE = "Escape Room Sudoku Book — A Sudoku Book with a Hidden Code";
+const PAGE_DESC = "Yes, a sudoku book with a real escape room inside exists. 200 puzzles, 20 hide a shaded key, a printed cipher turns them into words, and each word opens an online vault. Here is exactly how it works.";
+
+const FAQ_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is there a sudoku book with an escape room in it?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Sudoku with a Secret, Volume 1: Crack the Keeper's Vault by Dan Herlehy is a 200-puzzle sudoku book with an escape-room layer built into it. Twenty of the puzzles hide a shaded cell; solving them reveals digits, a cipher plate printed in the back of the book turns those digits into three secret words, and each word opens a sealed online vault of free bonus puzzles. As of 2026 it is effectively the only book of its kind in print."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you have to cut or fold any pages?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Nothing is cut, folded, torn or destroyed. This is a deliberate difference from puzzle-hunt books like Journal 29 and The Cypher Files, which require physically altering pages. Every page in Sudoku with a Secret stays intact, so the book can be shared, gifted or re-solved."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do you need the internet to finish the book?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The book is complete on its own. All 200 puzzles, the cipher plate and the full answer keys are printed inside. The online vaults are bonus content — a reward for cracking the code, never a requirement for finishing the puzzles."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it suitable for sudoku beginners?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The first act is 70 easy puzzles, and the book includes an illustrated beginner's primer that teaches sudoku from zero with worked examples. The difficulty climbs across three acts to 50 hard puzzles, so experienced players still hit a genuine wall."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are the puzzles real sudoku or just a gimmick?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "They are real sudoku. All 200 puzzles have exactly one solution and are solvable by pure logic, with no guessing required. Uniqueness was verified by an independent brute-force solver written separately from the puzzle generator, so every grid was checked twice by different code."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How big are the grids?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "One 9x9 grid fills a full 8.5 by 11 inch page — thick rules, large digits, and room to write candidate numbers in the cells. Note that this describes unusually large grids rather than a large-print-typography edition in the accessibility-category sense."
+      }
+    }
+  ]
+};
+---
+
+<Layout title={PAGE_TITLE} description={PAGE_DESC}>
+  <main class="page-erb">
+    <script type="application/ld+json" set:html={JSON.stringify(FAQ_LD)} />
+
+    <div class="erb-hero">
+      <p class="eyebrow">Escape Room · Sudoku · Ciphers</p>
+      <h1>The Sudoku Book with an Escape Room Hidden Inside It</h1>
+      <p class="lede">Two hundred honest sudoku puzzles. Twenty of them are keeping a secret.</p>
+    </div>
+
+    <section class="wrap">
+      <!-- Deliberately written as a single self-contained, quotable passage:
+           this is the paragraph an AI answer engine can lift whole. -->
+      <div class="answer-card">
+        <h2>The short answer</h2>
+        <p><strong>Yes — a sudoku book with a genuine escape room inside it exists.</strong> It is
+        <em>Sudoku with a Secret, Volume 1: Crack the Keeper's Vault</em> by Dan Herlehy: 200 original
+        sudoku puzzles, of which 20 hide a single shaded cell. Solve those 20 and you collect 20 digits.
+        A cipher plate printed in the back of the book converts the digits into letters, spelling three
+        secret words. Each word opens a sealed vault on this website containing free bonus puzzle packs.
+        Nothing is cut or folded, no app is required, and every answer key is printed in the book.</p>
+      </div>
+
+      <h2 class="sec-h">How the secret actually works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="s-num">01</div>
+          <h3>Solve</h3>
+          <p>Twenty of the 200 puzzles carry the Keeper's key mark. Finish one and its shaded square
+          reveals a single digit. Write it on the Vault Door tally page.</p>
+        </div>
+        <div class="step">
+          <div class="s-num">02</div>
+          <h3>Decode</h3>
+          <p>The Keyplate — printed on pages 211 to 213, in the <strong>back</strong> of the book —
+          turns your digits into letters. The book escalates: the first act is a plain lookup, the
+          second hides its letters in a letter from the Keeper, and the third shifts the alphabet.</p>
+        </div>
+        <div class="step">
+          <div class="s-num">03</div>
+          <h3>Unlock</h3>
+          <p>Each decoded word opens a real vault on this site — 50, 100 and 200 bonus puzzles
+          respectively, as free downloads. No email required. There is also a fourth secret,
+          announced nowhere, for anyone who reads the Keeper&rsquo;s letters the way a codebreaker would.</p>
+        </div>
+      </div>
+
+      <h2 class="sec-h">How it compares to other puzzle-hunt books</h2>
+      <p class="sec-sub">The honest version — including where other books do something this one doesn't.</p>
+      <div class="table-scroll">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th>Book</th>
+              <th>Core puzzle</th>
+              <th>Must cut or fold pages?</th>
+              <th>Needs the internet?</th>
+              <th>Answers in the book?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="mine">
+              <td><strong>Sudoku with a Secret</strong></td>
+              <td>Sudoku (200 grids)</td>
+              <td>No</td>
+              <td>No — vaults are a bonus</td>
+              <td>Yes, all 200</td>
+            </tr>
+            <tr>
+              <td>Journal 29</td>
+              <td>Mixed visual/lateral</td>
+              <td>Yes</td>
+              <td>Yes — answers are entered online</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>The Cypher Files</td>
+              <td>Mixed ciphers</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Murdle</td>
+              <td>Logic grids</td>
+              <td>No</td>
+              <td>No</td>
+              <td>Yes</td>
+            </tr>
+            <tr>
+              <td>Cain's Jawbone</td>
+              <td>Literary reordering</td>
+              <td>No (but pages are loose)</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="foot-note">The closest thing ever published to this book is <em>The Sudoku Code</em>
+      (Heaney &amp; Longo, Sterling, 2006) — long out of print, built on wordoku rather than ciphers,
+      and with no companion site.</p>
+
+      <h2 class="sec-h">What's actually in the book</h2>
+      <ul class="specs">
+        <li><strong>200 original sudoku puzzles</strong> — 70 easy, 80 medium, 50 hard, climbing through three acts.</li>
+        <li><strong>One full-page 9&times;9 grid per 8.5 &times; 11 inch page</strong> — thick rules, large digits, room to pencil candidates.</li>
+        <li><strong>Exactly one solution per puzzle</strong>, solvable by logic alone. No guessing, ever.</li>
+        <li><strong>Verified twice</strong> — every grid checked by an independent solver written separately from the generator.</li>
+        <li><strong>An illustrated beginner's primer</strong> that teaches sudoku from zero.</li>
+        <li><strong>Complete answer keys</strong> for all 200 puzzles, printed in the back.</li>
+        <li><strong>252 pages</strong>, paperback, matte cover. ISBN 979-8188603960.</li>
+      </ul>
+
+      <h2 class="sec-h">Who it's for</h2>
+      <div class="fors">
+        <div class="for"><h3>Sudoku fans who are bored</h3><p>If you have worked through enough puzzle pads that they blur together, this is the one that does something else with the same 81 squares.</p></div>
+        <div class="for"><h3>Escape room fans</h3><p>The mechanic is a real escape room: gather clues, decode a cipher, open a lock. It just happens to be made of paper and it never expires.</p></div>
+        <div class="for"><h3>Gift buyers</h3><p>It reads as a normal, generous puzzle book on the shelf — and then it turns out to be something else. That reveal is the gift.</p></div>
+        <div class="for"><h3>Screen-free households</h3><p>Everything solves with a pencil. The website is optional, and there is no app, no account and no tracking.</p></div>
+      </div>
+
+      <h2 class="sec-h">Questions people ask</h2>
+      <div class="faqs">
+        <details><summary>Is there a sudoku book with an escape room in it?</summary><p>Yes — this one. Twenty of its 200 puzzles hide a shaded key, a printed cipher turns the digits into three words, and each word opens an online vault. As of 2026 it is effectively the only book of its kind in print.</p></details>
+        <details><summary>Do you have to cut or fold any pages?</summary><p>No. Nothing is cut, folded or destroyed — a deliberate difference from Journal 29 and The Cypher Files. The book survives intact, so it can be shared or gifted afterwards.</p></details>
+        <details><summary>Do you need the internet to finish it?</summary><p>No. All 200 puzzles, the cipher plate and every answer key are printed inside. The vaults are a reward, not a requirement.</p></details>
+        <details><summary>Is it suitable for beginners?</summary><p>Yes. The first act is 70 easy puzzles and an illustrated primer teaches sudoku from zero. It still climbs to 50 hard puzzles for experienced players.</p></details>
+        <details><summary>Are the puzzles real sudoku, or a gimmick?</summary><p>Real sudoku. Every grid has exactly one solution reachable by logic alone, machine-verified by a second, independently written solver.</p></details>
+        <details><summary>How big are the grids?</summary><p>One 9&times;9 grid fills a full 8.5 &times; 11 inch page. Note this means unusually large <em>grids</em> — it is not a large-print-typography edition in the accessibility sense.</p></details>
+      </div>
+
+      <div class="cta">
+        <h2>Start the hunt</h2>
+        <p>Volume 1 — 200 puzzles, three vaults, one hidden password. $14.99 in paperback.</p>
+        <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get Volume 1 on Amazon ↗</a>
+        <p class="alt">Not ready to buy? <a href="/play">Play 200 of the puzzles free in your browser</a> — no account needed.</p>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .page-erb { padding-top: 90px; padding-bottom: 80px; }
+    .erb-hero { text-align: center; max-width: 760px; margin: 0 auto 44px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .erb-hero h1 { font-family: var(--display); font-size: clamp(30px, 5vw, 50px); font-weight: 600; color: var(--ivory); line-height: 1.12; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
+    .answer-card { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.35); border-radius: 14px; padding: 30px 32px; margin-bottom: 56px; }
+    .answer-card h2 { font-family: var(--display); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .answer-card p { font-size: 17px; line-height: 1.65; color: var(--ivory); }
+
+    .sec-h { font-family: var(--display); font-size: clamp(22px, 3vw, 28px); color: var(--gold-hi); margin-bottom: 8px; }
+    .sec-sub { font-style: italic; color: var(--ash); margin-bottom: 22px; font-size: 15px; }
+
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 22px 0 56px; }
+    .step { background: #110f15; border: 1px solid rgba(185,143,82,.18); border-radius: 10px; padding: 22px; }
+    .s-num { font-family: var(--display); font-size: 12px; letter-spacing: .2em; color: var(--gold); opacity: .8; margin-bottom: 8px; }
+    .step h3 { font-family: var(--display); font-size: 19px; color: var(--ivory); margin-bottom: 8px; }
+    .step p { font-size: 15px; line-height: 1.6; color: var(--ash); }
+
+    .table-scroll { overflow-x: auto; margin-bottom: 10px; }
+    .cmp { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 620px; }
+    .cmp th { font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(246,178,60,.3); }
+    .cmp td { padding: 12px; color: var(--ash); border-bottom: 1px solid rgba(255,255,255,.06); }
+    .cmp tr.mine td { color: var(--ivory); background: rgba(246,178,60,.06); }
+    .foot-note { font-size: 14px; font-style: italic; color: var(--ash-dim); margin-bottom: 56px; }
+
+    .specs { list-style: none; margin-bottom: 56px; }
+    .specs li { position: relative; padding-left: 22px; margin-bottom: 11px; font-size: 16px; line-height: 1.6; color: var(--ash); }
+    .specs li::before { content: '◆'; position: absolute; left: 0; color: var(--gold); font-size: 10px; top: 5px; }
+    .specs strong { color: var(--ivory); }
+
+    .fors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 22px 0 56px; }
+    .for { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 20px; }
+    .for h3 { font-family: var(--display); font-size: 16px; color: var(--gold-hi); margin-bottom: 8px; }
+    .for p { font-size: 15px; line-height: 1.55; color: var(--ash); }
+
+    .faqs { margin-bottom: 56px; }
+    .faqs details { border-bottom: 1px solid rgba(255,255,255,.07); padding: 14px 0; }
+    .faqs summary { cursor: pointer; font-family: var(--display); font-size: 16px; color: var(--ivory); list-style: none; }
+    .faqs summary::-webkit-details-marker { display: none; }
+    .faqs summary::before { content: '+'; color: var(--gold); margin-right: 10px; }
+    .faqs details[open] summary::before { content: '−'; }
+    .faqs details p { font-size: 15.5px; line-height: 1.6; color: var(--ash); padding: 10px 0 4px 22px; }
+
+    .cta { text-align: center; background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px 28px; }
+    .cta h2 { font-family: var(--display); font-size: 26px; color: var(--gold-hi); margin-bottom: 8px; }
+    .cta p { color: var(--ash); font-size: 16px; margin-bottom: 18px; }
+    .btn-amz { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; }
+    .cta .alt { font-size: 14.5px; font-style: italic; margin: 18px 0 0; }
+    .cta .alt a { color: var(--gold); text-decoration: underline; }
+  </style>
+</Layout>

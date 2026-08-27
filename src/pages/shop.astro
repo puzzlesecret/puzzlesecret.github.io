@@ -1,7 +1,34 @@
 ---
 import Layout from '../layouts/Layout.astro';
-const AMAZON_URL = "https://amzn.to/4flLyPR";
-const BOOK_LD = {"@context": "https://schema.org", "@type": "Book", "name": "Sudoku with a Secret", "alternateName": "Sudoku with a Secret, Volume 1: The Keeper's Vault", "bookFormat": "https://schema.org/Paperback", "author": {"@type": "Person", "name": "Dan Herlehy"}, "publisher": {"@type": "Organization", "name": "PuzzleSecret"}, "inLanguage": "en", "numberOfPages": 252, "image": "https://puzzlesecret.com/art/door-v10.webp", "description": "200 honest Sudoku puzzles (70 Easy, 80 Medium, 50 Hard). Twenty hide a shaded cipher digit; decode the words they spell to open three online vaults of free bonus puzzles. Answer keys and a new-to-Sudoku primer included.", "url": "https://puzzlesecret.com/shop", "offers": {"@type": "Offer", "price": "14.99", "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": "https://amzn.to/4flLyPR"}};
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=genxvsai-20";
+// Same @id as the homepage Book node, so both pages describe ONE entity
+// rather than two competing ones. The offer URL is deliberately untagged:
+// affiliate parameters do not belong inside structured data.
+const BOOK_LD = {
+  "@context": "https://schema.org",
+  "@type": "Book",
+  "@id": "https://puzzlesecret.com/#book-v1",
+  "name": "Sudoku with a Secret, Volume 1: Crack the Keeper's Vault",
+  "alternateName": "Sudoku with a Secret",
+  "bookFormat": "https://schema.org/Paperback",
+  "author": { "@type": "Person", "name": "Dan Herlehy" },
+  "publisher": { "@type": "Organization", "name": "PuzzleSecret" },
+  "isbn": "9798188603960",
+  "inLanguage": "en",
+  "numberOfPages": 252,
+  "datePublished": "2026-07-24",
+  "genre": ["Puzzles", "Sudoku", "Logic and Brain Teasers"],
+  "image": "https://puzzlesecret.com/art/door-v10.webp",
+  "description": "200 honest Sudoku puzzles (70 Easy, 80 Medium, 50 Hard), one full-page 9x9 grid per 8.5 x 11 inch page. Twenty hide a shaded cipher digit; decode the words they spell to open three online vaults of free bonus puzzles. Answer keys and a new-to-Sudoku primer included.",
+  "url": "https://puzzlesecret.com/shop",
+  "offers": {
+    "@type": "Offer",
+    "price": "14.99",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://www.amazon.com/dp/B0HB9K8PXC"
+  }
+};
 ---
 
 <Layout title="The Keeper's Commissary · PuzzleSecret Shop" description="Get Sudoku with a Secret Volume 1 on Amazon or download standalone bonus puzzle packs from the Keeper's commissary.">

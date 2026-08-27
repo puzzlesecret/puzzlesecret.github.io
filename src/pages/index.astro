@@ -7,7 +7,10 @@
 // Gemini crack video + Keeper voice composite into LIVE in the next step.
 const keeperFirstLine =
   "Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening.";
-const AMAZON_URL = "https://amzn.to/4flLyPR";   // Volume 1 on Amazon, $14.99
+// Clean product URL, not a shortener — shorteners strip Amazon Attribution
+// tags, and the old amzn.to link carried a stale search session. tag= is the
+// Associates ID (site links only; NEVER in email or print — Associates ToS).
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=genxvsai-20";   // Volume 1, $14.99
 const tiles = 6;
 const volumes = [
   { rn: "I", c: "var(--v1)", rgb: "255,180,72", img: "/art/door-v10.webp", name: "The Keeper's Vault", active: true },
@@ -29,6 +32,64 @@ const ghosts = [
 // Cookieless analytics (no cookies, no personal data) — this page builds its
 // own HTML instead of using Layout.astro, so it needs its own <Analytics />.
 import Analytics from '@vercel/analytics/astro';
+
+// ---- SEO ----------------------------------------------------------------
+// The old title/description spoke only to people who ALREADY owned the book
+// ("You solved the book. Now crack the vault."), so the homepage matched no
+// buying query at all. These serve both: the hook for owners, the product
+// words for someone searching for a puzzle book they don't have yet.
+const SEO_TITLE = "Sudoku with a Secret — A Sudoku Book with a Hidden Escape Room";
+const SEO_DESC = "200 large-grid sudoku puzzles hiding a secret code. Solve the book, crack the cipher, open real online vaults. An escape room you can hold.";
+const CANONICAL = "https://puzzlesecret.com/";
+const OG_IMAGE = "https://puzzlesecret.com/art/og-door.jpg";
+
+// Homepage is the canonical entity page for the book and the brand.
+// No aggregateRating: the reviews live on Amazon, not here, and Google
+// treats self-hosted markup of off-site reviews as self-serving.
+const HOME_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://puzzlesecret.com/#org",
+      "name": "PuzzleSecret",
+      "url": "https://puzzlesecret.com",
+      "logo": OG_IMAGE,
+      "founder": { "@type": "Person", "name": "Dan Herlehy" },
+      "description": "Print puzzle books that hide a solvable secret — solve the puzzles, decode the cipher, open a real online vault."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://puzzlesecret.com/#website",
+      "url": "https://puzzlesecret.com",
+      "name": "PuzzleSecret",
+      "publisher": { "@id": "https://puzzlesecret.com/#org" },
+      "inLanguage": "en-US"
+    },
+    {
+      "@type": "Book",
+      "@id": "https://puzzlesecret.com/#book-v1",
+      "name": "Sudoku with a Secret, Volume 1: Crack the Keeper's Vault",
+      "bookFormat": "https://schema.org/Paperback",
+      "author": { "@type": "Person", "name": "Dan Herlehy" },
+      "publisher": { "@id": "https://puzzlesecret.com/#org" },
+      "isbn": "9798188603960",
+      "numberOfPages": 252,
+      "inLanguage": "en",
+      "datePublished": "2026-07-24",
+      "image": "https://puzzlesecret.com/art/door-v10.webp",
+      "genre": ["Puzzles", "Sudoku", "Logic and Brain Teasers"],
+      "description": "A 200-puzzle sudoku book with an escape room hidden inside it. Twenty of the puzzles conceal a shaded cell; the digits they reveal decode, through a cipher plate printed in the back of the book, into three secret words. Each word opens a sealed vault of free bonus puzzles on puzzlesecret.com. One full-page 9x9 grid per 8.5 x 11 inch page, 70 easy, 80 medium and 50 hard, with complete answer keys and a beginner's primer.",
+      "offers": {
+        "@type": "Offer",
+        "price": "14.99",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": "https://www.amazon.com/dp/B0HB9K8PXC"
+      }
+    }
+  ]
+};
 ---
 
 <!doctype html>
@@ -37,15 +98,26 @@ import Analytics from '@vercel/analytics/astro';
     <meta name="p:domain_verify" content="e74f3a68cdf6a1e0175624d5717e2746" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Sudoku with a Secret — The Keeper's Vault</title>
-    <meta name="description" content="You solved the book. Now crack the vault. Speak the words hidden in Sudoku with a Secret and open three vaults of treasure and free bonus puzzles." />
-    <meta property="og:title" content="Sudoku with a Secret — Crack the Keeper's Vault" />
-    <meta property="og:description" content="A series of secrets. Five books, five seals. Speak the words you found in the book." />
-    <meta property="og:image" content="/art/og-door.jpg" />
+    <title>{SEO_TITLE}</title>
+    <meta name="description" content={SEO_DESC} />
+    <link rel="canonical" href={CANONICAL} />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta property="og:title" content={SEO_TITLE} />
+    <meta property="og:description" content={SEO_DESC} />
+    <meta property="og:image" content={OG_IMAGE} />
+    <meta property="og:url" content={CANONICAL} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PuzzleSecret" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={SEO_TITLE} />
+    <meta name="twitter:description" content={SEO_DESC} />
+    <meta name="twitter:image" content={OG_IMAGE} />
+    <meta name="author" content="Dan Herlehy" />
     <meta name="theme-color" content="#0a0a0c" />
     <link rel="stylesheet" href="/fonts/fonts.css" />
     <link rel="preload" as="image" href="/art/door-v10.webp" />
+    <script type="application/ld+json" set:html={JSON.stringify(HOME_LD)} />
   </head>
 
   <body>
@@ -175,6 +247,7 @@ import Analytics from '@vercel/analytics/astro';
           <article class="card card-buy">
             <h3>Don't have it yet?</h3>
             <p><strong>Sudoku with a Secret · Volume 1</strong> — 200 puzzles, 3 vaults, one hidden password. $14.99 in paperback. Or try 200 free puzzles here first.</p>
+            <p class="explain-link">New here? <a href="/escape-room-sudoku-book">Read how a sudoku book can hide an escape room</a> — the whole mechanic, explained.</p>
             <div class="card-actions">
               <a class="btn" href={AMAZON_URL} target="_blank" rel="noopener">Get the book on Amazon ↗</a>
               <a class="btn ghost" href="/play">Play 200 free first</a>
@@ -789,6 +862,9 @@ import Analytics from '@vercel/analytics/astro';
       .card p { color: var(--ash); font-size: 16.5px; line-height: 1.5; margin-bottom: 18px; }
       .card p strong { color: var(--ivory); }
       .card-buy { border-color: rgba(246,178,60,.35); background: linear-gradient(180deg, rgba(40,32,18,.6), rgba(16,12,6,.6)); }
+      .explain-link { font-size: 14px; font-style: italic; color: var(--ash-dim); margin: 10px 0 14px; }
+      .explain-link a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+      .explain-link a:hover { color: var(--gold-hi); }
       .card-actions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
       .card-actions .btn { width: 100%; text-align: center; }
       .btn { display: inline-block; padding: 10px 20px; border-radius: 7px; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--brass-hi), var(--brass)); box-shadow: 0 6px 16px rgba(0,0,0,.4); transition: filter .25s, transform .15s; }
