@@ -17,6 +17,39 @@ import webPuzzles from '../data/web_puzzles.json';
     html.embed .arcade-top { margin-bottom: 10px !important; }
     html.embed .board-layout { grid-template-columns: 1fr !important; gap: 12px !important; max-width: 440px; margin: 0 auto; }
     html.embed .puz-title-btn { pointer-events: none; }
+    html.embed .btn-stat { display: none !important; }
+    html.embed .top-row { padding: 8px 12px !important; }
+    @media (min-width: 640px) {
+      html.embed .board-layout { grid-template-columns: minmax(300px, 400px) 1fr !important; max-width: 720px; gap: 20px !important; }
+      html.embed .numpad-grid { grid-template-columns: repeat(3, 1fr) !important; order: 0 !important; }
+    }
+
+    /* The 9x9 grid — GLOBAL on purpose: the 81 cells are built by JS and never get Astro's scoped
+       attribute, so scoped rules silently never applied (the original invisible-grid bug). */
+    .sudoku-grid-wrap { display: flex; flex-direction: column; gap: 14px; }
+    .sudoku-grid { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: url('/art/parchment_bg.webp') center/cover #e9dcc0; border: 3px solid #3a2a14; border-radius: 6px; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,.9); outline: none; touch-action: manipulation; }
+
+    /* every square is a clear square on the parchment: cream wash, ink lines, ink digits */
+    .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: clamp(19px, 5vw, 28px); font-weight: 700; color: #1a1208; background: rgba(255,249,236,.42); border: 1px solid rgba(60,42,20,.55); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background .12s; position: relative; min-height: 0; }
+    .cell.border-right { border-right: 3px solid #3a2a14; }
+    .cell.border-bottom { border-bottom: 3px solid #3a2a14; }
+
+    .cell.given { color: #14100a; background: rgba(210,190,150,.45); }
+    .cell.filled { color: #1f4e8c; text-shadow: 0 0 1px rgba(31,78,140,.35); }
+
+    /* Highlights */
+    .cell.highlight-line { background: rgba(246,178,60,.28); }
+    .cell.highlight-num { background: rgba(246,178,60,.5); }
+    .cell.selected { background: rgba(246,178,60,.75) !important; box-shadow: inset 0 0 0 3px #b8760c; }
+    .cell.key-cell { box-shadow: inset 0 0 0 2px var(--gold); background: rgba(246,178,60,.35); }
+    .cell.error { color: #a4183a !important; background: rgba(231,120,140,.55) !important; }
+    .tap-hint { font-style: italic; font-size: 14px; color: var(--ash); text-align: center; margin-top: -2px; }
+    .tap-hint[hidden] { display: none; }
+
+    /* Pencil Notes Grid inside Cell */
+    .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; pointer-events: none; }
+    .note-digit { display: flex; align-items: center; justify-content: center; font-size: clamp(9px, 2.6vw, 13px); color: #3a2a14; opacity: .9; font-family: sans-serif; font-weight: 700; }
+
   </style>
   <main class="page-play">
     <!-- Top Arcade Toolbar -->
@@ -54,6 +87,7 @@ import webPuzzles from '../data/web_puzzles.json';
             <!-- 81 Cell elements dynamically built -->
           </div>
 
+          <p class="tap-hint" id="tapHint" hidden>Tap a square, then tap a number. Long-press a number for pencil marks.</p>
           <!-- Key Puzzle Banner (shows if active puzzle is a Secret Key puzzle) -->
           <div class="key-banner" id="keyBanner" hidden>
             <span class="k-ic">🔑</span>
@@ -205,6 +239,23 @@ import webPuzzles from '../data/web_puzzles.json';
         localStorage.setItem(LS_KEY_PASSPORT_KEYS, JSON.stringify(keyDigitsSaved));
       } catch (e) {}
     }
+    // in-progress grids survive a closed modal, a reload, or tomorrow's return
+    function persist() {
+      try {
+        const all = JSON.parse(localStorage.getItem(LS_KEY_STATE) || '{}');
+        all[currentId] = { g: gridState.join(''), n: pencilMarks.map((s) => Array.from(s).join('')), t: Date.now() };
+        const keys = Object.keys(all).sort((a, b) => (all[a].t || 0) - (all[b].t || 0)); while (keys.length > 24) delete all[keys.shift()];
+        localStorage.setItem(LS_KEY_STATE, JSON.stringify(all));
+      } catch (e) {}
+    }
+    function restore(id) {
+      try {
+        const all = JSON.parse(localStorage.getItem(LS_KEY_STATE) || '{}'); const s = all[id];
+        if (!s || !s.g || s.g.length !== 81) return false;
+        for (let i = 0; i < 81; i++) { if (!givensMask[i]) { gridState[i] = parseInt(s.g[i], 10) || 0; pencilMarks[i] = new Set((s.n && s.n[i] ? s.n[i].split('') : []).map(Number)); } }
+        return true;
+      } catch (e) { return false; }
+    }
 
     // DOM Elements
     const gridEl = document.getElementById('sudokuGrid');
@@ -216,6 +267,8 @@ import webPuzzles from '../data/web_puzzles.json';
     const pencilBtn = document.getElementById('pencilBtn');
     const pencilLbl = document.getElementById('pencilLbl');
 
+    // keyboard: focusing the grid selects a cell so the arrow keys have somewhere to start
+    gridEl.addEventListener('focus', () => { if (selectedCell < 0) selectCell(gridState.findIndex((v, i) => !givensMask[i]) || 0); });
     // Build 81 Cells inside Grid
     function createGridCells() {
       if (!gridEl) return;
@@ -240,6 +293,7 @@ import webPuzzles from '../data/web_puzzles.json';
     function loadPuzzle(id) {
       const puz = PUZZLES.find((p) => p.id === id) || PUZZLES[0];
       currentId = puz.id;
+      renderCount = 0;
       history = [];
       gridState = Array(81).fill(0);
       givensMask = Array(81).fill(false);
@@ -255,7 +309,8 @@ import webPuzzles from '../data/web_puzzles.json';
       }
 
       // UI Labels
-      puzTitleLbl.textContent = EMBED && QP.get('daily') ? 'The Keeper’s page for today' : `Puzzle #${puz.id}`;
+      const customTitle = (QP.get('title') || '').replace(/[^\w\s’'.·:-]/g, '').slice(0, 40);
+      puzTitleLbl.textContent = customTitle ? customTitle : (EMBED && QP.get('daily') ? 'The Keeper’s page for today' : `Puzzle #${puz.id}`);
       puzTierBadge.textContent = puz.tier.toUpperCase();
       puzTierBadge.className = `p-tag ${puz.tier}`;
 
@@ -266,6 +321,8 @@ import webPuzzles from '../data/web_puzzles.json';
         keyBanner.hidden = true;
       }
 
+      if (!solvedSet.has(puz.id)) restore(puz.id);   // pick up where you left off (never a solved grid)
+
       // Reset Timer
       startTimer();
       renderBoard();
@@ -274,7 +331,9 @@ import webPuzzles from '../data/web_puzzles.json';
     }
 
     // Render the board visually
+    let renderCount = 0;
     function renderBoard() {
+      if (renderCount++ > 0) persist();     // every change after the initial draw is saved
       const puz = PUZZLES.find((p) => p.id === currentId);
       const cells = gridEl.querySelectorAll('.cell');
 
@@ -319,7 +378,19 @@ import webPuzzles from '../data/web_puzzles.json';
         if (selVal > 0 && gridState[i] === selVal) {
           cell.classList.add('highlight-num');
         }
+        // Live conflicts: an entered digit that clashes with its row, column or box shows at once
+        if (!givensMask[i] && gridState[i] > 0 && conflicts(i)) cell.classList.add('error');
       });
+    }
+    function conflicts(i) {
+      const v = gridState[i], r = Math.floor(i / 9), c = i % 9, br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+      for (let k = 0; k < 9; k++) {
+        if (k !== c && gridState[r * 9 + k] === v) return true;
+        if (k !== r && gridState[k * 9 + c] === v) return true;
+        const rr = br + Math.floor(k / 3), cc = bc + (k % 3);
+        if ((rr !== r || cc !== c) && gridState[rr * 9 + cc] === v) return true;
+      }
+      return false;
     }
 
     function buildNotesHTML(set) {
@@ -417,7 +488,8 @@ import webPuzzles from '../data/web_puzzles.json';
       });
 
       if (!errorFound) {
-        alert('No errors found so far! Keep going!');
+        const b = document.getElementById('checkBtn'); b.textContent = 'No errors so far ✓'; setTimeout(() => { b.textContent = 'Check Errors'; }, 1600);
+        return;
       }
     }
 
@@ -430,6 +502,7 @@ import webPuzzles from '../data/web_puzzles.json';
         }
         renderBoard();
         updateRemCounts();
+        startTimer();
       }
     }
 
@@ -595,10 +668,18 @@ import webPuzzles from '../data/web_puzzles.json';
     document.getElementById('resetBtn')?.addEventListener('click', resetBoard);
 
     document.querySelectorAll('.num-btn').forEach((btn) => {
+      let pressT = null, longed = false;
       btn.addEventListener('click', () => {
+        if (longed) { longed = false; return; }
         const num = parseInt(btn.getAttribute('data-num'), 10);
         inputNum(num);
+        const th = document.getElementById('tapHint'); if (th) th.hidden = true;
       });
+      // long-press a number = pencil it in without switching modes
+      btn.addEventListener('pointerdown', () => { longed = false; pressT = setTimeout(() => { longed = true; const was = isPencilMode; isPencilMode = true; inputNum(parseInt(btn.getAttribute('data-num'), 10)); isPencilMode = was; }, 480); });
+      btn.addEventListener('contextmenu', (e) => e.preventDefault());
+      const cancel = () => { clearTimeout(pressT); };
+      btn.addEventListener('pointerup', cancel); btn.addEventListener('pointerleave', cancel); btn.addEventListener('pointercancel', cancel);
     });
 
     // Picker Modal Controls
@@ -633,6 +714,7 @@ import webPuzzles from '../data/web_puzzles.json';
 
     // Initialize Page
     loadSaved();
+    try { if (!localStorage.getItem('ps_tap_hint')) { document.getElementById('tapHint').hidden = false; localStorage.setItem('ps_tap_hint', '1'); } } catch (e) {}
     createGridCells();
     loadPuzzle(EMBED && QP.get('daily') ? dailyId() : (parseInt(QP.get('puzzle'), 10) || 1));
   </script>
@@ -666,28 +748,6 @@ import webPuzzles from '../data/web_puzzles.json';
     /* Board Layout */
     .board-layout { display: grid; grid-template-columns: minmax(320px, 480px) 1fr; gap: 36px; align-items: start; }
 
-    /* 9x9 Sudoku Grid */
-    .sudoku-grid-wrap { display: flex; flex-direction: column; gap: 14px; }
-    .sudoku-grid { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: url('/art/parchment_bg.webp') center/cover #0c0b0f; border: 3px solid var(--brass); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 48px rgba(0,0,0,.9), inset 0 0 30px rgba(0,0,0,.6); outline: none; }
-
-    .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: clamp(18px, 4vw, 24px); font-weight: 600; color: #1c150c; background: rgba(0,0,0,.04); border: 1px solid rgba(138,106,72,.28); cursor: pointer; user-select: none; transition: background .15s, color .15s; position: relative; }
-    .cell.border-right { border-right: 2.5px solid var(--brass); }
-    .cell.border-bottom { border-bottom: 2.5px solid var(--brass); }
-
-    .cell.given { color: #2c2214; background: rgba(0,0,0,.08); font-weight: 700; }
-    .cell.filled { color: #9c6c18; font-weight: 700; text-shadow: 0 0 1px rgba(0,0,0,.3); }
-
-    /* Highlights */
-    .cell.highlight-line { background: rgba(246,178,60,.18); }
-    .cell.highlight-num { background: rgba(246,178,60,.32); }
-    .cell.selected { background: rgba(246,178,60,.45) !important; border-color: var(--gold) !important; box-shadow: inset 0 0 0 2px var(--gold-hi); }
-    .cell.key-cell { background: rgba(246,178,60,.28); border: 2px solid var(--gold); }
-    .cell.error { color: #a42646 !important; background: rgba(231,138,166,.35) !important; }
-
-    /* Pencil Notes Grid inside Cell */
-    .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; height: 100%; pointer-events: none; }
-    .note-digit { display: flex; align-items: center; justify-content: center; font-size: clamp(8px, 1.8vw, 11px); color: var(--ash); opacity: .75; font-family: sans-serif; }
-
     .key-banner { display: flex; align-items: center; gap: 10px; background: rgba(246,178,60,.12); border: 1px solid var(--gold); border-radius: 8px; padding: 10px 14px; font-style: italic; font-size: 13.5px; color: var(--gold-hi); }
 
     /* Controls Panel */
@@ -702,7 +762,7 @@ import webPuzzles from '../data/web_puzzles.json';
     .a-lbl { font-family: var(--display); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 
     .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .num-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #18151f, #0e0d14); border: 1px solid rgba(185,143,82,.3); border-radius: 10px; padding: 14px 0; cursor: pointer; color: var(--gold-hi); transition: all .15s; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+    .num-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #18151f, #0e0d14); border: 1px solid rgba(185,143,82,.3); border-radius: 10px; padding: 14px 0; cursor: pointer; color: var(--gold-hi); transition: all .15s; box-shadow: 0 4px 12px rgba(0,0,0,.4); touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     .num-btn:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(246,178,60,.15); }
     .num-btn.dimmed { opacity: .3; pointer-events: none; }
     .num-val { font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1; }
@@ -758,7 +818,14 @@ import webPuzzles from '../data/web_puzzles.json';
     .nudge-fine a { color: var(--gold); text-decoration: underline; }
 
     @media (max-width: 768px) {
-      .board-layout { grid-template-columns: 1fr; }
+      .board-layout { grid-template-columns: 1fr; gap: 14px; }
+      .control-panel { gap: 12px; }
+      .numpad-grid { grid-template-columns: repeat(9, 1fr); gap: 4px; order: -1; }
+      .num-btn { padding: 9px 0 6px; border-radius: 7px; }
+      .num-val { font-size: 21px; }
+      .num-rem { font-size: 9px; }
+      .actions-grid { gap: 6px; }
+      .act-btn { padding: 9px 4px; font-size: 12px; }
     }
   </style>
 </Layout>

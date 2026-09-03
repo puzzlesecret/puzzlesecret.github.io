@@ -29,10 +29,8 @@ try {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   if (!renderer.getContext()) throw new Error('no ctx');
 } catch (e) {
-  if (window.__showFlatVault) window.__showFlatVault('nowebgl');
-  else document.getElementById('fallback').hidden = false;
-  gate.style.display = 'none';
-  fadeEl.classList.add('clear');
+  // no WebGL: the painted vault takes over (same page, same arrival parameters)
+  const u = new URL(location.href); u.searchParams.set('mode', 'painted'); location.replace(u.toString());
   throw e;
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); // perf cap (§4B)
@@ -2305,36 +2303,49 @@ const STUDY_SAY = {
   solved: 'Solved. Tomorrow I will have set another.',
   exit: (n) => 'You are leaving ' + n + ' of my things untouched. They will keep.',
 };
-/* --- the rejects: three drafts, each with exactly two answers (machine-verified) --- */
-const DRAFTS = [
-  { g: '0030030100000012', a: '1234432121433412', b: '2134432112433412', note: 'Two answers. Burn it. A grid that cannot make up its mind is not a puzzle — it is a coin toss with numbers on it.' },
-  { g: '0040000003002003', a: '3142423113242413', b: '3241413213242413', note: 'I gave it too few clues, and it gave me two truths back. Every one of the two hundred in my book has exactly one. This one has a twin.' },
-  { g: '0000300010020040', a: '4123321414322341', b: '4213312414322341', note: 'The deadly rectangle: four cells, two digits, and no way to choose between them. Every setter falls into this hole once. Then never again.' },
+/* --- the rejects: three full pages in the book's dress, each with exactly two answers.
+       The grids live in /data/rejects.json (machine-verified: two solutions, unlike any book or
+       arcade puzzle); the page borders are the book's own printed borders. --- */
+const DRAFT_NOTES = [
+  'Two answers. Burn it. A grid that cannot make up its mind is not a puzzle — it is a coin toss with numbers on it.',
+  'I gave it too few clues, and it gave me two truths back. Every one of the two hundred in my book has exactly one. This one has a twin.',
+  'The deadly rectangle: four cells, two digits, and no way to choose between them. Every setter falls into this hole once. Then never again.',
 ];
+const DRAFT_BORDERS = ['/art/page-border-easy.webp', '/art/page-border-medium.webp', '/art/page-border-hard.webp'];
+let DRAFTS = [];
+function loadDrafts() { return fetch('/data/rejects.json').then((r) => r.json()).then((d) => { if (Array.isArray(d)) DRAFTS = d; }).catch(() => {}); }
+loadDrafts();
 const draftEl = document.getElementById('draft'), draftGrid = document.getElementById('draftGrid');
 let draftCur = 0, draftShow = null;
 function drawDraft() {
-  const D = DRAFTS[draftCur]; draftGrid.innerHTML = '';
+  const D = DRAFTS[draftCur]; if (!D) return;
+  draftGrid.innerHTML = '';
   const fill = draftShow ? D[draftShow] : null;
-  const diff = new Set(); for (let i = 0; i < 16; i++) if (D.a[i] !== D.b[i]) diff.add(i);
-  for (let i = 0; i < 16; i++) {
+  const diff = new Set(D.diff || []);
+  for (let i = 0; i < 81; i++) {
     const c = document.createElement('i');
     const given = D.g[i] !== '0';
     c.textContent = given ? D.g[i] : (fill ? fill[i] : '');
     if (!given && fill) c.classList.add('pen');
     if (diff.has(i) && fill) c.classList.add('hot');
-    if (i % 4 === 1) c.classList.add('b2'); if (Math.floor(i / 4) === 1) c.classList.add('r2');
+    if (i % 9 === 2 || i % 9 === 5) c.classList.add('b3');
+    const r = Math.floor(i / 9); if (r === 2 || r === 5) c.classList.add('r3');
     draftGrid.appendChild(c);
   }
-  document.getElementById('draftNote').textContent = D.note;
+  document.getElementById('draftSheet').style.backgroundImage = 'url(' + DRAFT_BORDERS[draftCur % 3] + ')';
+  markDraftBtns();
+  document.getElementById('draftHead').textContent = 'DRAFT No. ' + (draftCur + 1) + ' · ' + (D.givens || '') + ' CLUES · TWO ANSWERS';
+  document.getElementById('draftNote').textContent = DRAFT_NOTES[draftCur % 3];
 }
 function openDraft(idx) {
-  draftCur = idx; draftShow = null; drawDraft(); draftEl.hidden = false;
+  if (!DRAFTS.length) { loadDrafts().then(() => { if (DRAFTS.length) openDraft(idx); else showCaption('The page is stuck to itself. Try again in a moment.', 3000); }); return; }
+  draftCur = idx % DRAFTS.length; draftShow = null; drawDraft(); draftEl.hidden = false;
   showCaption('A page I threw away. Look at it and tell me why.', 4800);
   markFound('reject' + idx);
 }
 document.getElementById('draftA').addEventListener('click', () => { draftShow = 'a'; drawDraft(); });
 document.getElementById('draftB').addEventListener('click', () => { draftShow = 'b'; drawDraft(); });
+function markDraftBtns() { document.getElementById('draftA').setAttribute('aria-pressed', String(draftShow === 'a')); document.getElementById('draftB').setAttribute('aria-pressed', String(draftShow === 'b')); }
 document.getElementById('draftClose').addEventListener('click', () => { draftEl.hidden = true; });
 /* --- the Keeper's Notebook: six pages --- */
 const NOTEBOOK = [
@@ -2399,8 +2410,9 @@ const DESK_LINES = [
 ];
 const deskEl = document.getElementById('desk'), deskFrame = document.getElementById('deskFrame');
 let seated = false, eyeTarget = 1.6;
+function dailyPuzzleId() { return ((dayIndex() * 97 + 41) % 200) + 1; }   // the same formula /play uses
 function renderDeskStamps() {
-  const n = Object.keys(deskState.days).length, today = deskState.days[localDay()];
+  const n = Object.keys(deskState.days).length, today = deskState.days[localDay()] === dailyPuzzleId();
   document.getElementById('deskStamps').textContent = (today ? 'TODAY’S PAGE — SOLVED · ' : '') + (n ? n + (n === 1 ? ' PAGE' : ' PAGES') + ' SOLVED AT THIS DESK' : 'NO PAGE SOLVED AT THIS DESK YET');
 }
 function sitAtDesk() {
@@ -2427,12 +2439,16 @@ document.getElementById('deskRise').addEventListener('click', riseFromDesk);
 addEventListener('message', (e) => {
   if (e.origin !== location.origin || !e.data || e.data.type !== 'ps-desk-solved') return;
   const d = localDay();
+  if (e.data.id !== dailyPuzzleId()) return;          // only today's page earns the desk's stamp
   if (!deskState.days[d]) { deskState.days[d] = e.data.id; }
   if (e.data.secs && (!deskState.best || e.data.secs < deskState.best)) deskState.best = e.data.secs;
   saveDesk(); renderDeskStamps(); markFound('desk');
   showCaption(STUDY_SAY.solved, 6000); burstConfetti(); playUnlock();
 });
 let exitSaid = false;
+
+/* the Back button is handled by the page-level guard in vault.astro; it needs the desk's exit */
+window.__vaultRise = riseFromDesk;
 
 /* ---- confetti (gold, hand-rolled, no library) ---- */
 const conf = document.getElementById('confetti');

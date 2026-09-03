@@ -244,6 +244,12 @@ const HOME_LD = {
 
       <div class="veil" id="veil" aria-hidden="true"></div>
       <div class="subs" id="subs"></div>
+      <div id="fiveModal" hidden role="dialog" aria-modal="true" aria-labelledby="fiveTitle">
+        <div class="five-card">
+          <div class="five-head"><span class="five-title" id="fiveTitle"></span><button type="button" class="five-close" id="fiveClose" aria-label="Close">✕</button></div>
+          <iframe id="fiveFrame" title="Today's puzzle"></iframe>
+        </div>
+      </div>
       <div class="blackout" id="blackout" aria-hidden="true"></div>
     </main>
 
@@ -281,6 +287,14 @@ const HOME_LD = {
           </article>
         </div>
 
+        <!-- FIVE FREE PUZZLES, TODAY — a fresh set every morning, played right here -->
+        <p class="eyebrow" id="five-anchor">Five free puzzles · today only</p>
+        <h2 class="h-serif">The Keeper sets five fresh grids every morning.</h2>
+        <p class="lede">Solve them here, on this page — two easy, two medium, one hard. Tomorrow there will be
+          five new ones, and today's go back in the drawer.</p>
+        <div class="five" id="five" aria-label="Today's five puzzles"></div>
+        <p class="five-foot">Want more than five? <a href="/play">The full arcade</a> has all two hundred.</p>
+
         <p class="eyebrow soon" id="soon-anchor">The vaults to come</p>
         <div class="soonstrip">
           <figure class="mini v2"><img src="/teasers/v2.webp" alt="Volume II — The Corsair's Chart" loading="lazy" /><figcaption>II · The Corsair's Chart</figcaption></figure>
@@ -301,6 +315,51 @@ const HOME_LD = {
       </footer>
     </section>
 
+    <script is:inline>
+      // FIVE A DAY — two easy, two medium, one hard from the arcade's 200, rotated by the calendar
+      // day (coprime steps: a long cycle, no repeats for months). Played in a parchment frame here.
+      (function () {
+        const d = new Date();
+        const day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+        let e1 = (day * 7 + 1) % 50 + 1, e2 = (day * 11 + 23) % 50 + 1; if (e2 === e1) e2 = e2 % 50 + 1;
+        let m1 = 51 + (day * 13 + 5) % 100, m2 = 51 + (day * 17 + 41) % 100; if (m2 === m1) m2 = 51 + (m2 - 50) % 100;
+        const h = 151 + (day * 19 + 3) % 50;
+        const FIVE = [[e1, 'Easy'], [e2, 'Easy'], [m1, 'Medium'], [m2, 'Medium'], [h, 'Hard']];
+        const wrap = document.getElementById('five'); if (!wrap) return;
+        function solvedSet() { try { return new Set(JSON.parse(localStorage.getItem('ps_web_solved') || '[]')); } catch (e) { return new Set(); } }
+        function render() {
+          const done = solvedSet(); wrap.innerHTML = '';
+          FIVE.forEach(([id, tier], i) => {
+            const b = document.createElement('button'); b.type = 'button'; b.className = 'five-btn ' + tier.toLowerCase() + (done.has(id) ? ' done' : '');
+            b.innerHTML = '<span class="f-n">' + (i + 1) + '</span><span class="f-t">' + tier + '</span><span class="f-s">' + (done.has(id) ? 'Solved ✓' : 'Play') + '</span>';
+            b.addEventListener('click', () => openFive(i, id, tier));
+            wrap.appendChild(b);
+          });
+        }
+        const modal = document.getElementById('fiveModal'), frame = document.getElementById('fiveFrame');
+        let lastTrigger = null, prevOverflow = '';
+        try { if (history.state && history.state.five) history.replaceState({}, ''); } catch (e) {}   // a reload mid-modal leaves no phantom entry
+        function openFive(i, id, tier) {
+          lastTrigger = document.activeElement;
+          document.getElementById('fiveTitle').textContent = 'Today’s No. ' + (i + 1) + ' · ' + tier;
+          const src = '/play?embed=1&puzzle=' + id + '&title=' + encodeURIComponent('Today’s No. ' + (i + 1) + ' · ' + tier);
+          if (frame.getAttribute('src') !== src) frame.src = src;     // the same puzzle keeps its progress
+          modal.hidden = false; prevOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
+          try { history.pushState({ five: 1 }, ''); } catch (e) {}
+          const focusFrame = () => { try { frame.contentWindow.focus(); } catch (e) {} };
+          frame.addEventListener('load', focusFrame, { once: true }); setTimeout(focusFrame, 300);
+        }
+        function closeFive() {
+          modal.hidden = true; document.body.style.overflow = prevOverflow; render();
+          if (lastTrigger && lastTrigger.focus) lastTrigger.focus();
+        }
+        document.getElementById('fiveClose').addEventListener('click', () => { if (history.state && history.state.five) history.back(); else closeFive(); });
+        addEventListener('popstate', () => { if (!modal.hidden) closeFive(); });
+        addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) document.getElementById('fiveClose').click(); });
+        addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.type === 'ps-desk-solved') setTimeout(render, 300); });
+        render();
+      })();
+    </script>
     <script define:vars={{ keeperFirstLine }}>
       const scene = document.getElementById('scene');
       const slot = document.getElementById('slot');
@@ -1126,6 +1185,27 @@ const HOME_LD = {
       .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
       .btn.ghost { color: var(--gold-hi); background: none; border: 1px solid rgba(246,178,60,.4); box-shadow: none; }
       .btn.ghost:hover { border-color: var(--gold); background: rgba(246,178,60,.08); }
+      /* five a day */
+      .five { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 26px 0 12px; }
+      .five-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 8px 14px; border-radius: 12px; cursor: pointer; color: var(--ivory); font-family: var(--serif);
+        background: linear-gradient(180deg, rgba(40,32,18,.7), rgba(16,12,6,.7)); border: 1px solid rgba(246,178,60,.35); transition: transform .15s, border-color .2s; }
+      .five-btn:hover { transform: translateY(-2px); border-color: var(--gold); }
+      .five-btn .f-n { font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--gold-hi); line-height: 1; }
+      .five-btn .f-t { font-family: var(--display); font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--ash); }
+      .five-btn.easy .f-t { color: #a9e6c0; } .five-btn.medium .f-t { color: var(--gold); } .five-btn.hard .f-t { color: #f2b6c6; }
+      .five-btn .f-s { margin-top: 4px; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); padding: 7px 14px; border-radius: 6px; }
+      .five-btn.done { border-color: rgba(53,207,127,.5); }
+      .five-btn.done .f-s { background: none; color: #a9e6c0; border: 1px solid rgba(53,207,127,.5); }
+      .five-foot { font-size: 14px; font-style: italic; color: var(--ash-dim); margin-bottom: 56px; }
+      .five-foot a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+      #fiveModal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(4,3,2,.8); backdrop-filter: blur(3px); padding: 10px; }
+      #fiveModal[hidden] { display: none; }
+      .five-card { width: min(780px, 100%); height: min(760px, calc(100vh - 20px)); display: flex; flex-direction: column; background: linear-gradient(180deg, #2a1b0b, #17100a); border: 1px solid rgba(246,178,60,.5); border-radius: 8px; overflow: hidden; box-shadow: 0 0 60px rgba(246,178,60,.18), 0 18px 50px rgba(0,0,0,.8); }
+      .five-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 8px 16px; }
+      .five-title { font-family: var(--display); font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--gold); }
+      .five-close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(246,178,60,.4); background: none; color: var(--ivory); cursor: pointer; font-size: 14px; }
+      #fiveFrame { flex: 1; width: 100%; border: 0; background: #120d07; }
+      @media (max-width: 720px) { .five { grid-template-columns: repeat(5, 1fr); gap: 6px; } .five-btn { padding: 12px 4px 10px; } .five-btn .f-n { font-size: 22px; } .five-btn .f-t { font-size: 8px; letter-spacing: .12em; } .five-btn .f-s { font-size: 9px; padding: 6px 8px; letter-spacing: .1em; } }
       .soon { margin-top: 20px; }
       .soonstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 22px; }
       .mini { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid rgba(185,143,82,.2); filter: grayscale(.2) brightness(.82); transition: filter .4s, transform .4s; }

@@ -65,17 +65,24 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
-  <!-- A REJECT, UNFOLDED — a draft with two answers -->
+  <!-- A REJECT, UNFOLDED — a page in the book's own dress, with two answers -->
   <div id="draft" hidden>
-    <div class="page-card draft-card">
-      <div class="page-no">A REJECTED DRAFT</div>
-      <div class="draft-grid" id="draftGrid"></div>
-      <p class="draft-note" id="draftNote"></p>
-      <div class="nb-nav">
-        <button id="draftA" class="ghost-btn">One answer</button>
-        <button id="draftB" class="ghost-btn">…and the other</button>
+    <div class="draft-wrap">
+      <div class="sheet" id="draftSheet">
+        <div class="sheet-win">
+          <div class="sheet-head" id="draftHead">DRAFT · TWO ANSWERS</div>
+          <div class="grid9" id="draftGrid"></div>
+        </div>
+        <div class="sheet-stamp">REJECTED</div>
       </div>
-      <button id="draftClose" class="ghost-btn">Crumple it again →</button>
+      <div class="draft-side">
+        <p class="draft-note" id="draftNote"></p>
+        <div class="nb-nav">
+          <button id="draftA" class="ghost-btn">One answer</button>
+          <button id="draftB" class="ghost-btn">…and the other</button>
+        </div>
+        <button id="draftClose" class="ghost-btn">Crumple it again →</button>
+      </div>
     </div>
   </div>
 
@@ -403,17 +410,21 @@ import Analytics from '@vercel/analytics/astro';
       background: rgba(4,2,0,0.55); backdrop-filter: blur(2px); padding: 12px;
     }
     #desk[hidden], #notebook[hidden], #draft[hidden] { display: none; }
+    #desk { padding: 6px; }
     .desk-card {
-      width: min(520px, 100%); max-height: calc(100vh - 24px); display: flex; flex-direction: column;
-      background: linear-gradient(180deg, #2a1b0b, #17100a); border: 1px solid rgba(246,178,60,0.5); border-radius: 8px;
+      width: min(780px, 100%); max-height: calc(100vh - 12px); display: flex; flex-direction: column;
+      background: url(/art/parchment_bg.webp) center / cover #e9dcc0; border: 3px solid #3a2a14; border-radius: 4px;
       box-shadow: 0 0 60px rgba(246,178,60,0.18), 0 18px 50px rgba(0,0,0,0.8); overflow: hidden;
     }
-    .desk-head { padding: 16px 18px 8px; text-align: center; }
-    .desk-line { font-size: 17px; font-style: italic; color: rgba(232,213,174,0.9); line-height: 1.4; }
-    .desk-stamps { margin-top: 6px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .18em; color: rgba(217,168,80,.8); }
-    .desk-frame { flex: 1; min-height: 0; margin: 0 12px; border: 1px solid rgba(246,178,60,0.35); border-radius: 4px; background: #120d07; }
-    .desk-frame iframe { display: block; width: 100%; height: min(640px, calc(100vh - 210px)); border: 0; }
-    .desk-card .word-actions { padding: 10px 12px 12px; margin-top: 0; }
+    .desk-head { padding: 12px 16px 8px; text-align: center; background: rgba(255,250,236,.62); border-bottom: 1px solid rgba(58,42,20,.35); }
+    .desk-head .reward-kicker { color: #7a5520; }
+    .desk-line { font-size: 17px; font-style: italic; color: #2c2011; line-height: 1.35; }
+    .desk-stamps { margin-top: 4px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .18em; color: #8a6a33; }
+    .desk-frame { flex: 1; min-height: 0; margin: 0 10px; border: 1px solid rgba(58,42,20,0.6); border-radius: 3px; background: #120d07; }
+    .desk-frame iframe { display: block; width: 100%; height: calc(100vh - 150px); border: 0; }
+    .desk-card .word-actions { padding: 8px 10px 10px; margin-top: 0; }
+    .desk-card .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.5); }
+    #draftA[aria-pressed="true"], #draftB[aria-pressed="true"] { background: rgba(246,178,60,.35); color: #2c2011; border-color: #b8760c; }
     .nb-card, .draft-card { max-width: 520px; }
     .nb-body { text-align: left; min-height: 210px; font-size: 17px; font-style: italic; line-height: 1.5; color: #2c2011; }
     .nb-body h4 { font-family: Cinzel, serif; font-style: normal; font-size: 13px; letter-spacing: .18em; color: #7a5520; margin-bottom: 10px; text-align: center; }
@@ -423,17 +434,31 @@ import Analytics from '@vercel/analytics/astro';
     .nb-body .grid4 { display: grid; grid-template-columns: repeat(4, 32px); gap: 2px; margin: 8px auto; }
     .nb-nav { display: flex; gap: 10px; margin: 6px 0 10px; }
     .nb-nav .ghost-btn { margin: 0; }
-    .draft-grid { display: grid; grid-template-columns: repeat(4, 52px); gap: 3px; justify-content: center; margin: 6px auto 12px; }
-    .draft-grid i { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; font-family: Cinzel, serif; font-style: normal; font-size: 24px; font-weight: 700;
-      color: #2c2011; background: rgba(255,250,235,.75); border: 1px solid rgba(90,64,26,.55); }
-    .draft-grid i:nth-child(4n+2), .draft-grid i:nth-child(4n+3) { }
-    .draft-grid i.b2 { border-right-width: 3px; }
-    .draft-grid i.r2 { border-bottom-width: 3px; }
-    .draft-grid i.pen { color: #8a5a12; font-style: italic; font-weight: 500; }
-    .draft-grid i.hot { background: rgba(246,178,60,.35); }
-    .draft-note { font-size: 17px; font-style: italic; color: #2c2011; line-height: 1.45; margin-bottom: 6px; }
-    @media (max-width: 480px) { .draft-grid { grid-template-columns: repeat(4, 44px); } .draft-grid i { width: 44px; height: 44px; } }
-    @media (prefers-reduced-motion: reduce) { .nb-card, .draft-card { animation: none; } }
+    /* the reject: the book's own page (its printed border, the grid in the window, a red stamp) */
+    .draft-wrap { display: flex; gap: 18px; align-items: center; max-width: 820px; width: 100%; max-height: calc(100vh - 24px); }
+    .sheet { position: relative; flex: none; width: min(400px, 46vw); aspect-ratio: 2550 / 3300; background: #f3ecdb center / cover no-repeat; border-radius: 3px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.8), 0 0 40px rgba(246,178,60,.12); animation: pageLift .42s cubic-bezier(.2,.8,.25,1) both; }
+    .sheet-win { position: absolute; left: 12.2%; top: 11.6%; width: 75.5%; height: 68.8%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4%; }
+    .sheet-head { font-family: Cinzel, serif; font-size: clamp(8px, 1.1vw, 12px); letter-spacing: .3em; color: #3a2a14; }
+    .grid9 { display: grid; grid-template-columns: repeat(9, 1fr); width: 100%; aspect-ratio: 1; border: 2px solid #1a1208; background: rgba(255,252,244,.55); }
+    .grid9 i { display: flex; align-items: center; justify-content: center; font-family: Cinzel, serif; font-style: normal; font-weight: 700; font-size: clamp(9px, 1.5vw, 17px); color: #14100a; border: 1px solid rgba(26,18,8,.55); min-width: 0; }
+    .grid9 i.b3 { border-right: 2px solid #1a1208; }
+    .grid9 i.r3 { border-bottom: 2px solid #1a1208; }
+    .grid9 i.pen { color: #1f4e8c; font-weight: 500; }
+    .grid9 i.hot { background: rgba(246,178,60,.55); }
+    .sheet-stamp { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) rotate(-18deg); font-family: Cinzel, serif; font-weight: 700; font-size: clamp(22px, 4.6vw, 44px); letter-spacing: .18em;
+      color: rgba(160,28,40,.75); border: 4px solid rgba(160,28,40,.7); padding: 4px 16px; border-radius: 6px; pointer-events: none; mix-blend-mode: multiply; }
+    .draft-side { flex: 1; min-width: 0; background: linear-gradient(180deg, #efe2c4, #ddcaa4); border: 1px solid rgba(90,64,26,.5); border-radius: 3px; padding: 22px 22px 18px; text-align: center; box-shadow: 0 20px 55px rgba(0,0,0,.75); }
+    .draft-side .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.45); }
+    .draft-note { font-size: 16px; font-style: italic; color: #2c2011; line-height: 1.45; margin-bottom: 12px; }
+    @media (max-width: 700px) {
+      #draft { align-items: flex-start; overflow-y: auto; }
+      .draft-wrap { flex-direction: column; max-height: none; margin: auto 0; }
+      .sheet { width: min(360px, 92vw); }
+      .draft-side { width: 100%; padding: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .nb-card { animation: none; } }
 
     #confetti { position: fixed; inset: 0; z-index: 18; pointer-events: none; }
     #fade { position: fixed; inset: 0; z-index: 8; background: #000; opacity: 1; pointer-events: none; transition: opacity 2.2s; }
@@ -441,10 +466,55 @@ import Analytics from '@vercel/analytics/astro';
 
     @media (max-width: 640px) {
       #hint { display: none; }
-      #brand { font-size: 9px; letter-spacing: 0.22em; }
+      #brand { font-size: 9px; letter-spacing: 0.18em; top: 46px; max-width: 92vw; white-space: normal; text-align: center; line-height: 1.3; }
+      #studyCount { top: 74px; font-size: 9px; }
+      #modeChip { right: 52px; top: 10px; font-size: 9px; padding: 7px 9px; }
     }
   </style>
 
+  <script is:inline>
+    /* THE BACK BUTTON never throws you out of the vault by surprise. Installed here, before any
+       scene loads, for BOTH modes. Two entries of our own: [base][top]. Opening any overlay pushes
+       one more; Back pops it and closes the overlay; closing by button pops it quietly. With
+       nothing open, Back lands on base → one warning; Back again within 12 s really leaves. */
+    (function () {
+      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel'];
+      var el = function (id) { return document.getElementById(id); };
+      var anyOpen = function () { return IDS.some(function (id) { var e = el(id); return e && !e.hidden; }); };
+      var pushed = false, quiet = 0, warned = false, warnT = null;
+      function say(text) {
+        var painted = document.body.classList.contains('painted');
+        var t = el(painted ? 'pvCapText' : 'capText'); if (!t) return;
+        t.textContent = text;
+        var c = el(painted ? 'pvCap' : 'capText'); if (c) { c.classList.add('show'); setTimeout(function () { c.classList.remove('show'); }, 6500); }
+      }
+      function closeAll() {
+        IDS.forEach(function (id) { var e = el(id); if (e && !e.hidden) { if (id === 'desk' && window.__vaultRise) window.__vaultRise(); else e.hidden = true; } });
+        if (window.__painted && window.__painted.round && window.__painted.round.on && window.__painted.endRound) window.__painted.endRound(false);
+      }
+      try {
+        history.replaceState({ vault: 1, base: 1 }, '');
+        history.pushState({ vault: 1, top: 1 }, '');
+        new MutationObserver(function () {
+          var open = anyOpen();
+          if (open && !pushed) { pushed = true; history.pushState({ vault: 1, ov: 1 }, ''); }
+          else if (!open && pushed) { pushed = false; quiet++; history.back(); setTimeout(function () { quiet = Math.max(0, quiet - 1); }, 400); }
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+        window.addEventListener('popstate', function () {
+          if (quiet > 0) { quiet--; return; }
+          if (anyOpen()) { pushed = false; closeAll(); return; }
+          pushed = false;
+          if (history.state && history.state.base) {
+            if (!warned) {
+              warned = true; clearTimeout(warnT); warnT = setTimeout(function () { warned = false; }, 12000);
+              history.pushState({ vault: 1, top: 1 }, '');
+              say('Back once more to leave the vault — or use “the landing” at the top. Your stamps and pages are kept either way.');
+            } else history.back();
+          }
+        });
+      } catch (e) { /* no history API — nothing lost */ }
+    })();
+  </script>
   <script>
     // Mode is decided synchronously by FlatVault's inline script (window.__flatMode). The 3D
     // crawl is a dynamic import so the painted vault never pays for three.js.

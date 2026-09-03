@@ -123,3 +123,21 @@ Scores for the original package: 6 / 6.5 / (engineer: 3.5–4.5 sessions, not 3)
   shows a fixed seven cells (tiles grow as you type, both modes); and a LIVE bug on `/play` — the
   picker and the book-nudge modals were displayed on load because `display:flex` beat `hidden`.
 - While an overlay is up the 3D scene renders every third frame.
+
+## Round 3 — 2026-09-03 (Dan's three fixes; built, tested by two sub-agents, not yet pushed)
+- **Back button never throws you out of the vault**: a page-level guard (in `vault.astro`, installed
+  before either scene loads) keeps two history entries of its own; Back closes whatever overlay is
+  open, a Back with nothing open warns once, a second Back within 12 s leaves. Both modes.
+- **The rejects are real book pages**: three 9×9 grids with exactly two answers (deadly rectangle;
+  `public/data/rejects.json`, machine-verified, unlike any book/arcade puzzle) drawn inside the
+  book's own printed page borders (`public/art/page-border-*.webp`, from `art_out/`), with a red
+  REJECTED stamp and an A/B answer toggle. Also in the painted study.
+- **Five free puzzles a day on the homepage**: 2 easy · 2 medium · 1 hard chosen by calendar day,
+  played in a modal frame of the arcade (`/play?embed=1&puzzle=N`), progress saved per puzzle,
+  solved cards tick. The full arcade stays one link below.
+- **The arcade is playable on a phone**: the JS-built cells never received Astro's scoped CSS, so
+  the grid was an unstyled photo (live bug). Cell rules are global now: cream squares on the
+  parchment, ink lines, blue entries, live conflict reds, long-press pencil, 9-wide numpad, saved
+  progress, keyboard focus, no alert().
+- Sub-agent tests: code review (7 confirmed bugs, all fixed) + a browser walkthrough (all tests
+  passed; arcade playability scored 8.5 before the final fixes).

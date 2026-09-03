@@ -34,7 +34,9 @@
         { id: 'candle', x: 65, y: 44, w: 6, h: 13, label: 'A candle', act: 'candle' },
         { id: 'quill', x: 37, y: 47, w: 6, h: 11, label: 'Quill and ink', act: 'say', arg: 'quill' },
         { id: 'board', x: 60, y: 24, w: 17, h: 22, label: 'A pinboard of grids', act: 'say', arg: 'board' },
-        { id: 'reject', x: 27, y: 73, w: 5, h: 6, label: 'A crumpled page', act: 'say', arg: 'reject' },
+        { id: 'reject0', x: 27, y: 73, w: 5, h: 6, label: 'A crumpled page', act: 'draft', arg: 0 },
+        { id: 'reject1', x: 60, y: 84, w: 6, h: 6, label: 'A crumpled page', act: 'draft', arg: 1 },
+        { id: 'reject2', x: 17, y: 88, w: 6, h: 6, label: 'A crumpled page', act: 'draft', arg: 2 },
         { id: 'shelf', x: 85, y: 33, w: 10, h: 30, label: "The Keeper's shelves", act: 'say', arg: 'shelf' },
         { id: 'passage', x: 46, y: 26, w: 9, h: 24, label: 'A passage, deeper in', act: 'door', arg: 'door2' },
         { id: 'p1', page: 1, x: 31, y: 80, w: 6, h: 7 },
@@ -517,6 +519,7 @@
       case 'fourth': if (doorOpen('IV')) { enterRoom('IV'); } else openWordbox('fourth'); break;
       case 'game': if (h.arg === 'round') startRound(); else openLock(); break;
       case 'register': openRegister(); break;
+      case 'draft': openDraft(h.arg); break;
       case 'letters': openLetters(); break;
       case 'stair': say('stair', 4000); playCreak(1.2); setTimeout(() => enterRoom('III'), 700); break;
     }
@@ -828,6 +831,41 @@
     hotEls.forEach((h) => { if ((act === 'II' && h.dataset.id === 'shelves') || (act === 'III' && h.dataset.id === 'chestL')) h.classList.add('done'); });
   }
 
+  /* ---- the rejects: the same three two-answer pages the 3D study shows (shared #draft overlay) ---- */
+  const DRAFT_NOTES = [
+    'Two answers. Burn it. A grid that cannot make up its mind is not a puzzle — it is a coin toss with numbers on it.',
+    'I gave it too few clues, and it gave me two truths back. Every one of the two hundred in my book has exactly one. This one has a twin.',
+    'The deadly rectangle: four cells, two digits, and no way to choose between them. Every setter falls into this hole once. Then never again.',
+  ];
+  const DRAFT_BORDERS = ['/art/page-border-easy.webp', '/art/page-border-medium.webp', '/art/page-border-hard.webp'];
+  let DRAFTS = [], draftCur = 0, draftShow = null;
+  function loadDrafts() { return fetch('/data/rejects.json').then((r) => r.json()).then((d) => { if (Array.isArray(d)) DRAFTS = d; }).catch(() => {}); }
+  loadDrafts();
+  function drawDraft() {
+    const D = DRAFTS[draftCur]; if (!D) return;
+    const grid = $('draftGrid'); grid.innerHTML = '';
+    const fill = draftShow ? D[draftShow] : null, diff = new Set(D.diff || []);
+    for (let i = 0; i < 81; i++) {
+      const c = document.createElement('i'); const given = D.g[i] !== '0';
+      c.textContent = given ? D.g[i] : (fill ? fill[i] : '');
+      if (!given && fill) c.classList.add('pen'); if (diff.has(i) && fill) c.classList.add('hot');
+      if (i % 9 === 2 || i % 9 === 5) c.classList.add('b3'); const r = Math.floor(i / 9); if (r === 2 || r === 5) c.classList.add('r3');
+      grid.appendChild(c);
+    }
+    $('draftSheet').style.backgroundImage = 'url(' + DRAFT_BORDERS[draftCur % 3] + ')';
+    $('draftHead').textContent = 'DRAFT No. ' + (draftCur + 1) + ' · ' + (D.givens || '') + ' CLUES · TWO ANSWERS';
+    $('draftNote').textContent = DRAFT_NOTES[draftCur % 3];
+    $('draftA').setAttribute('aria-pressed', String(draftShow === 'a')); $('draftB').setAttribute('aria-pressed', String(draftShow === 'b'));
+  }
+  function openDraft(idx) {
+    if (!DRAFTS.length) { loadDrafts().then(() => { if (DRAFTS.length) openDraft(idx); else caption('The page is stuck to itself. Try again in a moment.', 3000); }); return; }
+    draftCur = idx % DRAFTS.length; draftShow = null; drawDraft(); $('draft').hidden = false;
+    caption('A page I threw away. Look at it and tell me why.', 4800); playThud(70, 45, 0.12, 0.2);
+  }
+  $('draftA').addEventListener('click', () => { draftShow = 'a'; drawDraft(); });
+  $('draftB').addEventListener('click', () => { draftShow = 'b'; drawDraft(); });
+  $('draftClose').addEventListener('click', () => { $('draft').hidden = true; });
+
   /* ---- confetti (shared canvas) ---- */
   const conf = $('confetti'); const cg = conf.getContext('2d'); let confParts = [], confRaf = false;
   function burstConfetti() {
@@ -843,11 +881,15 @@
     if (!confParts.length) cg.clearRect(0, 0, conf.width, conf.height);
   }
 
+  /* the Back button is handled by the page-level guard in vault.astro */
+  function guardHistory() {}
+
   /* ================= boot ================= */
   function boot(reason) {
     grab();
     els.pv.hidden = false;
     document.body.classList.add('painted');
+    guardHistory();
     ['gate', 'fade', 'hud'].forEach((id) => { const e = $(id); if (e) e.style.display = 'none'; });
     // the arriving act (from the landing's door) opens that door for this session
     const act = qs.get('act'); if (act && ROOMS[act] && act !== 'IV') markDoor(act);
@@ -884,7 +926,7 @@
     // slow idle pan on portrait screens, so the room breathes even untouched
     if (!REDUCED) (function idle() { if (panMax > 8 && !drag) { autoPan = Math.sin(performance.now() / 9000) * panMax * 0.7; setPan(autoPan); } requestAnimationFrame(idle); })();
     window.__painted = { enterRoom, openReward, openWordbox, startRound, openLock, awardTile, get room() { return room; }, ROOMS,
-      get lock() { return lock; }, get round() { return round; } };   // QA hooks (reveal nothing secret)
+      get lock() { return lock; }, get round() { return round; }, endRound };   // QA hooks + the page guard's hook
   }
   window.PSPaintedBoot = boot;
   if (window.__flatMode) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => boot(window.__flatReason)); else boot(window.__flatReason); }
