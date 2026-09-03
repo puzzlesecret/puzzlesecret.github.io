@@ -601,8 +601,11 @@ const HOME_LD = {
       }
 
       let typeTimer = null;
-      function typeCaption(text) {
-        const audioEl = speakKeeper(text);   // the Keeper speaks the line as it writes out
+      function typeCaption(text, silent = false) {
+        // silent: the caption writes out but the Keeper holds his tongue (used during the door
+        // hand-off, where the page leaves before a recording could finish)
+        if (silent && currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} currentKeeperAudio = null; }
+        const audioEl = silent ? null : speakKeeper(text);   // the Keeper speaks the line as it writes out
         capText.textContent = '';
         let i = 0;
         clearInterval(typeTimer);
@@ -801,7 +804,9 @@ const HOME_LD = {
         let gone = false;
         const go = () => { if (gone) return; gone = true; if (!stay) window.location.href = dest; };
         const say = () => {
-          typeCaption(successLines[act] || 'The vault opens.');
+          // caption only: the vault is seconds away, and the Keeper speaks first INSIDE it, on the
+          // visitor's first tap — a line started here would be cut off by the hand-off
+          typeCaption(successLines[act] || 'The vault opens.', true);
           const p = document.getElementById('rewardPanel');
           if (p) p.querySelector('.r-body').textContent = 'The door swings wide. Step inside…';
         };
