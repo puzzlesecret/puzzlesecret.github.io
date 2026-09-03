@@ -36,6 +36,47 @@ import Analytics from '@vercel/analytics/astro';
     <button id="fwdBtn" aria-label="Walk forward">▲</button>
     <div id="caption"><span id="capText"></span></div>
     <div id="label"></div>
+    <div id="studyCount" hidden></div>
+  </div>
+
+  <!-- THE KEEPER'S DESK — sit, and play today's page (the arcade in a parchment frame) -->
+  <div id="desk" hidden>
+    <div class="desk-card">
+      <div class="desk-head">
+        <div class="reward-kicker">THE KEEPER’S DESK</div>
+        <p class="desk-line" id="deskLine"></p>
+        <p class="desk-stamps" id="deskStamps"></p>
+      </div>
+      <div class="desk-frame"><iframe id="deskFrame" title="Today's puzzle at the Keeper's desk" loading="lazy"></iframe></div>
+      <div class="word-actions"><button id="deskRise" class="ghost-btn">Rise from the desk</button></div>
+    </div>
+  </div>
+
+  <!-- THE KEEPER'S NOTEBOOK — six pages, the last one a sketch of what comes next -->
+  <div id="notebook" hidden>
+    <div class="page-card nb-card">
+      <div class="page-no" id="nbNo">THE KEEPER’S NOTEBOOK</div>
+      <div class="nb-body" id="nbBody"></div>
+      <div class="nb-nav">
+        <button id="nbPrev" class="ghost-btn">◄ Back</button>
+        <button id="nbNext" class="ghost-btn">Turn the page ►</button>
+      </div>
+      <button id="nbClose" class="ghost-btn">Set it down →</button>
+    </div>
+  </div>
+
+  <!-- A REJECT, UNFOLDED — a draft with two answers -->
+  <div id="draft" hidden>
+    <div class="page-card draft-card">
+      <div class="page-no">A REJECTED DRAFT</div>
+      <div class="draft-grid" id="draftGrid"></div>
+      <p class="draft-note" id="draftNote"></p>
+      <div class="nb-nav">
+        <button id="draftA" class="ghost-btn">One answer</button>
+        <button id="draftB" class="ghost-btn">…and the other</button>
+      </div>
+      <button id="draftClose" class="ghost-btn">Crumple it again →</button>
+    </div>
   </div>
 
   <!-- Entry gate (enables audio) -->
@@ -348,6 +389,51 @@ import Analytics from '@vercel/analytics/astro';
       padding: 12px 10px; text-decoration: none; min-height: 44px;
     }
     #rwAsk .ask-btn:hover { color: var(--gold); border-color: rgba(246,178,60,0.55); }
+
+    /* ---- the study's own pieces ---- */
+    #studyCount {
+      position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+      font-family: Cinzel, serif; font-size: 10px; letter-spacing: .24em; color: rgba(232,213,174,.55);
+      white-space: nowrap; transition: opacity .6s;
+    }
+    #studyCount[hidden] { display: none; }
+    #studyCount b { color: var(--gold); font-weight: 600; }
+    #desk, #notebook, #draft {
+      position: fixed; inset: 0; z-index: 15; display: flex; align-items: center; justify-content: center;
+      background: rgba(4,2,0,0.55); backdrop-filter: blur(2px); padding: 12px;
+    }
+    #desk[hidden], #notebook[hidden], #draft[hidden] { display: none; }
+    .desk-card {
+      width: min(520px, 100%); max-height: calc(100vh - 24px); display: flex; flex-direction: column;
+      background: linear-gradient(180deg, #2a1b0b, #17100a); border: 1px solid rgba(246,178,60,0.5); border-radius: 8px;
+      box-shadow: 0 0 60px rgba(246,178,60,0.18), 0 18px 50px rgba(0,0,0,0.8); overflow: hidden;
+    }
+    .desk-head { padding: 16px 18px 8px; text-align: center; }
+    .desk-line { font-size: 17px; font-style: italic; color: rgba(232,213,174,0.9); line-height: 1.4; }
+    .desk-stamps { margin-top: 6px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .18em; color: rgba(217,168,80,.8); }
+    .desk-frame { flex: 1; min-height: 0; margin: 0 12px; border: 1px solid rgba(246,178,60,0.35); border-radius: 4px; background: #120d07; }
+    .desk-frame iframe { display: block; width: 100%; height: min(640px, calc(100vh - 210px)); border: 0; }
+    .desk-card .word-actions { padding: 10px 12px 12px; margin-top: 0; }
+    .nb-card, .draft-card { max-width: 520px; }
+    .nb-body { text-align: left; min-height: 210px; font-size: 17px; font-style: italic; line-height: 1.5; color: #2c2011; }
+    .nb-body h4 { font-family: Cinzel, serif; font-style: normal; font-size: 13px; letter-spacing: .18em; color: #7a5520; margin-bottom: 10px; text-align: center; }
+    .nb-body p { margin-bottom: 10px; }
+    .nb-body .sketch { display: block; width: 100%; max-height: 220px; object-fit: cover; object-position: 50% 30%; border: 1px solid rgba(90,64,26,.5);
+      filter: grayscale(.85) sepia(.6) contrast(.9) brightness(1.05); margin: 6px 0 10px; }
+    .nb-body .grid4 { display: grid; grid-template-columns: repeat(4, 32px); gap: 2px; margin: 8px auto; }
+    .nb-nav { display: flex; gap: 10px; margin: 6px 0 10px; }
+    .nb-nav .ghost-btn { margin: 0; }
+    .draft-grid { display: grid; grid-template-columns: repeat(4, 52px); gap: 3px; justify-content: center; margin: 6px auto 12px; }
+    .draft-grid i { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; font-family: Cinzel, serif; font-style: normal; font-size: 24px; font-weight: 700;
+      color: #2c2011; background: rgba(255,250,235,.75); border: 1px solid rgba(90,64,26,.55); }
+    .draft-grid i:nth-child(4n+2), .draft-grid i:nth-child(4n+3) { }
+    .draft-grid i.b2 { border-right-width: 3px; }
+    .draft-grid i.r2 { border-bottom-width: 3px; }
+    .draft-grid i.pen { color: #8a5a12; font-style: italic; font-weight: 500; }
+    .draft-grid i.hot { background: rgba(246,178,60,.35); }
+    .draft-note { font-size: 17px; font-style: italic; color: #2c2011; line-height: 1.45; margin-bottom: 6px; }
+    @media (max-width: 480px) { .draft-grid { grid-template-columns: repeat(4, 44px); } .draft-grid i { width: 44px; height: 44px; } }
+    @media (prefers-reduced-motion: reduce) { .nb-card, .draft-card { animation: none; } }
 
     #confetti { position: fixed; inset: 0; z-index: 18; pointer-events: none; }
     #fade { position: fixed; inset: 0; z-index: 8; background: #000; opacity: 1; pointer-events: none; transition: opacity 2.2s; }

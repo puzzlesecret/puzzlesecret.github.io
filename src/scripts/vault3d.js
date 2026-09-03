@@ -501,15 +501,27 @@ const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.17, 12), 
 stick.position.y = 0.1; candle.add(stick);
 const flame = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.07, 10), M.flame);
 flame.position.y = 0.22; candle.add(flame);
-sprite(0.5, 0, 0.24, 0, candle);
+const candleGlow = sprite(0.5, 0, 0.24, 0, candle);
 const candleLight = new THREE.PointLight(0xffab4a, 24, 8, 2);
 candleLight.position.set(0, 0.4, 0); candle.add(candleLight);
+candle.userData = { kind: 'candle', label: 'A candle' };
+let candleLit = true;
+function setCandle(lit) { candleLit = lit; flame.visible = lit; candleGlow.visible = lit; }
 
 // inkwell + quill (left of desk)
 const ink = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0x181310, roughness: 0.4, metalness: 0.3 }));
 ink.position.set(-0.72, 0.87, 0.12); desk.add(ink);
 const quill = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.34), new THREE.MeshStandardMaterial({ color: 0xe8e2d2, side: THREE.DoubleSide, roughness: 0.8 }));
 quill.position.set(-0.72, 1.02, 0.12); quill.rotation.set(0.5, 0.4, 0.9); desk.add(quill);
+ink.userData = { kind: 'say', say: 'quill', found: 'quill', label: 'Quill and ink' };
+quill.userData = { kind: 'say', say: 'quill', found: 'quill', label: 'Quill and ink' };
+chair.userData = { kind: 'chair', label: "Sit at the Keeper's desk" };
+// the Keeper's Notebook — a small closed book at the desk's edge
+const notebook = new THREE.Group(); notebook.position.set(-0.42, 0.825, -0.22); notebook.rotation.y = 0.25; desk.add(notebook);
+box(0.22, 0.035, 0.16, new THREE.MeshStandardMaterial({ color: 0x4a2a16, roughness: 0.7 }), 0, 0.018, 0, 0, notebook);
+box(0.2, 0.012, 0.14, M.candle, 0, 0.04, 0, 0, notebook);                       // the page block
+box(0.03, 0.045, 0.16, M.brass, -0.095, 0.022, 0, 0, notebook);                  // brass spine
+notebook.userData = { kind: 'notebook', label: "The Keeper's notebook" };
 
 // scattered pages on the desk
 [[-0.45, 0.28, 0.5, M.paperA], [0.5, -0.25, -0.4, M.paperB], [-0.15, -0.3, 1.2, M.paperB], [0.42, 0.3, 2.4, M.paperA]].forEach(([x, z, r, mt]) => {
@@ -528,16 +540,20 @@ const shadowTex = (() => {
 const deskShadow = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.9), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
 deskShadow.rotation.x = -Math.PI / 2; deskShadow.position.set(0, 0.012, -0.35); desk.add(deskShadow);
 
-// a couple of crumpled rejects near the walls (floor mostly CLEAR — Dan's note)
-[[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z]) => {
-  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), M.paperB);
-  w.position.set(x, 0.06, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
+// three crumpled rejects near the walls — each unfolds into a draft with TWO answers
+const rejects = [];
+[[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z], i) => {
+  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), M.paperB);
+  w.position.set(x, 0.07, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
+  w.userData = { kind: 'reject', idx: i, label: 'A crumpled page' };
+  rejects.push(w);
 });
 
 /* ---- pinboard of sudoku sheets (back wall, right — per concept) ---- */
 box(2.1, 1.5, 0.06, M.woodDark, 1.9, 2.15, -3.94);
 const board = new THREE.Mesh(new THREE.PlaneGeometry(1.94, 1.34), new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.95 }));
 board.position.set(1.9, 2.15, -3.86); scene.add(board);
+board.userData = { kind: 'say', say: 'board', found: 'board', label: 'A pinboard of grids' };
 
 // (Removed 2026-07-28, Dan's call: the framed picture that hung on the left wall between
 // the bookcases read as a big blank slab rather than artwork. Its dedicated point light
@@ -567,10 +583,30 @@ function makeBookcase(w, h, d) {
   }
   return g;
 }
+const wallCases = [];
 [[-3.82, -1.6, Math.PI / 2], [-3.82, 1.4, Math.PI / 2], [3.82, -1.2, -Math.PI / 2], [3.82, 1.7, -Math.PI / 2]].forEach(([x, z, ry]) => {
   const bc = makeBookcase(1.9, 2.5, 0.4);
   bc.position.set(x, 0, z); bc.rotation.y = ry; scene.add(bc);
+  bc.userData = { kind: 'say', say: 'shelf', found: 'shelf', label: "The Keeper's shelves" };
+  wallCases.push(bc);
 });
+// the Corsair's Chart, half-covered on an easel in the corner — Volume II, as an object
+const easelS = new THREE.Group(); easelS.position.set(3.05, 0, -3.0); easelS.rotation.y = -0.7; scene.add(easelS);
+box(0.05, 1.5, 0.05, M.woodDark, -0.32, 0.75, 0.1, 0.12, easelS);
+box(0.05, 1.5, 0.05, M.woodDark, 0.32, 0.75, 0.1, -0.12, easelS);
+box(0.05, 1.55, 0.05, M.woodDark, 0, 0.77, -0.28, 0, easelS);
+box(0.72, 0.05, 0.05, M.woodDark, 0, 0.62, 0.08, 0, easelS);
+const chartBoardS = new THREE.Mesh(new THREE.BoxGeometry(0.86, 1.02, 0.04), M.woodDark);
+chartBoardS.position.set(0, 1.12, 0.03); chartBoardS.rotation.x = -0.09; easelS.add(chartBoardS);
+const chartFaceS = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.96), new THREE.MeshStandardMaterial({ map: paperTexA, color: 0xcaa870, roughness: 0.9 }));
+chartFaceS.position.set(0, 1.12, 0.052); chartFaceS.rotation.x = -0.09; easelS.add(chartFaceS);
+const clothS = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.8, 0.14), new THREE.MeshStandardMaterial({ color: 0x9a8d6f, roughness: 1 }));
+clothS.position.set(0, 1.32, 0.02); clothS.rotation.x = -0.09; easelS.add(clothS);
+box(0.98, 0.5, 0.13, new THREE.MeshStandardMaterial({ color: 0x8a7d60, roughness: 1 }), 0, 1.02, 0.02, 0, easelS);
+box(0.4, 0.02, 0.08, M.brass, 0, 0.66, 0.11, 0, easelS);
+const chartHitS = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.7, 0.6), new THREE.MeshBasicMaterial({ visible: false }));
+chartHitS.position.set(0, 0.9, 0); easelS.add(chartHitS);
+easelS.userData = { kind: 'chartStudy', label: 'Something half-covered on an easel' };
 
 // wall sconce with flame (left wall, near the entrance — per concept)
 const sconce = new THREE.Group(); sconce.position.set(-3.88, 2.3, 1.9); scene.add(sconce);
@@ -582,6 +618,7 @@ sflame.position.set(0.12, 0.14, 0); sconce.add(sflame);
 sprite(0.75, 0.12, 0.16, 0, sconce);
 const sconceLight = new THREE.PointLight(0xff9a3a, 28, 9, 2);
 sconceLight.position.set(0.25, 0.2, 0); sconce.add(sconceLight);
+sconce.userData = { kind: 'say', say: 'sconce', found: 'sconce', label: 'A wall sconce' };
 
 /* ---- THE SECRET BOOKCASE (hinged over the passage opening) ---- */
 const hinge = new THREE.Group();
@@ -1656,6 +1693,7 @@ const ZONES = [
 ];
 const OBSTACLES = [
   { x: 0.5, z: -0.55, r: 1.55 },                                   // desk + chair
+  { x: 3.05, z: -3.0, r: 0.6 },                                    // the Chart's easel
   { x: AX + 1.7, z: -11.6, r: 0.72 },                              // lectern
   { x: AX - 2.2, z: -8.6, r: 1.0 }, { x: AX + 2.2, z: -8.6, r: 1.0 }, // library counters
   { x: AX - 1.95, z: -10.7, r: 1.25 }, { x: AX + 1.95, z: -13.9, r: 1.25 }, // aisle stacks
@@ -1680,6 +1718,7 @@ function floorYAt(x, z) {
   return 0;
 }
 function clampPos(p) {
+  if (seated) { p.x = 0.2; p.z = -1.3; return p; }
   let bx = 0, bz = 0, bd = Infinity;
   for (const z of ZONES) {
     if (!z.ok()) continue;
@@ -1709,11 +1748,13 @@ function stepForward(dist) {
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const interactables = [stack, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, lantern,
+  candle, ink, quill, board, sconce, chair, notebook, easelS, ...rejects, ...wallCases,
   ...storyPages,
   ...sealPulse.filter(o => o.isMesh)];
 let down = null, dragging = false;
 const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden
-  || !document.getElementById('pageview').hidden;
+  || !document.getElementById('pageview').hidden || !document.getElementById('desk').hidden
+  || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden;
 
 function pick(clientX, clientY, targets) {
   ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
@@ -1871,8 +1912,11 @@ function openPage(no) {
   const n = pagesFound.length;
   document.getElementById('pgNo').textContent = 'PAGE ' + (NUM_WORD[no] || no);
   document.getElementById('pgBody').textContent = PAGE_WORDS[no];
+  const roomOf = no <= 0 ? null : [[1, 4, 7], [2, 5, 8], [3, 6, 9]].find((r) => r.includes(no));
+  const inRoom = roomOf ? roomOf.filter((p) => pagesFound.includes(p)).length : 0;
   document.getElementById('pgFound').textContent =
-    n >= 9 ? 'All nine pages found' : ('Pages found: ' + n + ' of 9');
+    n >= 9 ? 'All nine pages found' : ('Found in this room: ' + inRoom + ' of 3 · nine pages lie across the vaults');
+  markFound('p' + no);
   pageviewEl.hidden = false;
   keeper('page' + no);
   dimPage(no);
@@ -1950,11 +1994,12 @@ const tilesEl = document.getElementById('tiles');
 const wbInput = document.getElementById('wbInput');
 const wbMsg = document.getElementById('wbMsg');
 const wbSubmit = document.getElementById('wbSubmit');
-const WORD_LEN = 7;                      // every deep word is seven letters
+const WORD_LEN = 12;                     // the box no longer advertises any word's length
 let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
 function renderTiles() {
   tilesEl.innerHTML = '';
-  for (let i = 0; i < WORD_LEN; i++) {
+  const shown = Math.min(WORD_LEN, Math.max(5, wbWord.length + 1));
+  for (let i = 0; i < shown; i++) {
     const t = document.createElement('div');
     t.className = 'tile' + (wbWord[i] ? ' filled' : '');
     t.textContent = wbWord[i] || '';
@@ -2136,7 +2181,26 @@ function goThen(x, z, fn) {
 }
 function stackWorldPos() { const v = new THREE.Vector3(); stack.getWorldPosition(v); return v; }
 function activate(kind, hitObj) {
+  if (kind === 'say') {
+    const u = hitObj && hitObj.userData || {};
+    showCaption(STUDY_SAY[u.say] || '…', 5600);
+    if (u.found) markFound(u.found);
+    return;
+  }
+  if (kind === 'candle') {
+    goThen(0.9, -1.75, () => {
+      setCandle(!candleLit); study.candle = candleLit ? 'on' : 'out'; saveStudy();
+      showCaption(candleLit ? STUDY_SAY.candleOn : STUDY_SAY.candleOut, 4200);
+      playThud(); markFound('candle');
+    });
+    return;
+  }
+  if (kind === 'reject') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openDraft(w.userData.idx)); return; }
+  if (kind === 'notebook') { goThen(-0.2, -1.9, () => openNotebook()); return; }
+  if (kind === 'chartStudy') { goThen(2.3, -2.3, () => { showCaption(STUDY_SAY.chart, 8000); markFound('chart'); }); return; }
+  if (kind === 'chair') { sitAtDesk(); return; }
   if (kind === 'stack') {
+    markFound('stack');
     const sp = stackWorldPos();
     const d = Math.hypot(player.pos.x - sp.x, player.pos.z - sp.z);
     if (d > 2.4) {
@@ -2200,6 +2264,175 @@ function openBookcase() {
   hinge.userData.label = 'The way lies open';
   doorOpened = true;
 }
+
+/* ================= THE STUDY, ALIVE (2026-09-03) =================
+   Object lines, the candle that stays snuffed, the Keeper's Notebook, three rejects that unfold
+   into two-answer drafts, the discovery count, and the desk where today's page is played.
+   Nothing here gates anything; no line may ever contain an answer word. */
+const STUDY_KEY = 'ps_study_v1';
+const STUDY_ITEMS = ['stack', 'p1', 'p4', 'p7', 'candle', 'quill', 'board', 'reject0', 'reject1', 'reject2', 'shelf', 'sconce', 'notebook', 'chart', 'desk'];
+let study = (() => { try { const v = JSON.parse(localStorage.getItem(STUDY_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } })();
+if (!Array.isArray(study.found)) study.found = [];
+function saveStudy() { try { localStorage.setItem(STUDY_KEY, JSON.stringify(study)); } catch (e) { /* private mode */ } }
+const studyCountEl = document.getElementById('studyCount');
+function studyFound() {
+  const s = new Set(study.found);
+  pagesFound.forEach((p) => { if (p === 1 || p === 4 || p === 7) s.add('p' + p); });
+  try { const v = JSON.parse(localStorage.getItem(VAULT_KEY) || '{}'); if (v && v.I) s.add('stack'); } catch (e) {}
+  return s;
+}
+function renderStudyCount() {
+  const n = studyFound().size, m = STUDY_ITEMS.length;
+  studyCountEl.innerHTML = n >= m ? 'Every one of my things, found' : ('Found <b>' + n + '</b> of ' + m + ' in the study');
+}
+function markFound(id) {
+  if (!STUDY_ITEMS.includes(id) || study.found.includes(id)) { renderStudyCount(); return; }
+  study.found.push(id); saveStudy(); renderStudyCount();
+  if (studyFound().size >= STUDY_ITEMS.length) setTimeout(() => { showCaption('Every one of my things, and you touched them all. The study is yours as much as mine now.', 7000); burstConfetti(); }, 900);
+}
+setCandle(study.candle !== 'out');
+renderStudyCount();
+const STUDY_SAY = {
+  quill: 'Every puzzle I ever set began with that nib. Most of them ended in the fire.',
+  board: 'Two hundred grids, pinned and re-pinned. Twenty were never quite what they seemed.',
+  shelf: 'Books I solved, and books I never will. A keeper collects both.',
+  sconce: 'That sconce has burned since before I came. I never asked what feeds it.',
+  candleOut: 'Snuffed. The dark is patient.',
+  candleOn: 'Lit again. Better.',
+  chart: "Under the cloth, a chart still being drawn — The Corsair's Chart. Volume II. It will not be kinder than this one.",
+  sit: 'Sit. I set a new page every morning; this one is today’s.',
+  rise: 'The page will keep. Come back tomorrow — I will have set another.',
+  solved: 'Solved. Tomorrow I will have set another.',
+  exit: (n) => 'You are leaving ' + n + ' of my things untouched. They will keep.',
+};
+/* --- the rejects: three drafts, each with exactly two answers (machine-verified) --- */
+const DRAFTS = [
+  { g: '0030030100000012', a: '1234432121433412', b: '2134432112433412', note: 'Two answers. Burn it. A grid that cannot make up its mind is not a puzzle — it is a coin toss with numbers on it.' },
+  { g: '0040000003002003', a: '3142423113242413', b: '3241413213242413', note: 'I gave it too few clues, and it gave me two truths back. Every one of the two hundred in my book has exactly one. This one has a twin.' },
+  { g: '0000300010020040', a: '4123321414322341', b: '4213312414322341', note: 'The deadly rectangle: four cells, two digits, and no way to choose between them. Every setter falls into this hole once. Then never again.' },
+];
+const draftEl = document.getElementById('draft'), draftGrid = document.getElementById('draftGrid');
+let draftCur = 0, draftShow = null;
+function drawDraft() {
+  const D = DRAFTS[draftCur]; draftGrid.innerHTML = '';
+  const fill = draftShow ? D[draftShow] : null;
+  const diff = new Set(); for (let i = 0; i < 16; i++) if (D.a[i] !== D.b[i]) diff.add(i);
+  for (let i = 0; i < 16; i++) {
+    const c = document.createElement('i');
+    const given = D.g[i] !== '0';
+    c.textContent = given ? D.g[i] : (fill ? fill[i] : '');
+    if (!given && fill) c.classList.add('pen');
+    if (diff.has(i) && fill) c.classList.add('hot');
+    if (i % 4 === 1) c.classList.add('b2'); if (Math.floor(i / 4) === 1) c.classList.add('r2');
+    draftGrid.appendChild(c);
+  }
+  document.getElementById('draftNote').textContent = D.note;
+}
+function openDraft(idx) {
+  draftCur = idx; draftShow = null; drawDraft(); draftEl.hidden = false;
+  showCaption('A page I threw away. Look at it and tell me why.', 4800);
+  markFound('reject' + idx);
+}
+document.getElementById('draftA').addEventListener('click', () => { draftShow = 'a'; drawDraft(); });
+document.getElementById('draftB').addEventListener('click', () => { draftShow = 'b'; drawDraft(); });
+document.getElementById('draftClose').addEventListener('click', () => { draftEl.hidden = true; });
+/* --- the Keeper's Notebook: six pages --- */
+const NOTEBOOK = [
+  '<h4>THE KEEPER’S NOTEBOOK</h4><p>Notes I kept while setting two hundred grids. Take what is useful; leave the rest for the next reader.</p><p>Turn the page.</p>',
+  '<h4>I · SPOTTING A KEY</h4><p>Twenty of my grids carry one shaded square. It is never a given — it sits empty and waits for you to solve it honestly. The digit that lands in the shade is the key.</p><p>Copy it to the Vault Door Tally (page 210) before you forget. The plates that turn digits into letters are in the back of the book, pages 211 to 213.</p>',
+  '<h4>II · SCANNING</h4><p>Pick a digit that already appears often. Run its rows and columns across the grid like beams of light. Where the beams leave exactly one dark cell in a box, that digit lives there.</p><p>It is the fastest way through my easy grids, and it still works on the hard ones.</p>',
+  '<h4>III · THE LONELY CANDIDATE</h4><p>When a cell has only one digit left that could fit, write it and move on. When a digit has only one cell left in a row, a column or a box, it goes there — even if that cell could take others.</p><p>The first rule looks at a cell. The second looks at a digit. Learn to switch between them.</p>',
+  '<h4>IV · PAIRS</h4><p>Two cells in the same unit that share the same two candidates own those two digits between them. Strike both digits from every other cell in that unit.</p><p>Pencil marks are not cheating. They are how I set the grids in the first place.</p>',
+  '<h4>V · WHAT COMES NEXT</h4><img class="sketch" src="/teasers/v2.webp" alt="A pencil sketch of a sea chart" /><p>The Corsair’s Chart. Volume II. Still being drawn, and it will not be kinder than this one.</p><p>When it is finished, it will be where the first one was.</p>',
+];
+const nbEl = document.getElementById('notebook'), nbBody = document.getElementById('nbBody'), nbPrev = document.getElementById('nbPrev'), nbNext = document.getElementById('nbNext');
+let nbPage = 0;
+function drawNotebook() {
+  nbBody.innerHTML = NOTEBOOK[nbPage];
+  document.getElementById('nbNo').textContent = nbPage === 0 ? 'FROM THE DESK' : ('PAGE ' + NUM_WORD[nbPage] + ' OF FIVE');
+  nbPrev.disabled = nbPage === 0; nbNext.disabled = nbPage === NOTEBOOK.length - 1;
+  nbPrev.style.opacity = nbPage === 0 ? '.35' : ''; nbNext.style.opacity = nbPage === NOTEBOOK.length - 1 ? '.35' : '';
+}
+function openNotebook() { nbPage = 0; drawNotebook(); nbEl.hidden = false; markFound('notebook'); showCaption('My notebook. Read it, and the rest of my book will go easier.', 5200); }
+nbPrev.addEventListener('click', () => { if (nbPage > 0) { nbPage--; drawNotebook(); } });
+nbNext.addEventListener('click', () => { if (nbPage < NOTEBOOK.length - 1) { nbPage++; drawNotebook(); } });
+document.getElementById('nbClose').addEventListener('click', () => { nbEl.hidden = true; });
+/* --- the desk: sit, and play today's page --- */
+const DESK_KEY = 'ps_desk_v1';
+let deskState = (() => { try { const v = JSON.parse(localStorage.getItem(DESK_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } })();
+if (!deskState.days || typeof deskState.days !== 'object') deskState.days = {};
+function saveDesk() { try { const keys = Object.keys(deskState.days).sort(); while (keys.length > 60) delete deskState.days[keys.shift()]; localStorage.setItem(DESK_KEY, JSON.stringify(deskState)); } catch (e) {} }
+function localDay() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dayIndex() { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); }
+// one new line every morning — the reason to come back; the grid is the excuse
+const DESK_LINES = [
+  'Sit. I set a new page every morning; this one is today’s.',
+  'A page a day. That is how the two hundred got written, and how they get solved.',
+  'This one I set before breakfast. It is kinder than it looks.',
+  'Do not rush it. The grid knows when you are guessing.',
+  'I set this one in the dark. Forgive the ink.',
+  'Today’s page has a mean streak in the middle band. You will find it.',
+  'Scan first. Always scan first.',
+  'Some days the grid opens like a door. Some days you have to knock.',
+  'I nearly threw this one away. Then I saw what it was hiding.',
+  'Pencil marks are permitted. I insist on them.',
+  'A quiet one, for a quiet morning.',
+  'Start with the digit that appears most. It always tells you where it lives next.',
+  'This page fought me for an hour. It will fight you for less.',
+  'The chair is old. So are the puzzles. Both still hold.',
+  'Solve it honestly and it will thank you at the end.',
+  'Today’s is one of my favourites. I will not tell you why.',
+  'A fair grid has one answer. This one has one. I checked twice.',
+  'If the corners give you nothing, try the middle box.',
+  'I set this one for someone who never came. Take it.',
+  'The candle is short. So is this page.',
+  'Look for the pair. There is always a pair.',
+  'Not every grid is a fight. This one is a walk.',
+  'I write the date on the back of every page. Today’s is the newest.',
+  'One page. Then the rest of your day.',
+  'The ink was still wet when I left this one. Careful.',
+  'The best solvers look twice before they write once.',
+  'Today the grid is generous. Tomorrow, less so.',
+  'I set this one twice. The first attempt had two answers, and went into the fire.',
+  'You may sit as long as you like. The vault does not close.',
+  'A page for the ones who look twice.',
+];
+const deskEl = document.getElementById('desk'), deskFrame = document.getElementById('deskFrame');
+let seated = false, eyeTarget = 1.6;
+function renderDeskStamps() {
+  const n = Object.keys(deskState.days).length, today = deskState.days[localDay()];
+  document.getElementById('deskStamps').textContent = (today ? 'TODAY’S PAGE — SOLVED · ' : '') + (n ? n + (n === 1 ? ' PAGE' : ' PAGES') + ' SOLVED AT THIS DESK' : 'NO PAGE SOLVED AT THIS DESK YET');
+}
+function sitAtDesk() {
+  if (seated) return;
+  // glide to the chair and settle the eye at the desk; the room stays visible around the page
+  seated = true; eyeTarget = 1.25;
+  player.target.set(0.2, 0, -1.3); pendingAction = null;
+  yaw = -2.85; pitch = -0.42;
+  setTimeout(() => {
+    document.getElementById('deskLine').textContent = DESK_LINES[dayIndex() % DESK_LINES.length];
+    renderDeskStamps();
+    if (!deskFrame.src) deskFrame.src = '/play?embed=1&daily=1';
+    deskEl.hidden = false;
+    showCaption(STUDY_SAY.sit, 5000);
+    setTimeout(() => { try { deskFrame.contentWindow.focus(); } catch (e) {} }, 400);
+  }, 900);
+}
+function riseFromDesk() {
+  deskEl.hidden = true; seated = false; eyeTarget = 1.6;
+  player.target.set(0.1, 0, -2.3); pitch = -0.02;
+  showCaption(STUDY_SAY.rise, 4200);
+}
+document.getElementById('deskRise').addEventListener('click', riseFromDesk);
+addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'ps-desk-solved') return;
+  const d = localDay();
+  if (!deskState.days[d]) { deskState.days[d] = e.data.id; }
+  if (e.data.secs && (!deskState.best || e.data.secs < deskState.best)) deskState.best = e.data.secs;
+  saveDesk(); renderDeskStamps(); markFound('desk');
+  showCaption(STUDY_SAY.solved, 6000); burstConfetti(); playUnlock();
+});
+let exitSaid = false;
 
 /* ---- confetti (gold, hand-rolled, no library) ---- */
 const conf = document.getElementById('confetti');
@@ -2409,7 +2642,7 @@ function tick(dt) {
   }
   // eye height follows the ground; eased so the lip of the stair does not snap
   const groundY = floorYAt(player.pos.x, player.pos.z);
-  eyeY += (groundY + 1.6 - eyeY) * Math.min(1, dt * 9);
+  eyeY += (groundY + eyeTarget - eyeY) * Math.min(1, dt * (seated ? 4 : 9));
   camera.position.set(player.pos.x, eyeY, player.pos.z);
   camera.rotation.set(pitch, yaw, 0);
 
@@ -2437,7 +2670,7 @@ function tick(dt) {
 
   // flickers & pulses
   const fl = 0.82 + 0.28 * (Math.sin(t * 11) * 0.35 + Math.sin(t * 23 + 1.7) * 0.3 + Math.sin(t * 5.1) * 0.35);
-  candleLight.intensity = 24 * fl;
+  candleLight.intensity = candleLit ? 24 * fl : 0;
   sconceLight.intensity = 28 * (0.85 + 0.3 * Math.sin(t * 9.2 + 2));
   torchLight.intensity = 14 * (0.85 + 0.3 * Math.sin(t * 8.1 + 4));
   flame.scale.y = sflame.scale.y = tflame.scale.y = 0.9 + 0.2 * Math.sin(t * 13);
@@ -2470,6 +2703,13 @@ function tick(dt) {
     : zp > -19.4 ? 'VAULT II — THE LIBRARY OF PUZZLES'
     : 'VAULT III — THE GRAND TREASURE VAULT';
   if (roomNameEl.textContent !== label) roomNameEl.textContent = label;
+  const inStudy = entered && zp > -3.6 && player.pos.y > -0.4;
+  if (studyCountEl.hidden === inStudy) studyCountEl.hidden = !inStudy;
+  if (!exitSaid && entered && zp < -4.2 && zp > -7.0) {
+    exitSaid = true;
+    const left = STUDY_ITEMS.length - studyFound().size;
+    if (left > 0) showCaption(STUDY_SAY.exit(left), 5600);
+  }
   if (!seenLib && zp < -8.0) { seenLib = true; keeper('libentry'); }
   if (!seenV3 && zp < -20.2) { seenV3 = true; keeper('v3entry'); }
   // the soundscape follows you room to room
@@ -2493,6 +2733,9 @@ function tick(dt) {
   }
 
   tickConfetti(dt);
-  renderer.render(scene, camera);
+  // a full-cover overlay is up: render every third frame, not every one (phones thank you)
+  frameNo++;
+  if (!overlayOpen() || frameNo % 3 === 0) renderer.render(scene, camera);
 }
+let frameNo = 0;
 loop();

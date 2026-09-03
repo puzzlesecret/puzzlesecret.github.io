@@ -4,6 +4,20 @@ import webPuzzles from '../data/web_puzzles.json';
 ---
 
 <Layout title="Play 200 Sudoku Games · PuzzleSecret Arcade" description="Play 200 free interactive Sudoku puzzles online. Includes Easy, Medium, and Hard puzzles with pencil notes, error checking, and secret key cipher rewards.">
+  <!-- Embed mode: the vault's desk shows this page inside a parchment frame (?embed=1&daily=1).
+       Decided before first paint so the header never flashes. -->
+  <script is:inline>
+    if (new URLSearchParams(location.search).has('embed')) document.documentElement.classList.add('embed');
+  </script>
+  <style is:global>
+    html.embed .chrome, html.embed .global-foot, html.embed .menu-drawer, html.embed .key-banner,
+    html.embed .nav-btn, html.embed .p-icon, html.embed #vicNextBtn, html.embed #vicKeyBox { display: none !important; }
+    html.embed body { background: #120d07; }
+    html.embed .page-play { padding: 10px 8px 12px !important; min-height: auto !important; background: transparent !important; }
+    html.embed .arcade-top { margin-bottom: 10px !important; }
+    html.embed .board-layout { grid-template-columns: 1fr !important; gap: 12px !important; max-width: 440px; margin: 0 auto; }
+    html.embed .puz-title-btn { pointer-events: none; }
+  </style>
   <main class="page-play">
     <!-- Top Arcade Toolbar -->
     <div class="wrap arcade-top">
@@ -147,6 +161,15 @@ import webPuzzles from '../data/web_puzzles.json';
   <script define:vars={{ webPuzzles }}>
     // Parse puzzles data passed from Astro
     const PUZZLES = webPuzzles;
+    // Embed mode (the Keeper's desk in the vault): no header, no nudge, no next-puzzle, and a
+    // date-seeded "page of the day" — a 200-day cycle with no repeats (97 is coprime to 200).
+    const QP = new URLSearchParams(location.search);
+    const EMBED = QP.has('embed');
+    function dailyId() {
+      const d = new Date();
+      const day = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);   // local calendar day
+      return ((day * 97 + 41) % 200) + 1;
+    }
 
     // State Variables
     let currentId = 1;
@@ -232,7 +255,7 @@ import webPuzzles from '../data/web_puzzles.json';
       }
 
       // UI Labels
-      puzTitleLbl.textContent = `Puzzle #${puz.id}`;
+      puzTitleLbl.textContent = EMBED && QP.get('daily') ? 'The Keeper’s page for today' : `Puzzle #${puz.id}`;
       puzTierBadge.textContent = puz.tier.toUpperCase();
       puzTierBadge.className = `p-tag ${puz.tier}`;
 
@@ -461,6 +484,11 @@ import webPuzzles from '../data/web_puzzles.json';
 
       modal.hidden = false;
       updateStats();
+      if (EMBED) {
+        // tell the vault's desk; the Keeper stamps the page there
+        try { parent.postMessage({ type: 'ps-desk-solved', id: puz.id, secs: timerSec }, location.origin); } catch (e) {}
+        return;
+      }
       maybeNudge();
     }
 
@@ -606,7 +634,7 @@ import webPuzzles from '../data/web_puzzles.json';
     // Initialize Page
     loadSaved();
     createGridCells();
-    loadPuzzle(1);
+    loadPuzzle(EMBED && QP.get('daily') ? dailyId() : (parseInt(QP.get('puzzle'), 10) || 1));
   </script>
 
   <style>
@@ -686,6 +714,8 @@ import webPuzzles from '../data/web_puzzles.json';
 
     /* Picker Modal */
     .picker-modal, .victory-modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    /* display:flex above was beating the hidden attribute — every modal showed on load (live bug, fixed 2026-09-03) */
+    .picker-modal[hidden], .victory-modal[hidden] { display: none !important; }
     .modal-backdrop { position: absolute; inset: 0; background: rgba(4,4,6,.8); backdrop-filter: blur(6px); }
     .modal-card { position: relative; z-index: 2; background: #121016; border: 1px solid var(--gold); border-radius: 14px; max-width: 720px; width: 100%; max-height: 80vh; padding: 24px; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.9); }
     .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid rgba(185,143,82,.2); padding-bottom: 12px; }

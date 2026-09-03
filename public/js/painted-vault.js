@@ -545,7 +545,9 @@
     if (!pagesFound.includes(no)) { pagesFound.push(no); store.set(STORY_KEY, pagesFound); }
     const n = pagesFound.filter((x) => typeof x === 'number').length;
     $('pgNo').textContent = 'PAGE ' + (NUM_WORD[no] || no); $('pgBody').textContent = PAGE_WORDS[no];
-    $('pgFound').textContent = n >= 9 ? 'All nine pages found' : ('Pages found: ' + n + ' of 9');
+    const roomOf = [[1, 4, 7], [2, 5, 8], [3, 6, 9]].find((r) => r.includes(no)) || [];
+    const inRoom = roomOf.filter((p) => pagesFound.includes(p)).length;
+    $('pgFound').textContent = n >= 9 ? 'All nine pages found' : ('Found in this room: ' + inRoom + ' of 3 · nine pages lie across the vaults');
     $('pageview').hidden = false; if (b) b.classList.add('read');
     keeper('page' + no, 9000);
     if (n >= 9 && !pagesFound.includes('final')) {
@@ -559,8 +561,8 @@
 
   /* ---- the word box (shared #wordbox; the server decides) ---- */
   const wordboxEl = $('wordbox'), tilesEl = $('tiles'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
-  const WORD_LEN = 7; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
-  function renderTiles() { tilesEl.innerHTML = ''; for (let i = 0; i < WORD_LEN; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
+  const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
+  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(5, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
   function openWordbox(key) {
     wbTarget = key; wbWord = ''; wbBusy = false;
     $('wbKicker').textContent = DOORS[key].kicker; $('wbLine').textContent = VO[DOORS[key].vo].text;
