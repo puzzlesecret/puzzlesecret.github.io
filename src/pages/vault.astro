@@ -90,6 +90,70 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
+  <!-- THE KEEPER'S ROUND: a HUD strip, not an overlay (the room itself is the game) -->
+  <div id="roundHud" hidden>
+    <div class="rh-row">
+      <span id="roundCall" aria-live="polite" aria-atomic="true">Listen…</span>
+      <span id="roundClock" role="timer" aria-live="off">75</span>
+    </div>
+    <div class="rh-row2">
+      <span id="roundDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      <button type="button" id="roundQuit" class="ghost-btn">Step back</button>
+    </div>
+    <span id="roundSr" class="sr-only" aria-live="assertive"></span>
+  </div>
+  <div id="roundRet" hidden aria-hidden="true"></div>
+
+  <!-- after the clock runs out -->
+  <div id="roundEnd" hidden>
+    <div class="reward-card" role="dialog" aria-modal="true" aria-labelledby="reKicker">
+      <div class="reward-kicker" id="reKicker">THE KEEPER'S ROUND</div>
+      <p class="word-line" id="reText">The dark kept them that time. Rest your eyes, then try again.</p>
+      <div class="word-actions">
+        <button type="button" class="gold-btn" id="reAgain">Try again</button>
+        <button type="button" class="ghost-btn" id="reCalm">Try again, no clock</button>
+        <button type="button" class="ghost-btn" id="reBack">Step back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THE LISTENING LOCK -->
+  <div id="lockbox" hidden>
+    <div class="reward-card lock-card" role="dialog" aria-modal="true" aria-labelledby="lbKicker">
+      <div class="reward-kicker" id="lbKicker">THE LISTENING LOCK</div>
+      <p class="word-line lb-line">Three tumblers. Turn the dial and <em>listen</em>: the lock ticks louder and glows warmer as you near the number. Hold still on it and the tumbler falls.</p>
+      <div class="lock-dial-wrap">
+        <div class="lock-shake" id="lockShake">
+          <div class="lock-dial" id="lockDial" tabindex="0" role="slider" aria-label="Combination dial, 0 to 39" aria-valuemin="0" aria-valuemax="39" aria-valuenow="0">
+            <div class="ticks"></div><div class="num" id="lockNum">0</div><div class="mark"></div>
+          </div>
+        </div>
+        <div class="dial-steps">
+          <button type="button" class="dial-step" id="lockDown" aria-label="Turn down one number">◀</button>
+          <p class="lock-heat" id="lockHeat" aria-live="polite" aria-atomic="true">Cold</p>
+          <button type="button" class="dial-step" id="lockUp" aria-label="Turn up one number">▶</button>
+        </div>
+        <div class="lock-tumblers" id="lockTumblers" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+      <p class="lock-help">Drag the dial, tap the arrows, or use your keyboard's arrow keys.</p>
+      <p class="lock-msg" id="lockMsg" aria-live="polite"></p>
+      <button type="button" class="ghost-btn" id="lockBack">Step back</button>
+    </div>
+  </div>
+
+  <!-- A KEY-TILE, taken from the vault -->
+  <div id="tilecard" hidden>
+    <div class="reward-card" role="dialog" aria-modal="true" aria-labelledby="tcKicker">
+      <div class="reward-kicker" id="tcKicker">A KEY-TILE</div>
+      <div class="tile-art" id="tcArt"><span>5</span></div>
+      <p class="word-line" id="tcText"></p>
+      <div class="word-actions">
+        <button type="button" class="gold-btn" id="tcClose">Keep exploring →</button>
+        <a class="ghost-btn" id="tcPass" href="/passport" hidden>See my passport →</a>
+      </div>
+    </div>
+  </div>
+
   <!-- Entry gate (enables audio) -->
   <div id="gate">
     <div class="gate-inner">
@@ -414,6 +478,40 @@ import Analytics from '@vercel/analytics/astro';
       background: rgba(4,2,0,0.55); backdrop-filter: blur(2px); padding: 12px;
     }
     #desk[hidden], #notebook[hidden], #draft[hidden] { display: none; }
+
+    /* ---- the key-tile games ---- */
+    #roundHud { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 12; width: min(560px, 94vw); background: rgba(10,6,2,.86); border: 1px solid rgba(246,178,60,.45); border-radius: 10px; padding: 10px 14px; pointer-events: none; }
+    #roundHud[hidden] { display: none; }
+    .rh-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    #roundCall { font-family: Cinzel, serif; font-weight: 600; font-size: clamp(17px, 2.6vw, 22px); color: #e8d5ae; letter-spacing: .03em; text-align: left; line-height: 1.25; }
+    #roundClock { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(20px, 3vw, 26px); color: #ffd37a; min-width: 2.2em; text-align: right; }
+    #roundClock.low { color: #ff9a5a; }
+    #roundClock.calm { opacity: .35; }
+    .rh-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+    #roundDots i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(246,178,60,.55); margin-right: 8px; background: rgba(0,0,0,.4); }
+    #roundDots i.on { background: #ffd37a; box-shadow: 0 0 10px rgba(246,178,60,.8); border-color: #ffd37a; }
+    #roundQuit { pointer-events: auto; width: auto; min-height: 44px; padding: 0 16px; margin: 0; font-size: 12px; display: flex; align-items: center; }
+    #roundHud.pulse #roundClock { animation: rhPulse 1s ease-in-out infinite; }
+    @keyframes rhPulse { 50% { transform: scale(1.12); } }
+    #roundRet { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid rgba(255,224,160,.85); box-shadow: 0 0 8px rgba(246,178,60,.8); z-index: 11; pointer-events: none; }
+    #roundRet[hidden] { display: none; }
+    body.round #capText { font-size: clamp(20px, 3vw, 28px); }
+    #roundEnd, #lockbox, #tilecard { position: fixed; inset: 0; z-index: 15; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.6); backdrop-filter: blur(2px); padding: 12px; overscroll-behavior: contain; }
+    #roundEnd[hidden], #lockbox[hidden], #tilecard[hidden] { display: none; }
+    .lock-card { max-width: 430px; }
+    .lock-card .lb-line { font-size: 16.5px; margin-bottom: 10px; }
+    .lock-shake { transform: translateX(var(--shake, 0px)); transition: transform .08s linear; }
+    .lock-card .lock-dial { --shake: 0px; -webkit-user-select: none; -webkit-touch-callout: none; }
+    .dial-steps { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .dial-step { min-width: 48px; min-height: 48px; border-radius: 50%; border: 1px solid rgba(246,178,60,.5); background: rgba(0,0,0,.4); color: #ffd37a; font-size: 16px; cursor: pointer; }
+    .lock-heat { min-width: 170px; margin: 0 !important; font-family: Cinzel, serif; font-style: normal !important; font-size: 13px !important; letter-spacing: .12em; text-transform: uppercase; color: rgba(232,213,174,.7) !important; }
+    .lock-heat.hot { color: #ffd37a !important; text-shadow: 0 0 10px rgba(246,178,60,.7); }
+    #tilecard .tile-art { width: 96px; height: 96px; }
+    #tilecard .tile-art span { font: inherit; }
+    #tcPass { display: block; text-decoration: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    @media (prefers-reduced-motion: reduce) { #roundHud.pulse #roundClock { animation: none; } .lock-shake { transition: none; } .lock-card .lock-dial { transition: none; } }
+    @media (max-width: 640px) { #roundHud { top: 70px; padding: 8px 10px; } }
     #desk { padding: 6px; }
     .desk-card {
       width: min(780px, 100%); max-height: calc(100vh - 12px); display: flex; flex-direction: column;
@@ -482,7 +580,7 @@ import Analytics from '@vercel/analytics/astro';
        one more; Back pops it and closes the overlay; closing by button pops it quietly. With
        nothing open, Back lands on base → one warning; Back again within 12 s really leaves. */
     (function () {
-      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel'];
+      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel', 'lockbox', 'tilecard', 'roundEnd'];
       var el = function (id) { return document.getElementById(id); };
       var anyOpen = function () { return IDS.some(function (id) { var e = el(id); return e && !e.hidden; }); };
       var pushed = false, quiet = 0, warned = false, warnT = null;

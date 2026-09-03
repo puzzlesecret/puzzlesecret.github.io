@@ -831,9 +831,53 @@ box(0.16, 0.24, 9.5, M.woodDark, LIB.maxX - 0.08, 0.12, -12.25);
 [[AX - 2.2, -8.6], [AX + 2.2, -8.6]].forEach(([x, z]) => {
   box(1.7, 0.95, 0.6, M.woodDark, x, 0.475, z);
   box(1.8, 0.06, 0.68, M.wood, x, 0.98, z);
-  const p = PROPS[(R() * PROPS.length) | 0]();
-  p.position.set(x, 1.01, z); p.rotation.y = R() * 6.3; scene.add(p);
 });
+
+/* ---- THE KEEPER'S ROUND: six things on scraps of red velvet, and a hooded lamp by the door.
+   The shelves are full of look-alikes; only the six on velvet count. ---- */
+const velvetMat = new THREE.MeshStandardMaterial({ color: 0x5a1212, roughness: 1 });
+const ROUND_DEFS = [
+  { id: 'discs',     name: 'the cipher discs',   make: propCipherDisc, x: AX - 2.62, z: -8.6,  y: 1.01, side: 'L', counter: true,  riddle: 'Two discs, one alphabet, and no honesty between them.' },
+  { id: 'cryptex',   name: 'the cryptex',        make: propCryptex,    x: AX - 1.78, z: -8.6,  y: 1.01, side: 'L', counter: true,  riddle: 'Five rings that keep a secret in a tube.' },
+  { id: 'puzzlebox', name: 'the puzzle box',     make: propPuzzleChest,x: AX + 1.78, z: -8.6,  y: 1.01, side: 'R', counter: true,  riddle: 'A box that will not open the way boxes do.' },
+  { id: 'machine',   name: 'the cipher machine', make: propEnigma,     x: AX + 2.62, z: -8.6,  y: 1.01, side: 'R', counter: true,  riddle: 'It spoke in wheels, and lied for a living.' },
+  { id: 'chess',     name: 'the chess set',      make: propChess,      x: AX - 3.55, z: -14.4, y: 0.86, side: 'L', counter: false, riddle: 'Thirty-two soldiers, and not one of them moves.' },
+  { id: 'sphere',    name: 'the brass sphere',   make: propSphere,     x: AX + 3.55, z: -15.3, y: 0.96, side: 'R', counter: false, riddle: 'It holds the sky in a brass fist.' },
+];
+const roundHits = [];
+ROUND_DEFS.forEach((d) => {
+  if (!d.counter) {                                             // a side table / a plinth for the two at the back
+    box(0.6, d.y - 0.03, 0.6, d.id === 'sphere' ? M.stonePed : M.woodDark, d.x, (d.y - 0.03) / 2, d.z);
+  }
+  box(0.5, 0.012, 0.5, velvetMat, d.x, d.y + 0.006, d.z);
+  const p = d.make(); p.scale.setScalar(1.35); p.position.set(d.x, d.y + 0.012, d.z); p.rotation.y = (d.side === 'L' ? 1 : -1) * 0.5; scene.add(p);
+  d.mats = [];
+  p.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const cl = mats.map((m) => { const c = m.clone(); if (c.emissive) { c.emissive.set(0xffb347); c.emissiveIntensity = 0; d.mats.push(c); } return c; });
+    o.material = Array.isArray(o.material) ? cl : cl[0];
+  });
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.55), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.set(d.x, d.y + 0.25, d.z); scene.add(hit);
+  hit.userData = { kind: 'roundTarget', id: d.id, label: d.name.replace(/^the /, (m) => 'The ') + ', on red velvet' };
+  roundHits.push(hit);
+});
+// the hooded lamp on its stand, just inside the library door, left
+const HOOD = { x: AX - 3.7, z: -8.05 };
+const hoodStand = new THREE.Group(); hoodStand.position.set(HOOD.x, 0, HOOD.z); scene.add(hoodStand);
+box(0.3, 0.05, 0.3, M.iron, 0, 0.025, 0, 0, hoodStand);
+box(0.05, 1.05, 0.05, M.iron, 0, 0.55, 0, 0, hoodStand);
+box(0.2, 0.28, 0.2, M.iron, 0, 1.22, 0, 0, hoodStand);
+box(0.24, 0.03, 0.24, M.iron, 0, 1.37, 0, 0, hoodStand);
+const hoodSlit = box(0.03, 0.14, 0.022, M.flame, 0, 1.21, 0.105, 0, hoodStand);   // one slit of light in the hood
+const hoodGlow = sprite(0.5, 0, 1.22, 0.1, hoodStand, 0.3);
+const hoodHit = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.7, 0.45), new THREE.MeshBasicMaterial({ visible: false }));
+hoodHit.position.set(0, 1.15, 0); hoodStand.add(hoodHit);
+hoodStand.userData = { kind: 'hoodLamp', label: 'A hooded lamp. Not for light.' };
+// the lights the Round needs exist from the start (adding a light later recompiles every material)
+const roundSpot = new THREE.SpotLight(0xffc070, 0, 12, 0.30, 0.6, 2); scene.add(roundSpot); scene.add(roundSpot.target);
+const roundFill = new THREE.PointLight(0xffc070, 0, 2.5, 2); scene.add(roundFill);
 
 // gold-framed puzzle pages on the blank wall stretches (front + back walls)
 [[AX - 3.3, 2.7, -7.74, Math.PI], [AX + 3.3, 2.7, -7.74, Math.PI],
@@ -859,7 +903,7 @@ const tomeLight = new THREE.PointLight(0xffb84a, 16, 6, 2);
 tomeLight.position.set(0, 0.6, 0.2); lectern.add(tomeLight);
 
 // aisle lanterns (hanging) — the library's main light
-const libLights = [];
+const libLights = [], libLampSprites = [];
 [-9.4, -12.2, -15].forEach((z) => {
   const lamp = new THREE.Group(); lamp.position.set(AX, LIB.H - 0.9, z); scene.add(lamp);
   const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.0, 6), M.iron);
@@ -868,7 +912,7 @@ const libLights = [];
   shade.position.y = -0.12; lamp.add(shade);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), M.flame);
   bulb.position.y = -0.26; lamp.add(bulb);
-  sprite(0.85, 0, -0.3, 0, lamp, 0.7);
+  libLampSprites.push(sprite(0.85, 0, -0.3, 0, lamp, 0.7));
   const L = new THREE.PointLight(0xffbb55, 85, 14, 2);
   L.position.set(0, -0.55, 0); lamp.add(L);
   libLights.push(L);
@@ -993,7 +1037,21 @@ function pedestal(x, z) {
 const pedA = pedestal(AX - 1.15, -22.2);
 [0, 1, 2].forEach(i => box(0.4 - i * 0.03, 0.075, 0.3 - i * 0.02, i === 2 ? M.chestWood2 : M.woodDark, (R() - 0.5) * 0.03, 1.08 + i * 0.076, 0, (R() - 0.5) * 0.3, pedA));
 const pedB = pedestal(AX + 1.15, -22.7);
-const pbChest = propPuzzleChest(M.chestWood2); pbChest.scale.setScalar(1.15); pbChest.position.y = 1.04; pedB.add(pbChest);
+const pbChest = new THREE.Group(); pbChest.scale.setScalar(1.15); pbChest.position.y = 1.04; pedB.add(pbChest);
+box(0.36, 0.2, 0.24, M.chestWood2, 0, 0.1, 0, 0, pbChest);
+[-0.11, 0.11].forEach(x => box(0.045, 0.22, 0.26, M.gold, x, 0.11, 0, 0, pbChest));
+const pbLid = new THREE.Group(); pbLid.position.set(0, 0.2, -0.12); pbChest.add(pbLid);      // hinged at the back edge
+box(0.36, 0.09, 0.24, M.chestWood2, 0, 0.045, 0.12, 0, pbLid);
+[-0.11, 0.11].forEach(x => box(0.045, 0.1, 0.26, M.gold, x, 0.05, 0.12, 0, pbLid));
+const pbDial = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 14), M.gold);
+pbDial.rotation.x = Math.PI / 2; pbDial.position.set(0, 0.12, 0.13); pbChest.add(pbDial);
+const pbInner = box(0.3, 0.02, 0.18, new THREE.MeshStandardMaterial({ color: 0xd9a940, emissive: 0xcf8a20, emissiveIntensity: 1.0, roughness: 0.5 }), 0, 0.19, 0, 0, pbChest);
+pbInner.visible = false;
+const pbGlow = sprite(0.55, 0, 0.32, 0, pbChest, 0);
+const pbLight = new THREE.PointLight(0xffc25a, 0, 2, 2); pbLight.position.set(0, 0.45, 0); pbChest.add(pbLight);
+const pbHit = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.5), new THREE.MeshBasicMaterial({ visible: false }));
+pbHit.position.set(0, 0.2, 0); pbChest.add(pbHit);
+pbChest.userData = { kind: 'lockchest', label: 'A small chest, locked. It is ticking.' };
 
 // ✦ THE GRAND REWARD — the great cracked-open chest, center back (clickable)
 const chestG = new THREE.Group(); chestG.position.set(AX, 0, -24.5); scene.add(chestG);
@@ -1395,7 +1453,7 @@ if (dustN) {
 }
 
 /* ---- lights ---- */
-scene.add(new THREE.AmbientLight(0x4a2e12, 1.15));
+const ambientLight = new THREE.AmbientLight(0x4a2e12, 1.15); scene.add(ambientLight);
 const hemi = new THREE.HemisphereLight(0x8a5c2c, 0x120a04, 0.62);
 scene.add(hemi);
 const doorwayLight = new THREE.PointLight(0xffc060, 22, 9, 2); // glow spilling from the entrance
@@ -1764,11 +1822,13 @@ function stepForward(dist) {
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, lantern,
+  hoodStand, pbChest, ...roundHits,
   candle, ink, quill, board, sconce, chair, notebook, easelS, ...rejects, ...wallCases,
   ...storyPages,
   ...sealPulse.filter(o => o.isMesh)];
 let down = null, dragging = false;
 const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden
+  || !document.getElementById('lockbox').hidden || !document.getElementById('tilecard').hidden || !document.getElementById('roundEnd').hidden
   || !document.getElementById('pageview').hidden || !document.getElementById('desk').hidden
   || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden;
 
@@ -1792,6 +1852,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   }, 240);
 });
 renderer.domElement.addEventListener('pointermove', (e) => {
+  lastPtr.x = e.clientX; lastPtr.y = e.clientY;
   if (down) {
     down.lastX = e.clientX; down.lastY = e.clientY;
     if (holdWalk) { walkToward(e.clientX, e.clientY); return; }  // finger steers the destination
@@ -1827,9 +1888,11 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const hits = pick(e.clientX, e.clientY, interactables);
   const hit = hits.length ? findKind(hits[0].object) : null;
   if (hit) { activate(hit.userData.kind, hit); return; }
+  if (round.on) { const near = nearestTargetOnScreen(e.clientX, e.clientY); if (near) { roundHit(near.id); return; } }
   // 2) otherwise walk to the tapped floor point
   const fhits = pick(e.clientX, e.clientY, [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
   if (fhits.length) moveTo(fhits[0].point.x, fhits[0].point.z);
+  else if (round.on) roundMiss();
 });
 addEventListener('wheel', (e) => { if (!overlayOpen()) stepForward(e.deltaY < 0 ? 1.3 : -1.0); }, { passive: true });
 addEventListener('keydown', (e) => {
@@ -1961,7 +2024,9 @@ const REWARD_KEY = 'ps_rewards_v1';
 function rewardsHeld() { try { const v = JSON.parse(localStorage.getItem(REWARD_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
 function holdReward(act, url) { if (!url) return; try { const r = rewardsHeld(); r[act] = url; localStorage.setItem(REWARD_KEY, JSON.stringify(r)); } catch (e) {} }
 const DOOR_FOR_ACT = { I: 'first', II: 'door2', III: 'door3', IV: 'fourth' };
+let lastRewardAct = null;
 function openReward(act) {
+  lastRewardAct = act;
   const held = rewardsHeld()[act];
   if (!held) {   // no word spoken in this browser: the gift waits until it is
     showCaption(act === 'I' ? 'Speak my first word, and the gift is yours.' : 'Speak this vault’s word first — the gift is kept for those who did.', 5200);
@@ -1994,6 +2059,8 @@ function stampVault(act) {
 document.getElementById('rewardClose').addEventListener('click', () => {
   rewardEl.hidden = true;
   if (!door2Open) showCaption('Something in the far shelves is… not quite shut.', 5200);
+  else if (lastRewardAct === 'II' && !tilesHeld().II) setTimeout(() => showCaption('There is a hooded lamp by the door. It is not for light.', 5600), 400);
+  else if (lastRewardAct === 'III' && !tilesHeld().III) setTimeout(() => showCaption('The small chest on the pedestal is not mine to open. Try your ear.', 5600), 400);
 });
 
 /* ---- sealed doors + the word box ---- */
@@ -2213,6 +2280,25 @@ function goThen(x, z, fn) {
 }
 function stackWorldPos() { const v = new THREE.Vector3(); stack.getWorldPosition(v); return v; }
 function activate(kind, hitObj) {
+  if (round.on) {                                   // in the dark, only the Round matters
+    if (kind === 'roundTarget') roundHit(hitObj.userData.id);
+    else if (kind !== 'hoodLamp') roundMiss();
+    return;
+  }
+  if (kind === 'roundTarget') { showCaption('On velvet, where I can find it. Some things are mine to lose.', 4800); return; }
+  if (kind === 'hoodLamp') {
+    const again = !!tilesHeld().II;
+    goThen(HOOD.x + 0.75, HOOD.z + 0.55, () => {
+      if (again) showCaption('You have my tile already. Play again, for a better time?', 3200);
+      setTimeout(() => startRound(false), again ? 2800 : 0);
+    });
+    return;
+  }
+  if (kind === 'lockchest') {
+    if (tilesHeld().III) { showCaption('Open, and empty. Its tile is on your passport.', 4200); return; }
+    goThen(AX + 1.15, -21.85, () => openLock());
+    return;
+  }
   if (kind === 'say') {
     const u = hitObj && hitObj.userData || {};
     showCaption(STUDY_SAY[u.say] || '…', 5600);
@@ -2590,10 +2676,386 @@ if (qs.get('d3') === '1') { door3Open = true; door3.rotation.y = 2.05; door3.use
 if (FORCE_PANEL) rewardEl.hidden = false;
 if (qs.get('wb') === '1') openWordbox(qs.get('wbk') || 'door2');
 
+
+/* ================= THE KEY-TILE GAMES (2026-09-03) =================
+   Two small games that hand over the Keeper's key-tiles, the same two the painted vault
+   awards: the Keeper's Round in the library (find five things in the dark, with a hooded
+   lamp in your hand) and the Listening Lock in the treasure room (crack a small chest by
+   ear and by eye). Tiles are keepsakes: they open nothing, they prove you were here. Both
+   tiles = the Keeper's Mark on the certificate. Stored in ps_tiles_v1, read by /passport.
+   Nothing here may ever contain an answer word or "win/prize/chance" language. */
+const TILE_KEY = 'ps_tiles_v1';
+function tilesHeld() { try { const v = JSON.parse(localStorage.getItem(TILE_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
+const TILE_SAY = {
+  II: 'A key-tile: one shaded square from the Keeper’s own set. One of two.',
+  III: 'The second key-tile. Two of two.',
+  both: 'Both tiles. The Keeper’s Mark now seals your certificate.',
+  keep: 'A keepsake: it opens nothing, it proves you were here.',
+};
+const tilecardEl = document.getElementById('tilecard'), lockboxEl = document.getElementById('lockbox'), roundEndEl = document.getElementById('roundEnd');
+const roundHudEl = document.getElementById('roundHud'), roundRetEl = document.getElementById('roundRet');
+let lastFocus = null;
+function openCard(el, focusEl) { lastFocus = document.activeElement; el.hidden = false; setTimeout(() => { try { focusEl && focusEl.focus(); } catch (e) {} }, 60); }
+function closeCard(el) { el.hidden = true; try { if (lastFocus && lastFocus.focus) lastFocus.focus(); } catch (e) {} lastFocus = null; }
+
+/* ---- the tile, as a thing you take: a small ceramic plane that rises to your hand ---- */
+function tileTexture(digit) {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 256); grd.addColorStop(0, '#dccfb3'); grd.addColorStop(1, '#bfb296');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+  g.lineWidth = 14; g.strokeStyle = '#1a1206'; g.strokeRect(7, 7, 242, 242);
+  g.lineWidth = 4; g.strokeStyle = '#f6b23c'; g.strokeRect(22, 22, 212, 212);
+  g.fillStyle = '#1a1206'; g.font = '700 150px Cinzel, Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(digit), 128, 140);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx;
+}
+const pickups = [];   // { mesh, from, t0, dur, done }
+function pickupTile(digit, fromWorld, then) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshBasicMaterial({ map: tileTexture(digit), side: THREE.DoubleSide }));
+  m.position.copy(fromWorld); scene.add(m);
+  pickups.push({ mesh: m, from: fromWorld.clone(), t0: simT, dur: REDUCED ? 0.3 : 0.9, then });
+}
+function tickPickups() {
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const p = pickups[i];
+    const k = Math.min(1, (simT - p.t0) / p.dur), e = 1 - Math.pow(1 - k, 3);
+    const fwd = camera.getWorldDirection(new THREE.Vector3());
+    const to = camera.position.clone().addScaledVector(fwd, 0.55).add(new THREE.Vector3(0, -0.06, 0));
+    p.mesh.position.lerpVectors(p.from, to, e);
+    p.mesh.position.y += Math.sin(k * Math.PI) * 0.18;         // a little lift on the way
+    p.mesh.quaternion.copy(camera.quaternion);
+    p.mesh.rotation.z = (1 - e) * 0.8;
+    if (k >= 1) { scene.remove(p.mesh); pickups.splice(i, 1); setTimeout(p.then, 120); }
+  }
+}
+
+/* ---- the card ---- */
+function awardTile(act, note) {
+  const held = tilesHeld(); const had = !!held[act];
+  if (!had) { held[act] = new Date().toISOString().slice(0, 10); try { localStorage.setItem(TILE_KEY, JSON.stringify(held)); } catch (e) {} }
+  const both = !!(held.II && held.III);
+  if (act === 'III') heldIII = true;
+  document.getElementById('tcKicker').textContent = had ? 'THE KEEPER NODS' : 'A KEY-TILE';
+  document.getElementById('tcArt').querySelector('span').textContent = act === 'II' ? '5' : '7';
+  document.getElementById('tcText').textContent = (note ? note + ' ' : '') + (both && !had ? TILE_SAY.both : TILE_SAY[act]) + ' ' + TILE_SAY.keep;
+  document.getElementById('tcPass').hidden = !both;
+  openCard(tilecardEl, document.getElementById('tcClose'));
+  burstConfetti();
+}
+document.getElementById('tcClose').addEventListener('click', () => closeCard(tilecardEl));
+
+/* ---- sounds the games need ---- */
+function playTick(vol = 0.3, freq = 1600) {
+  if (!audioReady || muted) return;
+  const t = actx.currentTime;
+  const o = actx.createOscillator(); o.type = 'square'; o.frequency.value = freq;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.22 * vol), t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(g).connect(master); o.start(t); o.stop(t + 0.06);
+}
+function playChime(i = 0) {
+  if (!audioReady || muted) return;
+  const t = actx.currentTime, f = 523.25 * Math.pow(2, i / 5);
+  [f, f * 1.5].forEach((fr, k) => {
+    const o = actx.createOscillator(); o.type = 'triangle'; o.frequency.value = fr;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16 / (k + 1), t + 0.012); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.9);
+    o.connect(g).connect(master); o.start(t); o.stop(t + 1);
+  });
+}
+
+/* ================= GAME 1 — THE KEEPER'S ROUND (library) ================= */
+const FOUND_SAY = ['Yes.', 'Good.', 'Quick.', 'There.'];
+const round = { on: false, list: [], i: 0, t0: 0, limit: 75, calm: false, helped: false, wrongs: 0, stuckT: 0, riddleT: 0, plainSaid: false, gutterT: -9, tenSaid: false, prevHint: '' };
+let darkAmt = 0, darkTarget = 0, helpLampAmt = 0;
+const aimDir = new THREE.Vector3(0, 0, -1), lastPtr = { x: innerWidth / 2, y: innerHeight / 2 };
+const flares = [];  // { sprite, t0 }
+const roundCallEl = document.getElementById('roundCall'), roundClockEl = document.getElementById('roundClock'), roundDotsEl = document.getElementById('roundDots'), roundSrEl = document.getElementById('roundSr');
+function pickOrder() {
+  const counters = ROUND_DEFS.filter((d) => d.counter), backs = ROUND_DEFS.filter((d) => !d.counter);
+  const shuffle = (a) => a.slice().sort(() => Math.random() - 0.5);
+  const first = shuffle(counters)[0];
+  const pool = shuffle(ROUND_DEFS.filter((d) => d !== first));
+  const list = [first]; let side = first.side;
+  for (let k = 1; k < 4; k++) {                       // 2–4 alternate sides of the aisle
+    side = side === 'L' ? 'R' : 'L';
+    let pick = pool.find((d) => d.side === side && !list.includes(d)) || pool.find((d) => !list.includes(d));
+    list.push(pick);
+  }
+  const last = shuffle(backs.filter((d) => !list.includes(d)))[0] || pool.find((d) => !list.includes(d));
+  list.push(last);
+  return list;
+}
+function startRound(calm = false) {
+  if (round.on) return;
+  Object.assign(round, { on: true, list: pickOrder(), i: 0, calm, helped: false, wrongs: 0, plainSaid: false, tenSaid: false, gutterT: -9 });
+  round.limit = 75; round.t0 = simT + 3.2; round.stuckT = round.t0;
+  helpLampAmt = 0;
+  roundDotsEl.querySelectorAll('i').forEach((d) => d.classList.remove('on'));
+  roundClockEl.textContent = calm ? '—' : '75'; roundClockEl.classList.toggle('calm', calm); roundClockEl.classList.remove('low'); roundHudEl.classList.remove('pulse');
+  roundCallEl.textContent = 'Listen…';
+  roundHudEl.hidden = false; roundRetEl.hidden = !IS_TOUCH; document.body.classList.add('round');
+  round.prevHint = hintEl.textContent;
+  hintEl.textContent = IS_TOUCH ? 'Turn to sweep the light · tap what you find' : 'Move the mouse to sweep the light · click what you find';
+  hintEl.style.display = 'block';
+  showCaption('Care for a game? I will name five things, each on a scrap of red velvet. Find them in the dark. The lamp in your hand shows the way.', 6000);
+  setTimeout(() => { if (round.on) darkTarget = 1; }, 2600);
+  setTimeout(() => { if (round.on) nextCall(); }, 3400);
+}
+function nextCall() {
+  if (!round.on) return;
+  const d = round.list[round.i];
+  round.stuckT = simT; round.wrongs = 0; round.plainSaid = false;
+  if (round.i < 4) { showCaption('Find… ' + d.name + '.', 4500); roundCallEl.textContent = 'Find · ' + d.name; }
+  else { showCaption('The last I will not name. ' + d.riddle, 9000); roundCallEl.textContent = 'Find · the last, unnamed'; round.riddleT = simT; }
+}
+function roundHit(id) {
+  if (!round.on) return false;
+  const want = round.list[round.i];
+  if (!want || want.id !== id) { roundMiss(); return true; }
+  playChime(round.i);
+  const def = ROUND_DEFS.find((x) => x.id === id);
+  const s = sprite(0.9, def.x, def.y + 0.25, def.z, scene, 0.95); flares.push({ sprite: s, t0: simT });
+  roundDotsEl.querySelectorAll('i')[round.i].classList.add('on');
+  round.i++;
+  if (round.i >= 5) { finishRound(); return true; }
+  showCaption(FOUND_SAY[(round.i - 1) % FOUND_SAY.length], 900);
+  setTimeout(nextCall, 450);
+  return true;
+}
+function roundMiss() {
+  if (!round.on) return;
+  playThud();
+  round.wrongs++; round.gutterT = simT;
+  if (round.wrongs >= 3) {
+    const d = round.list[round.i];
+    showCaption((d.side === 'L' ? 'Left of the aisle' : 'Right of the aisle') + (d.z < -12 ? ', and further back.' : ', near the door.'), 3600);
+    round.wrongs = 0;
+  } else showCaption('No. Look again.', 1800);
+}
+function nearestTargetOnScreen(cx, cy) {
+  // phone fallback: a tap within 44 css px of a target's screen position counts as a tap on it
+  let best = null, bd = 44;
+  const v = new THREE.Vector3(), fwd = camera.getWorldDirection(new THREE.Vector3());
+  ROUND_DEFS.forEach((d) => {
+    v.set(d.x, d.y + 0.15, d.z);
+    if (v.clone().sub(camera.position).dot(fwd) <= 0) return;
+    v.project(camera);
+    const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight;
+    const dist = Math.hypot(sx - cx, sy - cy);
+    if (dist < bd) { bd = dist; best = d; }
+  });
+  return best;
+}
+function finishRound() {
+  const secs = Math.round((simT - round.t0) * 10) / 10;
+  round.on = false;
+  let best = null; try { best = Number(localStorage.getItem('ps_round3d_best')) || null; } catch (e) {}
+  let note;
+  if (round.calm) note = 'Five, at your own pace.';
+  else if (round.helped) note = 'Five, with a little help. Next time, in the dark.';
+  else {
+    const isBest = !best || secs < best;
+    if (isBest) { try { localStorage.setItem('ps_round3d_best', String(secs)); } catch (e) {} }
+    note = 'Five in ' + secs.toFixed(1) + ' seconds' + (isBest ? ', your best.' : ' (best ' + best.toFixed(1) + 's).');
+  }
+  showCaption(secs < 35 && !round.helped && !round.calm ? 'Five, in the dark. You have a keeper’s eyes.' : 'Five. Steady hands.', 4200);
+  leaveRoundHud();
+  darkTarget = 0; playCreak(); setTimeout(playUnlock, 900);
+  const had = !!tilesHeld().II;
+  setTimeout(() => pickupTile(5, new THREE.Vector3(HOOD.x, 1.25, HOOD.z), () => awardTile('II', note)), had ? 300 : 1100);
+}
+function leaveRoundHud() {
+  roundHudEl.hidden = true; roundRetEl.hidden = true; document.body.classList.remove('round');
+  hintEl.textContent = round.prevHint || hintEl.textContent;
+  if (!IS_TOUCH) hintEl.style.display = '';
+}
+function endRound(reason) {
+  if (!round.on) return;
+  round.on = false; darkTarget = 0; leaveRoundHud();
+  if (reason === 'timeout') { document.getElementById('reText').textContent = 'The dark kept them that time. Rest your eyes, then try again.'; openCard(roundEndEl, document.getElementById('reAgain')); }
+  else showCaption('Another time, then.', 3000);
+}
+document.getElementById('roundQuit').addEventListener('click', () => endRound('quit'));
+document.getElementById('reAgain').addEventListener('click', () => { closeCard(roundEndEl); startRound(false); });
+document.getElementById('reCalm').addEventListener('click', () => { closeCard(roundEndEl); startRound(true); });
+document.getElementById('reBack').addEventListener('click', () => closeCard(roundEndEl));
+
+function tickRound(dt, t) {
+  // the dark comes in over 0.8 s and leaves over 1.2 s
+  const rate = darkTarget > darkAmt ? dt / 0.8 : dt / 1.2;
+  darkAmt = darkTarget > darkAmt ? Math.min(darkTarget, darkAmt + rate) : Math.max(darkTarget, darkAmt - rate);
+  const helpT = round.on && round.helped ? 0.4 : 0;
+  helpLampAmt += (helpT - helpLampAmt) * Math.min(1, dt * 2);
+  if (darkAmt > 0 || ambientLight.intensity !== 1.15) {
+    const k = darkAmt;
+    ambientLight.intensity = 1.15 - 0.93 * k;              // floor 0.22: never black on an OLED
+    hemi.intensity = 0.62 - 0.50 * k;
+    scene.fog.density = 0.052 + 0.048 * k;
+    libLights.forEach((L, i) => { L.intensity *= (1 - k) + (i === 1 ? helpLampAmt * k : 0); });
+    libLampSprites.forEach((s, i) => { s.material.opacity = 0.7 * ((1 - k) + (i === 1 ? helpLampAmt * k : 0)); });
+    tomeLight.intensity *= 1 - 0.85 * k; tomeGlow.material.opacity = 0.9 - 0.75 * k;
+    torch2Light.intensity *= 1 - k;
+    M.glowStrip.emissiveIntensity = 1.6 - 1.5 * k;
+    M.goldGlow.emissiveIntensity = 0.4 - 0.36 * k;
+    M.flame.emissiveIntensity = 1.5 - 1.45 * k;
+  }
+  // the hooded lamp in your hand
+  const gutter = round.on && simT - round.gutterT < 1.5 ? 0.4 : 1;
+  const baseAngle = camera.aspect < 1 ? 0.26 : 0.32;
+  roundSpot.angle = baseAngle * (gutter < 1 ? 0.56 : 1);
+  roundSpot.intensity = 140 * darkAmt * gutter;
+  roundFill.intensity = 3 * darkAmt;
+  if (darkAmt > 0) {
+    const fwd = camera.getWorldDirection(new THREE.Vector3());
+    let want;
+    if (IS_TOUCH) want = fwd;
+    else { ndc.set((lastPtr.x / innerWidth) * 2 - 1, -(lastPtr.y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); want = ray.ray.direction.clone(); }
+    if (want.angleTo(fwd) > 0.61) want = want.lerp(fwd, 0.5).normalize();
+    aimDir.lerp(want, REDUCED ? 1 : Math.min(1, dt * 9)).normalize();
+    roundSpot.position.copy(camera.position);
+    roundSpot.target.position.copy(camera.position).addScaledVector(aimDir, 6);
+    roundFill.position.copy(camera.position);
+    // things gleam when the beam finds them; the one you are stuck on gleams harder after 15 s
+    const cosCone = Math.cos(roundSpot.angle);
+    ROUND_DEFS.forEach((d) => {
+      const to = new THREE.Vector3(d.x, d.y + 0.15, d.z).sub(camera.position); const dist = to.length(); to.divideScalar(dist);
+      const inBeam = dist < 7 && to.dot(aimDir) > cosCone;
+      const stuck = round.on && round.list[round.i] === d && simT - round.stuckT > 15;
+      const want = inBeam ? (stuck ? 0.5 : 0.18) : 0;
+      d.mats.forEach((m) => { m.emissiveIntensity += (want - m.emissiveIntensity) * Math.min(1, dt * 8); });
+    });
+  }
+  // flares on found things
+  for (let i = flares.length - 1; i >= 0; i--) {
+    const f = flares[i], k = (simT - f.t0) / 0.7;
+    if (k >= 1) { scene.remove(f.sprite); flares.splice(i, 1); continue; }
+    f.sprite.material.opacity = 0.95 * (1 - k); f.sprite.scale.setScalar(0.9 + k * 0.8);
+  }
+  if (!round.on) return;
+  // the clock
+  if (round.i < 5 && round.i === 4 && !round.plainSaid && simT - round.riddleT > 15) { round.plainSaid = true; showCaption('Very well: ' + round.list[4].name + '.', 4000); roundCallEl.textContent = 'Find · ' + round.list[4].name; }
+  if (round.calm) return;
+  const left = round.limit - (simT - round.t0);
+  const shown = Math.max(0, Math.ceil(left));
+  if (roundClockEl.textContent !== String(shown)) roundClockEl.textContent = String(shown);
+  const low = left <= 10 && left > 0;
+  roundClockEl.classList.toggle('low', low); roundHudEl.classList.toggle('pulse', low && !REDUCED);
+  if (low && !round.tenSaid) { round.tenSaid = true; roundSrEl.textContent = 'Ten seconds.'; }
+  if (low && Math.floor(left) !== Math.floor(left + dt)) playTick(0.25, 900);
+  if (left <= 0) {
+    if (!round.helped) { round.helped = true; round.limit += 30; round.tenSaid = false; showCaption('A little light. I am not cruel.', 3600); }
+    else endRound('timeout');
+  }
+}
+
+/* ================= GAME 2 — THE LISTENING LOCK (treasure room) ================= */
+let heldIII = !!tilesHeld().III;
+const lock = { on: false, targets: [], i: 0, pos: 0, lastMove: 0, dragging: false, lastAngle: 0, acc: 0, dir: 0, dir2: 0, band: '', fellAt: -9, step: null };
+const lockDial = document.getElementById('lockDial'), lockShake = document.getElementById('lockShake'), lockNum = document.getElementById('lockNum'), lockHeat = document.getElementById('lockHeat'), lockMsg = document.getElementById('lockMsg');
+function lockDist() { const t = lock.targets[lock.i]; const d = Math.abs(t - lock.pos); return Math.min(d, 40 - d); }
+function lockRender() {
+  lockDial.style.setProperty('--rot', (-lock.pos * 9) + 'deg'); lockNum.textContent = String(lock.pos); lockDial.setAttribute('aria-valuenow', String(lock.pos));
+  const d = lockDist(); let near = Math.max(0, 1 - d / 10);
+  const contrary = lock.i === 2 && lock.dir !== 0 && lock.dir === lock.dir2;   // the third is contrary: come at it the other way
+  if (contrary) near = 0;
+  const mix = (a, b) => Math.round(a + (b - a) * near);
+  lockDial.style.borderColor = 'rgb(' + mix(74, 255) + ',' + mix(58, 211) + ',' + mix(34, 122) + ')';
+  lockNum.style.textShadow = '0 0 ' + Math.round(6 + near * 22) + 'px rgba(246,178,60,' + (0.3 + near * 0.7) + ')';
+  lockShake.style.setProperty('--shake', (!REDUCED && near > 0.55 ? ((near - 0.55) * 9).toFixed(1) : 0) + 'px');
+  const band = contrary ? 'Dead. Try the other way' : d >= 10 ? 'Cold' : d >= 5 ? 'Warmer' : d >= 2 ? 'Close' : 'Right there. Hold still';
+  if (band !== lock.band) { lock.band = band; lockHeat.textContent = band; lockHeat.classList.toggle('hot', d < 2 && !contrary); }
+  return { d, near, contrary };
+}
+function lockStep(dir) {
+  if (!lock.on) return;
+  lock.pos = (lock.pos + dir + 40) % 40; lock.dir = dir; lock.lastMove = simT;
+  const { near } = lockRender();
+  playTick(0.12 + near * 0.88, 1300 + near * 1700);
+  try { if (navigator.vibrate) navigator.vibrate(near > 0.7 ? 14 : 6); } catch (e) {}
+}
+lock.step = lockStep;
+function lockFall() {
+  playThud(); playChime(lock.i + 1);
+  document.getElementById('lockTumblers').children[lock.i].classList.add('fell');
+  if (lock.i === 1) lock.dir2 = lock.dir;
+  lock.i++; lock.fellAt = simT; lock.band = '';
+  lockMsg.textContent = ['One.', 'Two.', 'The last tumbler falls.'][lock.i - 1];
+  if (lock.i >= 3) { lock.on = false; setTimeout(lockWon, 800); }
+  else if (lock.i === 2) setTimeout(() => { if (lock.on) showCaption('The last one is contrary. Come at it from the other side.', 4200); }, 600);
+  lockRender();
+}
+function openLock() {
+  lock.on = true; lock.i = 0; lock.pos = 0; lock.dir = 0; lock.dir2 = 0; lock.band = ''; lock.acc = 0; lock.lastMove = simT;
+  lock.targets = [];
+  while (lock.targets.length < 3) { const n = Math.floor(Math.random() * 40); if (n !== 0 && lock.targets.every((t) => Math.min(Math.abs(t - n), 40 - Math.abs(t - n)) > 6)) lock.targets.push(n); }
+  document.querySelectorAll('#lockTumblers i').forEach((i) => i.classList.remove('fell'));
+  lockMsg.textContent = ''; lockRender();
+  openCard(lockboxEl, lockDial);
+  showCaption('Three tumblers. Turn the dial and listen.', 4200);
+}
+function closeLock() { lock.on = false; closeCard(lockboxEl); }
+function lockWon() {
+  closeLock();
+  lidAnim = { from: pbLid.rotation.x, to: -1.6, t0: simT, dur: 0.7 };
+  pbInner.visible = true; pbGlow.material.opacity = 0.6; pbLight.intensity = 6;
+  playCreak(); setTimeout(playUnlock, 500);
+  const had = !!tilesHeld().III;
+  const from = new THREE.Vector3(); pbChest.getWorldPosition(from); from.y += 0.25;
+  setTimeout(() => pickupTile(7, from, () => awardTile('III', 'The chest gives up its secret.')), 900);
+}
+let lidAnim = null;
+function tickLock(dt) {
+  if (lidAnim) {
+    const k = Math.min(1, (simT - lidAnim.t0) / lidAnim.dur), e = 1 - Math.pow(1 - k, 3);
+    pbLid.rotation.x = lidAnim.from + (lidAnim.to - lidAnim.from) * e;
+    if (k >= 1) lidAnim = null;
+  }
+  if (lock.on && lockboxEl.hidden) { lock.on = false; return; }   // the history guard shut it
+  if (lock.on) {
+    const { d, contrary } = lockRender();
+    if (d === 0 && !contrary && simT - lock.lastMove > 0.7 && simT - lock.fellAt > 0.9) { lock.lastMove = simT; lockFall(); }
+  }
+  // the small chest ticks, faintly, when you are near it and it is still shut
+  if (!heldIII && audioReady && !muted && simT - chestTickT > 1) {
+    const cp = new THREE.Vector3(); pbChest.getWorldPosition(cp);
+    const dd = Math.hypot(player.pos.x - cp.x, player.pos.z - cp.z);
+    if (dd < 2.6) { chestTickT = simT; playTick(0.05 * (1 - dd / 2.6), 2100); }
+  }
+}
+let chestTickT = 0;
+(function wireLock() {
+  const angleAt = (e) => { const r = lockDial.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
+  lockDial.addEventListener('pointerdown', (e) => { lock.dragging = true; lock.lastAngle = angleAt(e); lock.acc = 0; try { lockDial.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
+  lockDial.addEventListener('pointermove', (e) => {
+    if (!lock.dragging) return;
+    const a = angleAt(e); let da = a - lock.lastAngle; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+    lock.lastAngle = a; lock.acc += da;
+    const stepAngle = 2 * Math.PI / 40;
+    while (Math.abs(lock.acc) >= stepAngle * 0.9) { lockStep(lock.acc > 0 ? -1 : 1); lock.acc -= Math.sign(lock.acc) * stepAngle; }
+  });
+  const up = () => { lock.dragging = false; lock.acc = 0; };
+  lockDial.addEventListener('pointerup', up); lockDial.addEventListener('pointercancel', up);
+  lockDial.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { lockStep(1); e.preventDefault(); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { lockStep(-1); e.preventDefault(); } });
+  document.getElementById('lockUp').addEventListener('click', () => lockStep(1));
+  document.getElementById('lockDown').addEventListener('click', () => lockStep(-1));
+  document.getElementById('lockBack').addEventListener('click', closeLock);
+})();
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!lockboxEl.hidden) closeLock();
+  else if (!tilecardEl.hidden) closeCard(tilecardEl);
+  else if (!roundEndEl.hidden) closeCard(roundEndEl);
+  else if (round.on) endRound('quit');
+});
+// a held tile leaves the small chest open on every visit
+if (tilesHeld().III) { pbLid.rotation.x = -1.6; pbInner.visible = true; pbGlow.material.opacity = 0.6; pbLight.intensity = 6; pbChest.userData.label = 'The small chest, open. Its tile is yours.'; }
+
 /* ================= debug hooks (headless verification) ================= */
 window.__vault = {
   scene, camera, renderer,
   player, moveTo, openBookcase, closeBookcase, oddHit, exitHit, openReward, activate, openWordbox, submitWord,
+  round, startRound, roundHit, endRound, ROUND_DEFS, lock, openLock, lockStep, pbLid, awardTile, tilesHeld, get darkAmt() { return darkAmt; },
   floorYAt, get door4Open() { return door4Open; }, STAIR,
   get doorAmt() { return doorAmt; },
   get door2Open() { return door2Open; },
@@ -2767,6 +3229,7 @@ function tick(dt) {
     if (o.isSprite) o.material.opacity = Math.min(1, 0.4 * b);
     else o.material.color.setScalar(Math.min(1.8, b));
   });
+  tickRound(dt, t); tickLock(dt); tickPickups();
   // room label + first-entry lines
   const zp = player.pos.z;
   const label = player.pos.y < -0.4 || (door4Open && floorYAt(player.pos.x, zp) < -0.4)

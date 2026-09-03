@@ -755,7 +755,7 @@
       const secs = Math.round((performance.now() - round.t0) / 10) / 100;
       if (!round.best || secs < round.best) { round.best = secs; store.set('ps_round_best', secs); }
       awardTile('II', 'Five in ' + secs + ' seconds' + (round.best === secs ? ' — your best.' : ' (best ' + round.best + 's).'));
-    } else caption('The dark won that one. Try again when your eyes have rested.', 5000);
+    } else caption('The dark kept them that time. Rest your eyes, then try again.', 5000);
   }
 
   /* ================= MINI-GAME 2 — THE LISTENING LOCK (treasure, the locked chest) ================= */
