@@ -5,7 +5,7 @@
 // plus a dark HTML sanctum for the fourth secret. The engine is a plain script
 // (public/js/painted-vault.js) with no three.js dependency, so it survives a device with no
 // WebGL — and the 3D crawl (src/scripts/vault3d.js) is only downloaded when the visitor asks
-// for it (?mode=3d, or the "Walk it in 3D" chip, remembered in localStorage).
+// for it (the default since 2026-09-03; the painted vault is reached via ?mode=painted).
 //
 // The mode decision below runs SYNCHRONOUSLY in an inline script: module scripts are deferred
 // and execute before DOMContentLoaded, so deciding any later would let the 3D scene build
@@ -254,13 +254,10 @@
 <script is:inline>
   // ---- mode decision, made SYNCHRONOUSLY (see the note at the top of this file) --------
   (function () {
+    // Dan's call (2026-09-03): the 3D crawl is the default, every time. The painted vault is
+    // reached only through the small link under the gate button (?mode=painted) or the drawer.
     var qp = new URLSearchParams(location.search);
-    var pref = null;
-    try { pref = localStorage.getItem('ps_vault_mode'); } catch (e) {}
-    var m = qp.get('mode');
-    if (m === '3d' || m === 'painted') { try { localStorage.setItem('ps_vault_mode', m); } catch (e) {} pref = m; }
-    if (qp.get('flat') === '1') pref = 'painted';
-    var want3d = pref === '3d';
+    var want3d = !(qp.get('mode') === 'painted' || qp.get('flat') === '1');
     if (want3d) {
       var webgl = false;
       try { var c = document.createElement('canvas'); webgl = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); } catch (e) { webgl = false; }

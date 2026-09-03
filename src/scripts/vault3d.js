@@ -18,7 +18,8 @@ const capText = document.getElementById('capText');
 const labelEl = document.getElementById('label');
 const rewardEl = document.getElementById('reward');
 const hintEl = document.getElementById('hint');
-if (qs.get('from') === 'door') { gate.classList.add('from-door'); fadeEl.classList.add('from-door'); }
+const FROM_DOOR = qs.get('from') === 'door';
+if (FROM_DOOR) { gate.style.display = 'none'; fadeEl.classList.add('from-door'); }
 
 let renderer = null;
 try {
@@ -2252,6 +2253,20 @@ function begin(withAudio) {
   setTimeout(() => { hintEl.style.opacity = '1'; }, 2500);
 }
 document.getElementById('enterBtn').addEventListener('click', () => { unlockVO(); begin(true); });
+// From the landing's opened door there is no gate: the room is simply there. Browsers refuse sound
+// before a gesture, so the soundscape and the Keeper's voice start on the first tap or key.
+if (FROM_DOOR) {
+  begin(false);
+  hintEl.textContent = (IS_TOUCH ? 'Tap anywhere for sound · ' : 'Click anywhere for sound · ') + hintEl.textContent;
+  hintEl.style.display = 'block';
+  const wake = () => {
+    unlockVO(); initAudio(); startAmbient();
+    hintEl.textContent = IS_TOUCH ? 'Drag to look · hold the floor to walk · tap what glows' : 'Drag to look around · Tap the floor to walk · Click what glows';
+    setTimeout(() => keeper('entry'), 400);
+  };
+  addEventListener('pointerdown', wake, { once: true });
+  addEventListener('keydown', wake, { once: true });
+}
 
 if (DEBUG_CAM) {
   const [cx, cz, cyaw, cpitch] = DEBUG_CAM.split(',').map(Number);

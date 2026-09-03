@@ -43,8 +43,6 @@ import Analytics from '@vercel/analytics/astro';
     <div class="gate-inner">
       <div class="gate-kicker">THE WORD WAS TRUE</div>
       <h1>THE&nbsp;VAULTS</h1>
-      <div class="gate-sub">I · The Writer's Study</div>
-      <p class="gate-line">The first door stands open. Two more wait in the dark — each sealed with a word.</p>
       <button id="enterBtn">⟡ &nbsp;Step inside</button>
       <a id="gate2d" href="/vault?mode=painted">or explore the painted vault</a>
     </div>
@@ -198,10 +196,10 @@ import Analytics from '@vercel/analytics/astro';
       justify-content: center; background: radial-gradient(ellipse at 50% 60%, #1a0f04 0%, #070402 70%);
       transition: opacity 1.4s; text-align: center;
     }
-    /* arriving from the landing's opened door: the gate is the same painting the door revealed */
-    #gate.from-door, #fade.from-door { background: #070402 url(/art/rooms/study.webp) center 55% / cover no-repeat; }
-    #gate.from-door::before { content: ''; position: absolute; inset: 0; background: rgba(4,2,0,.55); }
-    #gate.from-door .gate-inner { position: relative; }
+    /* the gate is the painted study the door revealed (arriving from the door skips it entirely) */
+    #gate, #fade.from-door { background: #070402 url(/art/rooms/study.webp) center 55% / cover no-repeat; }
+    #gate::before { content: ''; position: absolute; inset: 0; background: rgba(4,2,0,.55); }
+    #gate .gate-inner { position: relative; }
     #gate.gone { opacity: 0; pointer-events: none; }
     .gate-kicker { font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.4em; color: var(--gold-dim); margin-bottom: 18px; }
     #gate h1 { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(44px, 9vw, 84px); letter-spacing: 0.18em; color: var(--gold); text-shadow: 0 0 40px rgba(246,178,60,0.35); }

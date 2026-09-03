@@ -126,6 +126,14 @@ also exists in `genxaijourney`'s chat); source saved at
 `assets/vault_concepts/vault4_secret_sanctum_v1.jpg`. The HTML sanctum is gone; the register and
 the acrostic open as panels from their painted objects.
 
+### Update 2026-09-03 — Dan's call: the 3D crawl is the default
+`/vault` always loads the 3D crawl; the painted vault is reached only via the small link under
+the gate button (`?mode=painted`) or the drawer. Nothing is remembered. Arriving from the
+landing's opened door skips the gate entirely (sound and the Keeper's entry line start on the
+first tap, because browsers refuse audio before a gesture); a direct visit shows one gate only.
+The earlier "flip the default" note above is obsolete: `FlatVault.astro`'s inline script now
+reads `var want3d = !(mode === 'painted' || flat === '1')`.
+
 ### Not done / ideas parked
 - The "missing 2" easter egg (the cover's number column has no 2 — designer's suggestion).
 - Spot-the-difference / cut-out layers per painting (needs offline alpha cutting).
