@@ -455,6 +455,11 @@ box(2.42, 0.08, 0.46, M.gold, 0, 3.2, 4);
 }));
 box(3.0, 0.08, 0.5, M.gold, 0, 0.04, 4);                      // gold threshold
 box(4, 4.6, 0.1, M.dark, 0, 2.2, 5.6);                        // darkness beyond
+// the way out: the doorway itself is a target — turn around, click it, and you are back at the door
+const exitHit = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 0.5),
+  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+exitHit.position.set(0, 1.6, 4.1); scene.add(exitHit);
+exitHit.userData = { kind: 'exit', label: 'The door you came in by — back to the beginning' };
 sprite(2.4, 0, 1.4, 4.35, scene, 0.4);                        // faint glow in the doorway
 
 /* ---- desk group (diagonal, chair behind — concept v4) ---- */
@@ -624,11 +629,23 @@ hinge.position.set(-2.35, 0, -3.85); scene.add(hinge);
 const bookdoor = makeBookcase(1.74, 2.44, 0.34);
 bookdoor.position.set(0.87, 0, 0); hinge.add(bookdoor);
 bookdoor.traverse(o => { o.userData.kindParent = 'bookcase'; });
-hinge.userData = { kind: 'bookcase', label: 'A bookcase… slightly ajar' };
+// Shut flush and labelled like every other case (Dan, 2026-09-03: the ajar bookcase gave the
+// passage away). The only way in is ONE odd book, sitting a little proud of its row with the
+// faintest glow — a small target that has to be found. Clicking it swings the case open;
+// clicking the open case (or the book again) settles it back.
+hinge.userData = { kind: 'bookcase', label: "The Keeper's shelves" };
 let doorAmt = 0;                       // 0 closed → 1 open (rotY 0 → -1.62)
 let doorAnim = null;                   // {from,to,start,dur}
-const DOOR_AJAR = 0.07;
-hinge.rotation.y = -DOOR_AJAR;
+hinge.rotation.y = 0;
+const oddBookMat = new THREE.MeshStandardMaterial({ color: 0x8a4a26, emissive: 0xffb347, emissiveIntensity: 0.2, roughness: 0.7 });
+const oddBook = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.30, 0.24), oddBookMat);
+oddBook.position.set(0.52, 1.652, 0.05); bookdoor.add(oddBook);          // fourth row up, right of centre, 5 cm proud
+const oddBand = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.025, 0.246), M.gold);
+oddBand.position.set(0.52, 1.72, 0.05); bookdoor.add(oddBand);
+const oddHit = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.36, 0.34),
+  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+oddHit.position.set(0.52, 1.652, 0.08); bookdoor.add(oddHit);
+oddHit.userData = { kind: 'oddbook', label: 'A book that sits proud of its row' };
 
 /* ---- the passage + sealed Vault II door ---- */
 const CORR = { minX: -2.2, maxX: -0.8, endZ: -6.95 };
@@ -1746,7 +1763,7 @@ function stepForward(dist) {
 /* ---- pointer: drag = look, tap = interact/walk ---- */
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
-const interactables = [stack, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, lantern,
+const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, lantern,
   candle, ink, quill, board, sconce, chair, notebook, easelS, ...rejects, ...wallCases,
   ...storyPages,
   ...sealPulse.filter(o => o.isMesh)];
@@ -2229,8 +2246,20 @@ function activate(kind, hitObj) {
   } else if (kind === 'masterTome') {
     goThen(AX, -27.6, () => openReward('IV'));
   } else if (kind === 'bookcase') {
-    if (doorAnim || doorAmt > 0.5) return;
-    openBookcase();
+    if (doorAnim) return;
+    if (doorAmt > 0.5) { closeBookcase(); return; }
+    showCaption(STUDY_SAY.shelf, 5600); markFound('shelf');      // shut, it is just another case
+  } else if (kind === 'oddbook') {
+    if (doorAnim) return;
+    if (doorAmt > 0.5) { closeBookcase(); return; }
+    playThud(); markFound('shelf');
+    goThen(-1.6, -2.6, () => openBookcase());
+  } else if (kind === 'exit') {
+    goThen(0, 3.05, () => {
+      showCaption('Back to the beginning. The door remembers you.', 2400);
+      fadeEl.classList.remove('clear');
+      setTimeout(() => { window.location.href = '/'; }, 900);
+    });
   } else if (kind === 'door2' || kind === 'door3') {
     const D = DOORS[kind];
     if (D.isOpen()) return;
@@ -2276,8 +2305,21 @@ function openBookcase() {
   playCreak();
   setTimeout(() => playBoom(0.5), 1400);
   showCaption('The shelves swing wide — a passage, kept from every map.', 5600);
-  hinge.userData.label = 'The way lies open';
+  hinge.userData.label = 'The way lies open · tap the shelves to close them';
+  oddHit.userData.label = 'The odd book · tap to close the shelves';
   doorOpened = true;
+}
+function closeBookcase() {
+  if (doorAnim || doorAmt <= 0) return;
+  // never shut it on someone standing in the passage, or on the far side of it
+  if (player.pos.z < -3.3) { showCaption('Step clear of the passage first.', 3200); return; }
+  doorAnim = { from: hinge.rotation.y, to: 0, start: performance.now(), dur: 1500 };
+  playCreak();
+  setTimeout(() => playBoom(0.35), 1300);
+  showCaption('The shelves settle back into the wall. Nobody would know.', 4800);
+  hinge.userData.label = "The Keeper's shelves";
+  oddHit.userData.label = 'A book that sits proud of its row';
+  doorOpened = false;
 }
 
 /* ================= THE STUDY, ALIVE (2026-09-03) =================
@@ -2551,7 +2593,7 @@ if (qs.get('wb') === '1') openWordbox(qs.get('wbk') || 'door2');
 /* ================= debug hooks (headless verification) ================= */
 window.__vault = {
   scene, camera, renderer,
-  player, moveTo, openBookcase, openReward, activate, openWordbox, submitWord,
+  player, moveTo, openBookcase, closeBookcase, oddHit, exitHit, openReward, activate, openWordbox, submitWord,
   floorYAt, get door4Open() { return door4Open; }, STAIR,
   get doorAmt() { return doorAmt; },
   get door2Open() { return door2Open; },
@@ -2679,10 +2721,6 @@ function tick(dt) {
   camera.position.set(player.pos.x, eyeY, player.pos.z);
   camera.rotation.set(pitch, yaw, 0);
 
-  // auto-open the bookcase as you draw near
-  if (!doorOpened && !doorAnim && player.pos.distanceTo(new THREE.Vector3(-1.5, 0, -3.4)) < 2.0)
-    openBookcase();
-
   // bookcase swing (sim-time driven so manual stepping works too)
   if (doorAnim) {
     if (doorAnim.simStart === undefined) doorAnim.simStart = simT - dt;
@@ -2709,6 +2747,7 @@ function tick(dt) {
   flame.scale.y = sflame.scale.y = tflame.scale.y = 0.9 + 0.2 * Math.sin(t * 13);
   const pulse = 0.75 + 0.45 * Math.sin(t * 2.2);
   M.stack.emissiveIntensity = pulse;
+  oddBookMat.emissiveIntensity = doorAmt > 0.5 ? 0.08 : 0.12 + 0.16 * (0.5 + 0.5 * Math.sin(t * 1.6));
   stackLight.intensity = 30 * (0.8 + 0.3 * Math.sin(t * 2.2));
   stackGlow.scale.setScalar(1.4 + 0.25 * Math.sin(t * 2.2));
   // the deeper rooms breathe too
