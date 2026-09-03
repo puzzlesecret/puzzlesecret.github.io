@@ -129,6 +129,7 @@ import webPuzzles from '../data/web_puzzles.json';
 
           <!-- Utility Options -->
           <div class="util-row">
+            <button type="button" class="u-btn u-toggle" id="mistakesBtn" role="switch" aria-checked="false" title="Show mistakes as you go (Hotkey: M)"><span class="u-dot" aria-hidden="true"></span>Show mistakes: <b id="mistakesLbl">Off</b></button>
             <button class="u-btn" id="checkBtn">Check Errors</button>
             <button class="u-btn" id="resetBtn">Reset Board</button>
           </div>
@@ -378,20 +379,28 @@ import webPuzzles from '../data/web_puzzles.json';
         if (selVal > 0 && gridState[i] === selVal) {
           cell.classList.add('highlight-num');
         }
-        // Live conflicts: an entered digit that clashes with its row, column or box shows at once
-        if (!givensMask[i] && gridState[i] > 0 && conflicts(i)) cell.classList.add('error');
+        // Mistakes show as you go ONLY if the solver asked for it (off by default: an instant red
+        // would turn solving into guessing). On = your entry disagrees with the answer.
+        if (showMistakes && puz && !givensMask[i] && gridState[i] > 0 && gridState[i] !== parseInt(puz.solution[i], 10)) cell.classList.add('error');
       });
     }
-    function conflicts(i) {
-      const v = gridState[i], r = Math.floor(i / 9), c = i % 9, br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-      for (let k = 0; k < 9; k++) {
-        if (k !== c && gridState[r * 9 + k] === v) return true;
-        if (k !== r && gridState[k * 9 + c] === v) return true;
-        const rr = br + Math.floor(k / 3), cc = bc + (k % 3);
-        if ((rr !== r || cc !== c) && gridState[rr * 9 + cc] === v) return true;
-      }
-      return false;
+    // "Show mistakes" is a choice, remembered per device; off unless switched on
+    let showMistakes = false;
+    try { showMistakes = localStorage.getItem('ps_show_mistakes') === '1'; } catch (e) {}
+    function renderMistakesBtn() {
+      const b = document.getElementById('mistakesBtn'); if (!b) return;
+      b.setAttribute('aria-checked', String(showMistakes));
+      document.getElementById('mistakesLbl').textContent = showMistakes ? 'On' : 'Off';
+      // with mistakes showing as you go, the manual check has nothing left to do
+      document.getElementById('checkBtn')?.toggleAttribute('disabled', showMistakes);
     }
+    function toggleMistakes() {
+      showMistakes = !showMistakes;
+      try { localStorage.setItem('ps_show_mistakes', showMistakes ? '1' : '0'); } catch (e) {}
+      renderMistakesBtn(); renderBoard();
+    }
+    document.getElementById('mistakesBtn')?.addEventListener('click', toggleMistakes);
+    renderMistakesBtn();
 
     function buildNotesHTML(set) {
       let html = '<div class="notes-grid">';
@@ -488,7 +497,11 @@ import webPuzzles from '../data/web_puzzles.json';
       });
 
       if (!errorFound) {
-        const b = document.getElementById('checkBtn'); b.textContent = 'No errors so far ✓'; setTimeout(() => { b.textContent = 'Check Errors'; }, 1600);
+        const b = document.getElementById('checkBtn');
+        if (b && !b.dataset.nudging) {
+          clearTimeout(b._t); b.textContent = 'No errors so far ✓';
+          b._t = setTimeout(() => { b.textContent = 'Check Errors'; }, 1600);
+        }
         return;
       }
     }
@@ -535,6 +548,15 @@ import webPuzzles from '../data/web_puzzles.json';
         saveSolved();
         stopTimer();
         showVictory(puz);
+      } else if (!currentStr.includes('0')) {
+        // every square filled, but not the answer: say so once, without pointing at the square
+        const b = document.getElementById('checkBtn');
+        if (b && !b.dataset.nudging) {
+          clearTimeout(b._t);
+          b.dataset.nudging = '1'; b.textContent = 'Filled, not yet right';
+          b.classList.add('nudge');
+          b._t = setTimeout(() => { b.textContent = 'Check Errors'; b.classList.remove('nudge'); delete b.dataset.nudging; }, 3200);
+        }
       }
     }
 
@@ -631,6 +653,9 @@ import webPuzzles from '../data/web_puzzles.json';
     // Keyboard Hotkeys
     window.addEventListener('keydown', (e) => {
       if (pickerModal && !pickerModal.hidden) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;      // browser shortcuts and held keys are not moves
+      const vic = document.getElementById('vicModal'), nud = document.getElementById('nudgeModal');
+      if ((vic && !vic.hidden) || (nud && !nud.hidden)) return;
 
       if (e.key >= '1' && e.key <= '9') {
         inputNum(parseInt(e.key, 10));
@@ -640,6 +665,8 @@ import webPuzzles from '../data/web_puzzles.json';
         undoAction();
       } else if (e.key === 'n' || e.key === 'N' || e.key === 'p' || e.key === 'P') {
         togglePencil();
+      } else if (e.key === 'm' || e.key === 'M') {
+        toggleMistakes();
       } else if (e.key === 'h' || e.key === 'H') {
         getHint();
       } else if (selectedCell >= 0) {
@@ -768,7 +795,19 @@ import webPuzzles from '../data/web_puzzles.json';
     .num-val { font-family: var(--display); font-size: 26px; font-weight: 700; line-height: 1; }
     .num-rem { font-size: 10px; color: var(--ash); margin-top: 2px; }
 
-    .util-row { display: flex; gap: 10px; }
+    .util-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .u-btn.nudge { border-color: var(--gold); color: var(--gold-hi); animation: uNudge .6s ease-in-out 3; }
+    @keyframes uNudge { 50% { transform: translateY(-2px); } }
+    @media (prefers-reduced-motion: reduce) { .u-btn.nudge { animation: none; } }
+    .u-btn.u-toggle { flex: 1 1 100%; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; font-size: 12px; letter-spacing: .1em; }
+    .u-toggle b { font-weight: 700; color: var(--ash); }
+    .u-toggle .u-dot { position: relative; width: 30px; height: 16px; border-radius: 10px; border: 1px solid rgba(185,143,82,.5); background: rgba(0,0,0,.45); transition: background .2s, border-color .2s; }
+    .u-toggle .u-dot::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--ash); transition: transform .2s, background .2s; }
+    .u-toggle[aria-checked="true"] { border-color: var(--gold); color: var(--ivory); }
+    .u-toggle[aria-checked="true"] b { color: var(--gold-hi); }
+    .u-toggle[aria-checked="true"] .u-dot { background: rgba(246,178,60,.3); border-color: var(--gold); }
+    .u-toggle[aria-checked="true"] .u-dot::after { transform: translateX(14px); background: var(--gold-hi); box-shadow: 0 0 8px rgba(246,178,60,.8); }
+    .u-btn:disabled { opacity: .35; cursor: default; }
     .u-btn { flex: 1; padding: 12px; font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); background: rgba(255,255,255,.03); border: 1px solid rgba(185,143,82,.2); border-radius: 6px; cursor: pointer; transition: all .2s; }
     .u-btn:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.4); }
 
