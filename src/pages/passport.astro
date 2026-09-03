@@ -68,11 +68,43 @@ import Layout from '../layouts/Layout.astro';
           </div>
         </div>
 
+        <!-- The Keeper's key-tiles (the two games in the painted vault) + the standing -->
+        <div class="p-row">
+          <div class="tiles-row" aria-label="Key-tiles recovered">
+            <div class="ktile" id="tile-II"><span>5</span><small>Library</small></div>
+            <div class="ktile" id="tile-III"><span>7</span><small>Treasure</small></div>
+            <p class="tiles-note" id="tilesNote">Two key-tiles wait in the vaults — one in the library’s dark, one inside a locked chest.</p>
+          </div>
+          <div class="rank-box">
+            <p class="rank-lbl">Standing</p>
+            <p class="rank" id="rankName">Visitor</p>
+            <p class="rank-sub" id="rankSub">Crack the first vault to earn a title.</p>
+          </div>
+        </div>
+
+        <!-- The certificate: a keepsake, drawn in this browser only -->
+        <div class="cert-box" id="certBox" hidden>
+          <div>
+            <h3>Your certificate</h3>
+            <p>“Cracked the Keeper’s Vault” — your initials, the date, the vaults you opened. Drawn here, saved to your device, never sent anywhere.</p>
+          </div>
+          <button type="button" class="btn-cert" id="certBtn">Draw my certificate</button>
+        </div>
+
+        <!-- The next stamp: a book not yet written -->
+        <div class="next-slot" aria-label="Volume II — coming">
+          <div class="stamp-num" style="color:var(--v2)">II</div>
+          <div>
+            <div class="stamp-name">Volume II · The Corsair’s Chart</div>
+            <div class="stamp-status">A stamp waiting for a book still being drawn</div>
+          </div>
+        </div>
+
         <!-- Passport Stats Bar -->
         <div class="p-stats">
           <div class="stat">
             <span class="stat-num" id="unlockedPuzzles">0</span>
-            <span class="stat-lbl">Puzzles Won</span>
+            <span class="stat-lbl">Puzzles Unlocked</span>
           </div>
           <div class="stat">
             <span class="stat-num" id="stampsCount">0 / 4</span>
@@ -85,18 +117,36 @@ import Layout from '../layouts/Layout.astro';
         </div>
 
         <p class="p-note">
-          Every reward pack is free to download whether or not it is stamped — the stamps are
-          simply the record of what <em>you</em> cracked.
+          The puzzle packs are the Keeper’s gifts, open to anyone. The stamps, the key-tiles and
+          the certificate are yours alone — the record of what <em>you</em> cracked.
         </p>
       </div>
 
       <div class="passport-cta">
-        <a href="/vault" class="btn-vault">Return to the 3D Vaults →</a>
+        <a href="/vault" class="btn-vault">Return to the Vaults →</a>
       </div>
     </section>
   </main>
 
-  <style>
+  <style is:global>
+    /* the certificate panel (shared with /vault; markup is built by /js/keeper-certificate.js) */
+    #certPanel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.72); backdrop-filter: blur(3px); padding: 16px; overflow-y: auto; }
+    #certPanel[hidden] { display: none; }
+    .cert-card { max-width: 480px; width: 100%; margin: auto; text-align: center; background: linear-gradient(180deg, #1d1207, #120a04); border: 1px solid rgba(246,178,60,.45); border-radius: 8px; padding: 28px 24px 20px; box-shadow: 0 0 60px rgba(246,178,60,.18), 0 18px 50px rgba(0,0,0,.7); font-family: var(--serif); color: var(--ivory); }
+    .cert-kicker { font-family: var(--display); font-size: 10px; letter-spacing: .38em; color: #b07c25; margin-bottom: 12px; }
+    .cert-line { font-size: 16px; font-style: italic; color: var(--ash); margin-bottom: 16px; line-height: 1.45; }
+    .cert-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .cert-row input { flex: 1; min-width: 0; font-family: var(--display); font-size: 22px; letter-spacing: .4em; text-align: center; text-transform: uppercase; color: var(--gold); background: rgba(0,0,0,.45); border: 1px solid rgba(246,178,60,.4); border-radius: 4px; padding: 10px 4px 10px 12px; min-height: 48px; }
+    .cert-row input::placeholder { color: rgba(232,213,174,.3); letter-spacing: .04em; text-transform: none; font-style: italic; font-size: 15px; }
+    .cert-row input.bad { border-color: #e08a6a; }
+    .cert-row .gold-btn { margin: 0; white-space: nowrap; padding: 0 18px; display: flex; align-items: center; }
+    .cert-out img { width: 100%; height: auto; border: 1px solid rgba(246,178,60,.35); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.7); }
+    .cert-hint { font-size: 13px; font-style: italic; color: var(--ash-dim); margin: 8px 0 12px; }
+    .cert-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+    .cert-actions .gold-btn, .cert-actions .ghost-btn { margin: 0; }
+    #certPanel .gold-btn { display: block; font-family: var(--display); font-size: 13px; letter-spacing: .16em; color: #0b0704; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 4px; padding: 14px 10px; text-decoration: none; border: none; cursor: pointer; box-shadow: 0 0 24px rgba(246,178,60,.3); }
+    #certPanel .ghost-btn { display: block; width: 100%; font-family: var(--display); font-size: 12px; letter-spacing: .16em; color: var(--ash); background: none; border: 1px solid rgba(232,213,174,.25); border-radius: 4px; padding: 11px 10px; cursor: pointer; min-height: 44px; margin-top: 4px; }
+
     .page-passport { padding-top: 90px; padding-bottom: 80px; }
     .passport-hero { text-align: center; max-width: 660px; margin: 0 auto 40px; padding: 0 20px; }
     .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
@@ -129,6 +179,26 @@ import Layout from '../layouts/Layout.astro';
     .btn-vault { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
 
     .p-note { margin-top: 18px; text-align: center; font-size: 13px; font-style: italic; color: var(--ash-dim); line-height: 1.5; }
+
+    .p-row { display: grid; grid-template-columns: 1fr 220px; gap: 18px; margin-bottom: 20px; }
+    .tiles-row { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: center; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.05); border-radius: 10px; padding: 16px; }
+    .ktile { width: 58px; height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #2a2620, #1a1712); color: rgba(232,213,174,.25); border: 2px dashed rgba(185,143,82,.3); border-radius: 4px; font-family: var(--display); }
+    .ktile span { font-size: 24px; font-weight: 700; line-height: 1; }
+    .ktile small { font-size: 8px; letter-spacing: .12em; text-transform: uppercase; margin-top: 4px; }
+    .ktile.have { background: linear-gradient(180deg, #d9cdb1, #bfb296); color: #1a1206; border: 2px solid #1a1206; outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 22px rgba(246,178,60,.4); }
+    .tiles-note { font-size: 13.5px; font-style: italic; color: var(--ash); line-height: 1.45; }
+    .rank-box { background: rgba(246,178,60,.06); border: 1px solid rgba(246,178,60,.25); border-radius: 10px; padding: 16px; text-align: center; }
+    .rank-lbl { font-family: var(--display); font-size: 9px; letter-spacing: .3em; text-transform: uppercase; color: var(--ash-dim); }
+    .rank { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold-hi); margin: 6px 0 4px; }
+    .rank-sub { font-size: 12.5px; font-style: italic; color: var(--ash); }
+    .cert-box { display: flex; align-items: center; justify-content: space-between; gap: 18px; background: linear-gradient(180deg, rgba(40,32,18,.6), rgba(16,12,6,.6)); border: 1px solid rgba(246,178,60,.35); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+    .cert-box[hidden] { display: none; }
+    .cert-box h3 { font-family: var(--display); font-size: 16px; color: var(--gold-hi); margin-bottom: 4px; }
+    .cert-box p { font-size: 14px; font-style: italic; color: var(--ash); line-height: 1.45; }
+    .btn-cert { flex: none; padding: 12px 18px; font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
+    .next-slot { display: flex; align-items: center; gap: 16px; border: 1px dashed rgba(53,207,127,.3); border-radius: 10px; padding: 14px 18px; margin-bottom: 4px; opacity: .8; }
+    .next-slot .stamp-name { color: var(--ivory); }
+    @media (max-width: 640px) { .p-row { grid-template-columns: 1fr; } .cert-box { flex-direction: column; align-items: stretch; text-align: center; } }
 
     /* a sealed slot reads as an empty space waiting for ink */
     .stamp-slot:not(.unlocked) .stamp-icon { filter: grayscale(1); opacity: .28; }
@@ -185,6 +255,33 @@ import Layout from '../layouts/Layout.astro';
       document.getElementById('unlockedPuzzles').textContent = String(puzzles);
       document.getElementById('stampsCount').textContent = earned + ' / 4';
       document.getElementById('storyPages').textContent = pages + ' / 9';
+
+      // key-tiles (from the painted vault's two games) and the standing
+      var tiles = read('ps_tiles_v1', {}) || {};
+      ['II', 'III'].forEach(function (k) { if (tiles[k]) document.getElementById('tile-' + k).classList.add('have'); });
+      var both = tiles.II && tiles.III;
+      document.getElementById('tilesNote').textContent = both
+        ? 'Both key-tiles recovered — the Keeper’s Mark now seals your certificate.'
+        : (tiles.II || tiles.III) ? 'One key-tile recovered. The other still waits in the vaults.'
+        : 'Two key-tiles wait in the vaults — one in the library’s dark, one inside a locked chest.';
+      // only the EARNED title is ever shown; unearned names stay unwritten
+      var RANK = [
+        ['Visitor', 'Crack the first vault to earn a title.'],
+        ['Apprentice', 'One door opened. The Keeper has noticed.'],
+        ['Solver', 'Two doors. You read the letter, and it read you.'],
+        ['Vault Cracker', 'Three words, three doors. The vault is yours.'],
+        ['The Keeper’s Equal', 'You found what was never lit.'],
+      ][Math.min(earned, 4)];
+      document.getElementById('rankName').textContent = RANK[0];
+      document.getElementById('rankSub').textContent = RANK[1];
+      if (earned > 0) {
+        var box = document.getElementById('certBox'); box.hidden = false;
+        document.getElementById('certBtn').addEventListener('click', function () {
+          var go = function () { window.PSCert.open(window.PSCert.fromStorage()); };
+          if (window.PSCert) go();
+          else { var s = document.createElement('script'); s.src = '/js/keeper-certificate.js'; s.onload = go; document.head.appendChild(s); }
+        });
+      }
 
       // remember which stamps we've already celebrated, so the press only plays once
       if (fresh.length) {

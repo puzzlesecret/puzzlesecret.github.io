@@ -1,465 +1,271 @@
 ---
-// The illustrated 2D vault crawl — the whole hunt without WebGL.
+// THE PAINTED VAULT — the default way into /vault since 2026-09-02.
 //
-// Shown when the 3D crawl can't run (no WebGL), when a device looks too weak for it, or
-// on purpose via /vault?flat=1. It is deliberately self-contained: markup, styles and an
-// INLINE script with no three.js dependency, because the 3D module aborts entirely when
-// WebGL is missing and this has to survive that — including the 3D bundle never loading.
+// A point-and-click vault on Dan's approved concept paintings (study / library / treasure),
+// plus a dark HTML sanctum for the fourth secret. The engine is a plain script
+// (public/js/painted-vault.js) with no three.js dependency, so it survives a device with no
+// WebGL — and the 3D crawl (src/scripts/vault3d.js) is only downloaded when the visitor asks
+// for it (?mode=3d, or the "Walk it in 3D" chip, remembered in localStorage).
 //
-// Room art is the concept art Dan approved (study v4 / library v3 / treasure v2), cleaned
-// of the Gemini sparkle and re-exported to WebP in public/art/rooms/.
+// The mode decision below runs SYNCHRONOUSLY in an inline script: module scripts are deferred
+// and execute before DOMContentLoaded, so deciding any later would let the 3D scene build
+// behind this stage.
 ---
 
-<div id="fallback" hidden>
-  <div class="flat-shell">
-    <div class="flat-room" id="flatRoom">
-      <img id="flatArt" alt="" hidden />
-      <div class="flat-artshade"></div>
-      <div class="flat-roomtag" id="flatTag">THE KEEPER'S VAULTS</div>
+<div id="pv" hidden>
+  <div class="pv-stage" id="pvStage">
+    <div class="pv-room" id="pvRoom">
+      <img class="pv-art" id="pvArt" alt="" decoding="async" />
+      <div class="pv-warm" id="pvWarm" aria-hidden="true"></div>
+      <div class="pv-lights" id="pvLights" aria-hidden="true"></div>
+      <div class="pv-motes" id="pvMotes" aria-hidden="true"></div>
+      <div class="pv-hots" id="pvHots"></div>
+      <div class="pv-sanctum" id="pvSanctum" hidden></div>
     </div>
+    <div class="pv-vignette" aria-hidden="true"></div>
+    <div class="pv-glow" id="pvGlow" aria-hidden="true"></div>
+    <div class="pv-dark" id="pvDark" aria-hidden="true" hidden></div>
+  </div>
 
-    <div class="flat-body">
-      <h2 id="flatTitle">SPEAK THE WORD</h2>
-      <p id="flatLede">
-        Your device can't open the 3D crawl, so the Keeper will hear you here instead.
-        Say any word you decoded — it does not matter which vault it belongs to.
-      </p>
+  <div class="pv-hud">
+    <a class="pv-back" href="/">◄ the landing</a>
+    <div class="pv-title" id="pvTitle">THE KEEPER'S VAULTS</div>
+    <div class="pv-tools">
+      <button type="button" id="pvReveal" class="pv-chip" aria-pressed="false" title="Show everything that can be touched (H)">✦ <span>show</span></button>
+      <a class="pv-chip" id="pv3d" href="/vault?mode=3d" title="Walk the same vaults in 3D">walk it in 3D</a>
+      <button type="button" id="pvMute" aria-label="Sound on/off" aria-pressed="false">🔊</button>
+    </div>
+    <div class="pv-strip" id="pvStrip"></div>
+    <div class="pv-verb" id="pvVerb" aria-live="polite"></div>
+    <div class="pv-cap" id="pvCap"><span id="pvCapText" role="status"></span></div>
+    <div class="pv-hint" id="pvHint">Move toward what glows · tap <b>✦ show</b> (or press H) to see everything that can be touched</div>
+  </div>
 
-      <a id="flatReward" class="gold-btn" href="#" download hidden></a>
-
-      <form id="flatForm" autocomplete="off">
-        <input id="flatWord" type="text" inputmode="latin" autocapitalize="characters"
-               spellcheck="false" maxlength="12" placeholder="a word from the book"
-               aria-label="Enter a word you decoded from the book" />
-        <button class="gold-btn" type="submit" id="flatGo">Speak it</button>
-      </form>
-      <p id="flatMsg" role="status" aria-live="polite"></p>
-
-      <div id="flatVaults" class="flat-vaults"></div>
-
-      <div id="flatCarve" hidden>
-        <p id="fcLine" class="fc-line">The Keeper's register — those who found what was never lit.</p>
-        <form id="fcForm" autocomplete="off">
-          <input id="fcInput" type="text" autocapitalize="characters" spellcheck="false"
-                 maxlength="3" placeholder="your initials (2-3 letters)"
-                 aria-label="Your initials, two or three letters" />
-          <button class="gold-btn" type="submit" id="fcGo">Carve your mark</button>
-        </form>
-        <p id="fcMsg" role="status" aria-live="polite"></p>
-      </div>
-
-      <p class="flat-foot">
-        Stuck on a word? <a href="/hints">The hint chamber</a> will nudge you without spoiling it.
-      </p>
-      <div class="flat-actions">
-        <a class="ghost-btn" href="/">← back to the landing</a>
-        <a class="ghost-btn" id="flatTo3D" href="/vault" hidden>Try the 3D vault →</a>
-      </div>
+  <div class="pv-gate" id="pvGate">
+    <img class="pv-gate-art" src="/art/rooms/study.webp" alt="" width="900" height="503" />
+    <div class="pv-gate-inner">
+      <div class="pv-gate-kicker" id="pvGateKicker">THE WORD WAS TRUE</div>
+      <h1>THE&nbsp;VAULTS</h1>
+      <div class="pv-gate-sub">I · The Writer's Study</div>
+      <p class="pv-gate-line" id="pvGateLine">The first door stands open. Two more wait in the dark — each sealed with a word.</p>
+      <button type="button" id="pvEnter">⟡ &nbsp;Step inside</button>
+      <a class="pv-gate-alt" href="/vault?mode=3d">or walk the vaults in 3D</a>
     </div>
   </div>
+
+  <div class="pv-game" id="pvGame" hidden></div>
 </div>
 
 <style is:global>
-  #fallback {
-    position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
-    justify-content: center; background: rgba(4,2,0,0.72); backdrop-filter: blur(3px);
-    padding: 16px; overflow-y: auto;
+  #pv { position: fixed; inset: 0; z-index: 12; background: #0b0704; color: var(--parchment, #e8d5ae); font-family: 'Cormorant Garamond', serif; }
+  #pv[hidden] { display: none; }
+  .pv-stage { position: absolute; inset: 0; overflow: hidden; touch-action: pan-y; }
+  .pv-room { position: absolute; left: 0; top: 0; will-change: left; transition: opacity .6s; }
+  .pv-stage.fade .pv-room { opacity: 0; }
+  .pv-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; display: block; scale: 1; }
+  @media (prefers-reduced-motion: no-preference) {
+    .pv-art { animation: pvkb 80s ease-in-out infinite alternate; }
+    #pv.hold .pv-art { animation-play-state: paused; }
   }
-  #fallback[hidden] { display: none; }
+  @keyframes pvkb { from { scale: 1; } to { scale: 1.06; } }
+  .pv-warm { position: absolute; inset: -2%; pointer-events: none; mix-blend-mode: multiply; opacity: .2;
+    background: radial-gradient(60% 60% at 55% 45%, rgba(255,170,80,.55), rgba(110,60,20,.55) 85%); }
+  .pv-lights, .pv-hots { position: absolute; inset: 0; }
+  .pv-pool { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; mix-blend-mode: screen; pointer-events: none; will-change: opacity; }
+  .pv-motes { position: absolute; pointer-events: none; overflow: hidden; }
+  .pv-motes i { position: absolute; top: 100%; width: 3px; height: 3px; border-radius: 50%; background: #ffe6b8; box-shadow: 0 0 6px 2px rgba(255,205,125,.8); opacity: 0; animation: pvmote 9s linear infinite; animation-delay: calc(var(--m) * -0.65s); }
+  @keyframes pvmote { 0% { opacity: 0; top: 100%; } 12% { opacity: .55; } 88% { opacity: .2; } 100% { opacity: 0; top: -4%; } }
+  .pv-vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(6,3,1,.6) 100%); }
+  .pv-glow { position: absolute; left: 0; top: 0; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; pointer-events: none; opacity: 0; mix-blend-mode: screen;
+    background: radial-gradient(closest-side, rgba(255,205,125,.17), rgba(255,180,90,.06) 45%, transparent 70%); }
+  @media (hover: hover) and (pointer: fine) { .pv-glow { opacity: 1; } }
+  .pv-dark { position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    background: radial-gradient(circle 160px at var(--lx, 50%) var(--ly, 50%), rgba(0,0,0,0) 0, rgba(0,0,0,.5) 62%, rgba(2,1,0,.965) 100%); }
+  .pv-dark[hidden] { display: none; }
 
-  .flat-shell {
-    max-width: 620px; width: 100%; margin: auto;
-    background: linear-gradient(180deg, #1d1207, #100903);
-    border: 1px solid rgba(246,178,60,0.45); border-radius: 10px; overflow: hidden;
-    box-shadow: 0 0 60px rgba(246,178,60,0.16), 0 18px 50px rgba(0,0,0,0.75);
+  /* hotspots: invisible until you draw near; the object itself warms, never a ring */
+  .pv-hot { position: absolute; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; opacity: 0; transition: opacity .35s; -webkit-tap-highlight-color: transparent; }
+  .pv-hot::before { content: ''; position: absolute; inset: -28%; border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+    background: radial-gradient(closest-side, rgba(255,214,140,.6), rgba(255,190,90,.28) 45%, transparent 72%); }
+  .pv-hot.near, .pv-hot:hover, .pv-hot:focus-visible, #pv.reveal .pv-hot { opacity: 1; }
+  #pv.reveal .pv-hot:not(.near):not(:hover) { opacity: .75; }
+  #pv.reveal .pv-hot::before { inset: -40%; background: radial-gradient(closest-side, rgba(255,222,150,.85), rgba(255,190,90,.4) 45%, transparent 72%); }
+  @media (prefers-reduced-motion: no-preference) { #pv.reveal .pv-hot:not(.page.read)::before { animation: pvbreathe 2.6s ease-in-out infinite; } }
+  @keyframes pvbreathe { 0%, 100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.12); opacity: 1; } }
+  .pv-hot:focus-visible { outline: 2px solid var(--gold, #f6b23c); outline-offset: 4px; opacity: 1; }
+  .pv-hot.page::before { background: radial-gradient(closest-side, rgba(255,244,210,.75), rgba(255,225,160,.32) 48%, transparent 72%); }
+  .pv-hot.page.read { opacity: .12 !important; }
+  .pv-hot.done::before { background: radial-gradient(closest-side, rgba(150,255,190,.42), transparent 70%); }
+  .pv-hot.sealed::before { background: radial-gradient(closest-side, rgba(255,130,70,.45), rgba(255,100,50,.15) 50%, transparent 72%); }
+  /* the fourth secret: something unlit — drawn, never glowing */
+  .pv-hot.draw-unlit { opacity: 1 !important; }
+  .pv-hot.draw-unlit::before { display: none; }
+  .pv-hot.draw-unlit::after { content: ''; position: absolute; left: 28%; top: 6%; width: 44%; height: 84%; border: 2px solid rgba(70,52,34,.95); border-top-width: 4px; border-radius: 3px 3px 2px 2px; background: linear-gradient(180deg, rgba(28,20,12,.92), rgba(14,10,6,.95)); box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 2px 4px rgba(0,0,0,.7); }
+  .pv-hot.draw-unlit:hover::after, .pv-hot.draw-unlit.near::after { box-shadow: 0 0 0 1px rgba(0,0,0,.55), 0 0 10px 2px rgba(255,190,90,.25); }
+  /* the snuffed candle: a smudge of dark over the painted flame */
+  .pv-hot.out::after { content: ''; position: absolute; left: 30%; top: -2%; width: 40%; height: 44%; border-radius: 45%; background: #1a1108; box-shadow: 0 0 7px 4px #1a1108; }
+
+  /* HUD */
+  .pv-hud { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+  .pv-hud > * { pointer-events: auto; }
+  .pv-back { position: absolute; top: 12px; left: 14px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .2em; color: rgba(232,213,174,.6); text-decoration: none; padding: 6px 8px; }
+  .pv-back:hover { color: var(--gold, #f6b23c); }
+  .pv-title { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-family: Cinzel, serif; font-size: 11px; letter-spacing: .32em; color: var(--gold, #f6b23c); white-space: nowrap; text-shadow: 0 1px 8px #000; pointer-events: none; }
+  .pv-tools { position: absolute; top: 8px; right: 12px; display: flex; gap: 8px; align-items: center; }
+  .pv-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(246,178,60,.3); background: rgba(14,10,6,.7); color: rgba(232,213,174,.8); font-family: Cinzel, serif; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; cursor: pointer; backdrop-filter: blur(4px); transition: color .2s, border-color .2s; }
+  .pv-chip:hover, .pv-chip[aria-pressed="true"] { color: var(--gold, #f6b23c); border-color: rgba(246,178,60,.6); }
+  #pvMute { background: none; border: 1px solid rgba(246,178,60,.3); border-radius: 50%; width: 34px; height: 34px; color: var(--parchment, #e8d5ae); font-size: 14px; cursor: pointer; }
+  .pv-strip { position: absolute; left: 14px; bottom: 14px; display: flex; gap: 6px; align-items: center; }
+  .pv-rn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(246,178,60,.35); background: rgba(14,10,6,.75); color: rgba(232,213,174,.5); font-family: Cinzel, serif; font-size: 12px; cursor: pointer; transition: all .25s; }
+  .pv-rn.open { color: var(--gold, #f6b23c); border-color: rgba(246,178,60,.7); }
+  .pv-rn.here { background: linear-gradient(180deg, #ffd37a, #d99a2b); color: #1a1206; border-color: #ffd37a; box-shadow: 0 0 16px rgba(246,178,60,.4); }
+  .pv-rn.sealed { border-style: dashed; }
+  .pv-rn.hidden4 { display: none; }
+  .pv-pass { margin-left: 8px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .16em; color: rgba(232,213,174,.6); text-decoration: none; }
+  .pv-pass:hover { color: var(--gold, #f6b23c); }
+  .pv-verb { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); font-family: Cinzel, serif; font-size: 12px; letter-spacing: .16em; color: var(--gold, #f6b23c); background: rgba(10,6,2,.7); padding: 6px 12px; border-radius: 4px; white-space: nowrap; pointer-events: none; text-shadow: 0 1px 6px #000; }
+  .pv-verb:empty { display: none; }
+  .pv-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 70px 22px; text-align: center; pointer-events: none; background: linear-gradient(transparent, rgba(5,3,1,.85)); }
+  .pv-cap span { font-size: clamp(17px, 2.3vw, 23px); font-style: italic; font-weight: 600; color: var(--parchment, #e8d5ae); text-shadow: 0 1px 8px #000; opacity: 0; transition: opacity .8s; display: inline-block; max-width: 60ch; }
+  .pv-cap.show span { opacity: 1; }
+  .pv-hint { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); font-style: italic; font-size: 14px; color: rgba(232,213,174,.75); background: rgba(10,6,2,.7); padding: 8px 14px; border-radius: 6px; opacity: 0; transition: opacity .8s; pointer-events: none; white-space: nowrap; max-width: 92vw; }
+  .pv-hint.show { opacity: 1; }
+  .pv-hint b { color: var(--gold, #f6b23c); font-weight: 600; }
+  #pv.lights-out .pv-title, #pv.lights-out .pv-back { opacity: .3; }
+
+  /* the gate: the painting itself, one button */
+  .pv-gate { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; transition: opacity 1.3s; background: #070402; }
+  .pv-gate.gone { opacity: 0; pointer-events: none; }
+  .pv-gate-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; filter: brightness(.42) saturate(.9); }
+  .pv-gate-inner { position: relative; padding: 24px; }
+  .pv-gate-kicker { font-family: Cinzel, serif; font-size: 11px; letter-spacing: .4em; color: #d9a63a; margin-bottom: 18px; }
+  .pv-gate h1 { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(44px, 9vw, 84px); letter-spacing: .18em; color: var(--gold, #f6b23c); text-shadow: 0 0 40px rgba(246,178,60,.35), 0 2px 20px #000; }
+  .pv-gate-sub { font-family: Cinzel, serif; font-size: clamp(14px, 2.4vw, 20px); letter-spacing: .34em; color: var(--parchment, #e8d5ae); margin-top: 10px; text-shadow: 0 2px 12px #000; }
+  .pv-gate-line { font-style: italic; font-size: 17px; color: rgba(232,213,174,.8); margin: 26px auto 30px; max-width: 44ch; text-shadow: 0 2px 12px #000; }
+  #pvEnter { font-family: Cinzel, serif; font-size: 15px; letter-spacing: .22em; cursor: pointer; color: #0b0704; background: linear-gradient(180deg, #ffd37a, #d99a2b); border: none; border-radius: 4px; padding: 15px 38px; box-shadow: 0 0 34px rgba(246,178,60,.35); animation: pvpulse 2.6s ease-in-out infinite; }
+  #pvEnter:hover { filter: brightness(1.08); }
+  @keyframes pvpulse { 0%, 100% { box-shadow: 0 0 24px rgba(246,178,60,.3); } 50% { box-shadow: 0 0 48px rgba(246,178,60,.6); } }
+  .pv-gate-alt { display: block; margin: 18px auto 0; font-size: 14px; font-style: italic; color: rgba(232,213,174,.55); text-decoration: underline; text-underline-offset: 3px; }
+  .pv-gate-alt:hover { color: var(--gold, #f6b23c); }
+
+  /* the sanctum, in HTML */
+  .pv-sanctum { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 28%, #2a1a0a 0%, #120b05 45%, #070402 100%); overflow: hidden; }
+  .pv-sanctum[hidden] { display: none; }
+  .sc-floor { position: absolute; left: -10%; right: -10%; bottom: 0; height: 42%; background: linear-gradient(180deg, #1a1108, #0b0704); transform: perspective(600px) rotateX(48deg); transform-origin: 50% 100%; border-top: 1px solid rgba(217,166,58,.15); }
+  .sc-lamp { position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 60px; height: 30%; }
+  .sc-lamp .chain { position: absolute; left: 50%; top: 0; width: 2px; height: 55%; background: #3a2e20; }
+  .sc-lamp .body { position: absolute; left: 50%; top: 55%; width: 34px; height: 52px; transform: translateX(-50%); border: 2px solid #4a3a26; border-radius: 4px; background: rgba(255,190,90,.35); box-shadow: 0 0 40px 14px rgba(255,180,80,.35); }
+  .sc-lamp .body b { position: absolute; left: 50%; top: 50%; width: 10px; height: 18px; transform: translate(-50%, -50%); border-radius: 50% 50% 40% 40%; background: #ffd27a; box-shadow: 0 0 14px 6px rgba(255,200,110,.9); animation: scflame 1.3s ease-in-out infinite alternate; }
+  @keyframes scflame { from { transform: translate(-50%, -50%) scaleY(1); } to { transform: translate(-50%, -48%) scaleY(1.15); } }
+  .sc-lamp .halo { position: absolute; left: 50%; top: 80%; width: 90vmin; height: 90vmin; transform: translate(-50%, -30%); border-radius: 50%; background: radial-gradient(closest-side, rgba(255,190,100,.28), rgba(255,160,70,.08) 45%, transparent 72%); mix-blend-mode: screen; pointer-events: none; }
+  .sc-hot { position: absolute; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; text-align: center; font: inherit; -webkit-tap-highlight-color: transparent; }
+  .sc-hot span { display: block; margin-top: 8px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .16em; color: rgba(232,213,174,.55); transition: color .25s; }
+  .sc-hot:hover span, .sc-hot:focus-visible span { color: var(--gold, #f6b23c); }
+  .sc-hot:focus-visible { outline: 2px solid var(--gold, #f6b23c); outline-offset: 6px; border-radius: 6px; }
+  .sc-tome { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .sc-tome .book { display: block; width: 92px; height: 34px; margin: 0 auto; border-radius: 3px; background: linear-gradient(180deg, #e0b25a, #9a6a1e); box-shadow: 0 0 34px 10px rgba(255,190,90,.45), 0 8px 18px rgba(0,0,0,.7); animation: pvpulse 2.4s ease-in-out infinite; }
+  .sc-wall { left: 4%; top: 22%; width: 34%; }
+  .plaque { padding: 16px 14px 12px; background: linear-gradient(180deg, #41301d, #241708); border: 2px solid rgba(217,168,80,.55); box-shadow: 0 10px 30px rgba(0,0,0,.6), inset 0 0 0 6px #2f2213; text-align: center; }
+  .plaque h3 { font-family: Cinzel, serif; font-size: clamp(10px, 1.4vw, 16px); letter-spacing: .18em; color: #d9a850; }
+  .plaque .sub { font-style: italic; font-size: 13px; color: rgba(232,213,174,.55); margin: 4px 0 10px; }
+  .plaque .marks { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: center; min-height: 34px; max-height: 26vh; overflow: hidden; }
+  .plaque .marks span { font-family: Cinzel, serif; font-weight: 600; font-size: clamp(11px, 1.3vw, 16px); letter-spacing: .1em; color: #150c04; text-shadow: 0 1px 0 rgba(255,214,150,.35); transform: rotate(calc(var(--j) * 1deg)); }
+  .plaque .count { font-style: italic; font-size: 13px; color: rgba(217,168,80,.75); margin-top: 10px; }
+  .sc-letters { right: 4%; top: 18%; width: 36%; }
+  .parch { padding: 14px 16px 10px; background: linear-gradient(180deg, #efe2c4, #dcc79c); border: 1px solid rgba(120,86,32,.55); box-shadow: 0 10px 30px rgba(0,0,0,.6); text-align: left; }
+  .parch .from, .parch .foot { text-align: center; font-style: italic; font-size: 12px; color: #5a4020; }
+  .parch p { margin: 3px 0; font-style: italic; font-size: clamp(11px, 1.2vw, 15px); color: rgba(60,44,20,.85); line-height: 1.25; }
+  .parch p b { font-family: Cinzel, serif; font-style: normal; font-weight: 700; color: #b8860b; font-size: 1.35em; }
+  .parch .foot { margin-top: 6px; }
+  .sc-chart { left: 16%; bottom: 14%; }
+  .sc-chart .easel { display: block; width: 70px; height: 90px; margin: 0 auto; background: linear-gradient(180deg, #caa870, #a8865a); border: 3px solid #3a2a16; border-radius: 2px; box-shadow: 0 8px 20px rgba(0,0,0,.6); }
+  .sc-chart .cloth { position: absolute; left: 50%; top: -6px; width: 84px; height: 62px; transform: translateX(-50%) rotate(-3deg); background: linear-gradient(180deg, #a8987a, #8a7d60); border-radius: 0 0 40% 20%; }
+  .sc-stair { right: 14%; bottom: 12%; }
+  .sc-stair i { display: block; width: 90px; height: 54px; margin: 0 auto; background: repeating-linear-gradient(180deg, #3a2c1a 0 10px, #1a1108 10px 14px); border: 2px solid #2a1e10; box-shadow: inset 0 -20px 30px rgba(255,190,90,.25); }
+  @media (max-width: 720px) {
+    .sc-wall { left: 3%; top: 16%; width: 46%; } .sc-letters { right: 3%; top: 14%; width: 48%; }
+    .sc-tome { top: 58%; } .sc-chart { left: 8%; bottom: 10%; } .sc-stair { right: 8%; bottom: 8%; }
+    .plaque .marks { max-height: 18vh; }
   }
 
-  /* the room plate */
-  .flat-room { position: relative; background: #0b0704; line-height: 0; }
-  .flat-room img { width: 100%; height: auto; display: block; }
-  .flat-room.empty { height: 96px; }
-  .flat-artshade {
-    position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0) 38%, rgba(16,9,3,0.92));
-  }
-  .flat-roomtag {
-    position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
-    font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.34em;
-    color: rgba(246,178,60,0.92); line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-  }
-  .flat-room.reveal img { animation: flatReveal 0.7s ease both; }
-  @keyframes flatReveal { from { opacity: 0; transform: scale(1.04); } }
-  @media (prefers-reduced-motion: reduce) { .flat-room.reveal img { animation: none; } }
+  /* mini-game + key-tile overlay */
+  .pv-game { position: fixed; inset: 0; z-index: 17; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.68); backdrop-filter: blur(3px); padding: 16px; }
+  .pv-game[hidden] { display: none; }
+  .pv-card { max-width: 460px; width: 100%; text-align: center; background: linear-gradient(180deg, #1d1207, #120a04); border: 1px solid rgba(246,178,60,.45); border-radius: 8px; padding: 30px 26px 24px; box-shadow: 0 0 60px rgba(246,178,60,.18), 0 18px 50px rgba(0,0,0,.7); }
+  .pv-card h2 { font-family: Cinzel, serif; font-size: 22px; letter-spacing: .12em; color: var(--gold, #f6b23c); margin-bottom: 12px; }
+  .pv-card p { font-size: 16.5px; font-style: italic; color: rgba(232,213,174,.8); margin-bottom: 18px; line-height: 1.45; }
+  .pv-card .gold-btn, .pv-card .ghost-btn { margin-bottom: 10px; }
+  .tile-art { width: 86px; height: 86px; margin: 8px auto 16px; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #d9cdb1, #bfb296); color: #1a1206; font: 700 44px Cinzel, serif; border: 3px solid #1a1206; outline: 2px solid #f6b23c; outline-offset: 2px; box-shadow: 0 0 30px rgba(246,178,60,.45); }
+  .lock-dial-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 6px 0 10px; }
+  .lock-dial { --rot: 0deg; --shake: 0px; position: relative; width: 210px; height: 210px; border-radius: 50%; border: 7px solid #c9973f; background: radial-gradient(circle at 50% 42%, #3d2d1a, #140f09 72%); box-shadow: 0 10px 30px rgba(0,0,0,.7), inset 0 0 30px rgba(0,0,0,.6); cursor: grab; transform: rotate(var(--rot)) translateX(var(--shake)); transition: transform .08s linear; touch-action: none; user-select: none; }
+  .lock-dial:active { cursor: grabbing; }
+  .lock-dial:focus-visible { outline: 3px solid var(--gold, #f6b23c); outline-offset: 6px; }
+  .lock-dial .ticks { position: absolute; inset: 6px; border-radius: 50%; background: repeating-conic-gradient(from -0.6deg, rgba(246,178,60,.9) 0deg 1.2deg, transparent 1.2deg 9deg); -webkit-mask: radial-gradient(circle, transparent 74%, #000 75%); mask: radial-gradient(circle, transparent 74%, #000 75%); }
+  .lock-dial .num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: Cinzel, serif; font-size: 44px; font-weight: 700; color: var(--gold, #f6b23c); transform: rotate(calc(-1 * var(--rot))); text-shadow: 0 0 14px rgba(246,178,60,.5); }
+  .lock-dial .mark { position: absolute; left: 50%; top: -2px; width: 4px; height: 22px; margin-left: -2px; background: #ffd37a; border-radius: 2px; box-shadow: 0 0 8px rgba(246,178,60,.9); }
+  .lock-dial-wrap::before { content: ''; width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 14px solid #ffd37a; margin-bottom: -8px; filter: drop-shadow(0 0 6px rgba(246,178,60,.8)); }
+  .lock-tumblers { display: flex; gap: 14px; }
+  .lock-tumblers i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(246,178,60,.5); background: rgba(0,0,0,.4); transition: all .3s; }
+  .lock-tumblers i.fell { background: #ffd37a; box-shadow: 0 0 14px rgba(246,178,60,.8); border-color: #ffd37a; }
+  .lock-help { font-size: 13px !important; color: rgba(232,213,174,.55) !important; margin-bottom: 6px !important; }
+  .lock-msg { min-height: 22px; color: var(--gold, #f6b23c) !important; font-style: italic; }
 
-  .flat-body { padding: 22px 24px 20px; text-align: center; }
-  .flat-body h2 {
-    font-family: Cinzel, serif; font-size: 22px; letter-spacing: 0.12em;
-    color: var(--gold, #f6b23c); margin-bottom: 10px;
-  }
-  .flat-body p {
-    font-size: 16px; font-style: italic; line-height: 1.45;
-    color: rgba(232,213,174,0.8); margin-bottom: 16px;
-  }
+  /* the certificate panel (public/js/keeper-certificate.js) */
+  #certPanel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.72); backdrop-filter: blur(3px); padding: 16px; overflow-y: auto; }
+  #certPanel[hidden] { display: none; }
+  .cert-card { max-width: 480px; width: 100%; margin: auto; text-align: center; background: linear-gradient(180deg, #1d1207, #120a04); border: 1px solid rgba(246,178,60,.45); border-radius: 8px; padding: 28px 24px 20px; box-shadow: 0 0 60px rgba(246,178,60,.18), 0 18px 50px rgba(0,0,0,.7); font-family: 'Cormorant Garamond', serif; color: #e8d5ae; }
+  .cert-kicker { font-family: Cinzel, serif; font-size: 10px; letter-spacing: .38em; color: #b07c25; margin-bottom: 12px; }
+  .cert-line { font-size: 16px; font-style: italic; color: rgba(232,213,174,.8); margin-bottom: 16px; line-height: 1.45; }
+  .cert-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .cert-row input { flex: 1; min-width: 0; font-family: Cinzel, serif; font-size: 22px; letter-spacing: .4em; text-align: center; text-transform: uppercase; color: #f6b23c; background: rgba(0,0,0,.45); border: 1px solid rgba(246,178,60,.4); border-radius: 4px; padding: 10px 4px 10px 12px; min-height: 48px; }
+  .cert-row input::placeholder { color: rgba(232,213,174,.3); letter-spacing: .04em; text-transform: none; font-style: italic; font-size: 15px; }
+  .cert-row input.bad { border-color: #e08a6a; }
+  .cert-row .gold-btn { margin: 0; white-space: nowrap; padding: 0 18px; display: flex; align-items: center; }
+  .cert-out img { width: 100%; height: auto; border: 1px solid rgba(246,178,60,.35); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.7); }
+  .cert-hint { font-size: 13px; font-style: italic; color: rgba(232,213,174,.55); margin: 8px 0 12px; }
+  .cert-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .cert-actions .gold-btn, .cert-actions .ghost-btn { margin: 0; }
+  #certPanel .gold-btn { display: block; font-family: Cinzel, serif; font-size: 13px; letter-spacing: .16em; color: #0b0704; background: linear-gradient(180deg, #ffd37a, #d99a2b); border-radius: 4px; padding: 14px 10px; text-decoration: none; border: none; cursor: pointer; box-shadow: 0 0 24px rgba(246,178,60,.3); }
+  #certPanel .ghost-btn { display: block; width: 100%; font-family: Cinzel, serif; font-size: 12px; letter-spacing: .16em; color: rgba(232,213,174,.65); background: none; border: 1px solid rgba(232,213,174,.25); border-radius: 4px; padding: 11px 10px; cursor: pointer; min-height: 44px; margin-top: 4px; }
 
-  #flatForm { display: flex; gap: 8px; margin-bottom: 4px; }
-  #flatWord {
-    flex: 1; min-width: 0; font-family: Cinzel, serif; font-size: 16px; letter-spacing: 0.16em;
-    text-align: center; text-transform: uppercase; color: var(--gold, #f6b23c);
-    background: rgba(0,0,0,0.45); border: 1px solid rgba(246,178,60,0.4);
-    border-radius: 4px; padding: 13px 10px; min-height: 46px;
+  @media (max-width: 640px) {
+    .pv-title { font-size: 9px; letter-spacing: .2em; top: 50px; max-width: 80vw; white-space: normal; text-align: center; }
+    .pv-hint { top: 84px; }
+    .pv-chip span { display: none; }
+    #pv3d { display: none; }
+    .pv-cap { padding: 14px 16px 68px; }
+    .pv-verb { bottom: 126px; font-size: 11px; }
+    .pv-strip { bottom: 12px; }
+    .pv-hint { white-space: normal; text-align: center; font-size: 13px; }
   }
-  #flatWord::placeholder { color: rgba(232,213,174,0.3); text-transform: none; letter-spacing: 0.04em; font-style: italic; }
-  #flatWord:focus { outline: none; border-color: var(--gold, #f6b23c); box-shadow: 0 0 16px rgba(246,178,60,0.3); }
-  #flatGo { margin-bottom: 0; white-space: nowrap; min-height: 46px; padding: 0 18px; }
-  #flatReward { display: block; margin-bottom: 16px; }
-  #flatMsg { min-height: 24px; margin: 6px 0 14px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.72); }
-  #flatMsg.bad { color: #e08a6a; }
-  #flatMsg.good { color: var(--gold, #f6b23c); }
-  .flat-shell.shake { animation: wbshake 0.4s; }
-
-  .flat-vaults { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; text-align: left; }
-  .fv {
-    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 5px;
-    border: 1px dashed rgba(246,178,60,0.25); background: rgba(0,0,0,0.28);
-  }
-  .fv.open { border-style: solid; border-color: rgba(246,178,60,0.6); background: rgba(246,178,60,0.08); }
-  .fv-rn { font-family: Cinzel, serif; font-size: 13px; color: rgba(246,178,60,0.6); width: 26px; flex: none; }
-  .fv.open .fv-rn { color: var(--gold, #f6b23c); }
-  .fv-body { flex: 1; min-width: 0; }
-  .fv-name { font-family: Cinzel, serif; font-size: 11px; letter-spacing: 0.12em; color: rgba(232,213,174,0.85); }
-  .fv-sub { font-size: 13px; font-style: italic; color: rgba(232,213,174,0.45); }
-  .fv.open .fv-sub { color: rgba(232,213,174,0.75); }
-  .fv-dl {
-    flex: none; font-family: Cinzel, serif; font-size: 10px; letter-spacing: 0.1em;
-    text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, #ffd37a, #d99a2b);
-    border-radius: 4px; padding: 9px 11px; min-height: 38px; display: flex; align-items: center;
-  }
-  .flat-foot { font-size: 14px !important; margin-bottom: 14px !important; }
-  .flat-foot a { color: var(--gold, #f6b23c); text-decoration: underline; }
-  .flat-actions { display: flex; flex-direction: column; gap: 8px; }
-  .flat-actions .ghost-btn { margin-bottom: 0; }
-
-  #flatCarve { margin: 2px 0 14px; padding: 14px 14px 10px; border: 1px dashed rgba(246,178,60,0.3); border-radius: 6px; }
-  #flatCarve[hidden] { display: none; }
-  .fc-line { font-size: 14px !important; margin-bottom: 10px !important; color: rgba(217,168,80,0.85) !important; }
-  #fcForm { display: flex; gap: 8px; }
-  #fcInput {
-    flex: 1; min-width: 0; font-family: Cinzel, serif; font-size: 18px; letter-spacing: 0.4em;
-    text-align: center; text-transform: uppercase; color: var(--gold, #f6b23c);
-    background: rgba(0,0,0,0.45); border: 1px solid rgba(246,178,60,0.4);
-    border-radius: 4px; padding: 10px 4px 10px 12px; min-height: 46px;
-  }
-  #fcInput::placeholder { color: rgba(232,213,174,0.3); letter-spacing: 0.03em; text-transform: none; font-style: italic; font-size: 14px; }
-  #fcInput:focus { outline: none; border-color: var(--gold, #f6b23c); }
-  #fcGo { margin-bottom: 0; white-space: nowrap; min-height: 46px; padding: 0 14px; }
-  #fcMsg { min-height: 20px; margin: 8px 0 0 !important; font-size: 14px !important; }
-  #fcMsg.good { color: var(--gold, #f6b23c) !important; }
-
-  @media (max-width: 430px) {
-    .flat-body { padding: 18px 16px 16px; }
-    #flatForm { flex-direction: column; }
-    #fcForm { flex-direction: column; }
-    .fv { flex-wrap: wrap; }
+  @media (prefers-reduced-motion: reduce) {
+    .pv-motes i, #pvEnter, .sc-lamp .body b, .sc-tome .book { animation: none !important; }
+    .pv-art { animation: none !important; }
   }
 </style>
 
 <script is:inline>
+  // ---- mode decision, made SYNCHRONOUSLY (see the note at the top of this file) --------
   (function () {
-    var ROOMS = {
-      I:   { name: 'The Writer’s Study',        art: '/art/rooms/study.webp',
-             sub: '50 bonus easy puzzles',   dl: '50 Easy',
-             file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf',
-             btn: 'Take the 50 puzzles (PDF)', vo: '/audio/vo/vo_vault1_reward.wav',
-             line: 'My study. Every puzzle I ever set began on that desk — and the first fifty are yours.' },
-      II:  { name: 'The Library of Puzzles',    art: '/art/rooms/library.webp',
-             sub: '100 bonus medium puzzles', dl: '100 Med',
-             file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf',
-             btn: 'Take the 100 puzzles (PDF)', vo: '/audio/vo/vo_vault2_reward.wav',
-             line: 'A hundred more, bound for the readers of my letter. The library approves of you.' },
-      III: { name: 'The Grand Treasure Vault',  art: '/art/rooms/treasure.webp',
-             sub: '200 bonus hard puzzles',  dl: '200 Hard',
-             file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf',
-             btn: 'Take the 200 puzzles (PDF)', vo: '/audio/vo/vo_vault3_finale.wav',
-             line: 'The deepest hoard is open. And on the wall — four seals, four secrets still to come.' },
-      IV:  { name: 'The Secret Sanctum',        art: null,
-             sub: '20 master puzzles',       dl: '20 Master',
-             file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf',
-             btn: 'Take the 20 master puzzles (PDF)', vo: '/audio/vo/vo_fourth.wav',
-             line: 'You found what was never lit, and decoded what was never written.' },
-    };
-    var ORDER = ['I', 'II', 'III', 'IV'];
-    var KEY = 'ps_vaults_v1';            // shared with the 3D crawl and /passport
-
-    function readOpen() {
-      try { var v = JSON.parse(localStorage.getItem(KEY)); return (v && typeof v === 'object') ? v : {}; }
-      catch (e) { return {}; }
-    }
-    function stamp(act) {
-      try {
-        var v = readOpen();
-        if (!v[act]) { v[act] = new Date().toISOString().slice(0, 10); localStorage.setItem(KEY, JSON.stringify(v)); }
-      } catch (e) { /* private mode — the reward still works, it just isn't remembered */ }
-    }
-    function deepest(open) {
-      var d = null;
-      ORDER.forEach(function (rn) { if (open[rn]) d = rn; });
-      return d;
-    }
-
-    var $ = function (id) { return document.getElementById(id); };
-    var shown = false, lastRoom = null, fourthWord = '';
-    function psVid() {
-      try {
-        var v = localStorage.getItem('ps_vid');
-        if (!v) { v = Array.from(crypto.getRandomValues(new Uint8Array(4))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join(''); localStorage.setItem('ps_vid', v); }
-        return v;
-      } catch (e) { return ''; }
-    }
-
-    function playVO(src) {
-      try {
-        var a = new Audio(src);
-        a.volume = 0.9;
-        var p = a.play();
-        if (p && p.catch) p.catch(function () { /* autoplay refused — captions carry it */ });
-      } catch (e) { /* no audio on this device — fine */ }
-    }
-
-    function render(justOpened) {
-      var open = readOpen();
-      var cur = deepest(open);
-
-      // the room plate
-      var roomEl = $('flatRoom'), art = $('flatArt'), tag = $('flatTag');
-      var r = cur ? ROOMS[cur] : null;
-      if (r && r.art) {
-        if (lastRoom !== cur) {
-          art.src = r.art; art.hidden = false;
-          roomEl.classList.remove('empty');
-          roomEl.classList.remove('reveal'); void roomEl.offsetWidth; roomEl.classList.add('reveal');
-        }
-        tag.textContent = 'VAULT ' + cur + ' — ' + r.name.toUpperCase();
-      } else if (r) {                       // Vault IV has no illustration by design
-        art.hidden = true; roomEl.classList.add('empty');
-        tag.textContent = 'VAULT IV — ' + r.name.toUpperCase();
-      } else {
-        art.hidden = true; roomEl.classList.add('empty');
-        tag.textContent = "THE KEEPER'S VAULTS";
-      }
-
-      // headline, the Keeper's line, and the reward for the room you're standing in
-      var title = $('flatTitle'), lede = $('flatLede'), rw = $('flatReward');
-      if (r) {
-        title.textContent = r.name.toUpperCase();
-        lede.textContent = r.line;
-        rw.hidden = false; rw.href = r.file; rw.textContent = r.btn;
-      } else {
-        rw.hidden = true;
-      }
-
-      // the four-vault ledger
-      var wrap = $('flatVaults');
-      wrap.innerHTML = '';
-      ORDER.forEach(function (rn) {
-        var v = ROOMS[rn], isOpen = !!open[rn];
-        var row = document.createElement('div');
-        row.className = 'fv' + (isOpen ? ' open' : '');
-        var n = document.createElement('div'); n.className = 'fv-rn'; n.textContent = rn;
-        var body = document.createElement('div'); body.className = 'fv-body';
-        var nm = document.createElement('div'); nm.className = 'fv-name'; nm.textContent = v.name;
-        var sb = document.createElement('div'); sb.className = 'fv-sub';
-        sb.textContent = isOpen ? v.sub : 'sealed — speak its word';
-        body.appendChild(nm); body.appendChild(sb);
-        row.appendChild(n); row.appendChild(body);
-        if (isOpen) {
-          var a = document.createElement('a');
-          a.className = 'fv-dl'; a.href = v.file; a.setAttribute('download', '');
-          a.textContent = v.dl + ' ⬇';
-          row.appendChild(a);
-        }
-        wrap.appendChild(row);
-      });
-
-      if (justOpened && r && lastRoom !== cur) playVO(r.vo);
-      lastRoom = cur;
-
-      // the register strip appears only in the Sanctum
-      var fc = $('flatCarve');
-      if (fc) {
-        if (cur === 'IV') {
-          fc.hidden = false;
-          var mine = null;
-          try { mine = localStorage.getItem('ps_mark_v1'); } catch (e) {}
-          if (mine) {
-            $('fcForm').hidden = true;
-            $('fcLine').textContent = 'Your mark — ' + mine + ' — is cut into the register.';
-          }
-          fetch('/api/carve').then(function (r2) { return r2.json(); }).then(function (d) {
-            if (d && d.ok && !mine) {
-              $('fcLine').textContent = d.count > 0
-                ? "The Keeper's register — " + d.count + " mark" + (d.count === 1 ? "" : "s") + " cut into the stone."
-                : "The Keeper's register — the stone is bare. Be the first.";
-            } else if (d && d.ok && mine) {
-              $('fcLine').textContent = 'Your mark — ' + mine + ' — is cut into the register, one of ' + d.count + '.';
-            }
-          }).catch(function () {});
-        } else fc.hidden = true;
-      }
-    }
-
-    function show(reason) {
-      var el = $('fallback');
-      if (!el) return;
-      el.hidden = false;
-      if (reason === 'chosen' || reason === 'slow') {
-        var lede = $('flatLede');
-        if (lede && !deepest(readOpen())) {
-          lede.textContent = reason === 'slow'
-            ? 'The illustrated vault — kinder to your device. Say any word you decoded.'
-            : 'The illustrated vault. Say any word you decoded — it does not matter which vault it belongs to.';
-        }
-      }
-      // stand alone: the 3D module may never run, so clear its gate and fade ourselves
-      var gate = $('gate'); if (gate) gate.style.display = 'none';
-      var fade = $('fade'); if (fade) { fade.style.transition = 'none'; fade.style.display = 'none'; }
-      if (!shown) {
-        shown = true;
-        try {
-          if (!sessionStorage.getItem('ps_visited')) {
-            sessionStorage.setItem('ps_visited', '1');
-            fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ vid: psVid(), mode: 'flat' }) }).catch(function () {});
-          }
-        } catch (e) { /* private mode */ }
-        render(false);
-        if (window.__hasWebGL && reason !== 'nowebgl') { var b = $('flatTo3D'); if (b) b.hidden = false; }
-      }
-      var w = $('flatWord');
-      if (w) setTimeout(function () { try { w.focus(); } catch (e) {} }, 60);
-    }
-    window.__showFlatVault = show;
-
-    function msg(text, cls) {
-      var m = $('flatMsg');
-      if (!m) return;
-      m.textContent = text; m.className = cls || '';
-    }
-
-    var busy = false;
-    function submit(e) {
-      if (e) e.preventDefault();
-      if (busy) return;
-      var input = $('flatWord');
-      var word = (input.value || '').replace(/[^A-Za-z]/g, '');
-      if (word.length < 4) { msg('That is too short to be one of my words.', 'bad'); return; }
-      busy = true; msg('The Keeper is listening…', '');
-      fetch('/api/unlock', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ word: word, vid: psVid() }),
-      }).then(function (res) {
-        return res.json().then(function (d) { return { status: res.status, d: d }; });
-      }).then(function (out) {
-        busy = false;
-        if (out.status === 429) { msg('Too many tries at once. Take a breath, then speak again.', 'bad'); return; }
-        if (out.d && out.d.error === 'vault_offline') { msg('The vault door is jammed on my side. Try again shortly.', 'bad'); return; }
-        if (!out.d || !out.d.ok) {
-          msg('That word means nothing here.', 'bad');
-          var shell = document.querySelector('.flat-shell');
-          if (shell) { shell.classList.remove('shake'); void shell.offsetWidth; shell.classList.add('shake'); }
-          return;
-        }
-        if (out.d.act === 'IV') {
-          fourthWord = word;                                 // in-memory proof for this session
-          try { if (out.d.carveToken) localStorage.setItem('ps_carve', out.d.carveToken); } catch (e) {}
-        }
-        var had = !!readOpen()[out.d.act];
-        stamp(out.d.act);
-        input.value = '';
-        render(true);
-        msg(had ? 'That door was already open to you.' : 'The door swings wide.', 'good');
-      }).catch(function () {
-        busy = false;
-        msg('I could not reach the vault. Check your connection and speak again.', 'bad');
-      });
-    }
-
-    // ---- mode decision, made SYNCHRONOUSLY -------------------------------------------
-    // Module scripts are deferred and execute BEFORE DOMContentLoaded, so deciding on
-    // DOM-ready would be too late — the whole 3D scene would build behind this panel.
     var qp = new URLSearchParams(location.search);
-    var webgl = false;
-    try {
-      var c = document.createElement('canvas');
-      webgl = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
-    } catch (e) { webgl = false; }
-    window.__hasWebGL = webgl;
-
-    var reason = null;
-    if (qp.get('flat') === '1') reason = 'chosen';
-    else if (!webgl) reason = 'nowebgl';
-    else if (qp.get('flat') !== '0') {
-      // A device that CAN start WebGL but will crawl through a 900-draw-call scene.
-      // Conservative: only route when the hardware says so outright.
-      var mem = navigator.deviceMemory, cores = navigator.hardwareConcurrency;
-      if ((typeof mem === 'number' && mem <= 2) || (typeof cores === 'number' && cores <= 2)) reason = 'slow';
+    var pref = null;
+    try { pref = localStorage.getItem('ps_vault_mode'); } catch (e) {}
+    var m = qp.get('mode');
+    if (m === '3d' || m === 'painted') { try { localStorage.setItem('ps_vault_mode', m); } catch (e) {} pref = m; }
+    if (qp.get('flat') === '1') pref = 'painted';
+    var want3d = pref === '3d';
+    if (want3d) {
+      var webgl = false;
+      try { var c = document.createElement('canvas'); webgl = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); } catch (e) { webgl = false; }
+      window.__hasWebGL = webgl;
+      if (!webgl) want3d = false;
     }
-    if (reason) window.__flatMode = true;
-
-    var fcBusy = false;
-    function carve(e) {
-      if (e) e.preventDefault();
-      if (fcBusy) return;
-      var inp = $('fcInput');
-      var initials = (inp.value || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-      inp.value = initials;
-      var m = $('fcMsg');
-      if (initials.length < 2) { m.textContent = 'Two or three letters — no more, no less.'; m.className = ''; return; }
-      fcBusy = true; m.className = ''; m.textContent = 'The chisel bites…';
-      fetch('/api/carve', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ initials: initials, word: fourthWord,
-          token: (function () { try { return localStorage.getItem('ps_carve') || ''; } catch (e) { return ''; } })(),
-          vid: psVid() }),
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        fcBusy = false;
-        if (d && d.ok) {
-          try { localStorage.setItem('ps_mark_v1', initials); } catch (err) {}
-          $('fcForm').hidden = true;
-          // count is null when the relay was slow but the write almost certainly landed
-          $('fcLine').textContent = d.count
-            ? 'Your mark — ' + initials + ' — is cut into the register, one of ' + d.count + '.'
-            : 'Your mark — ' + initials + ' — is being cut into the register.';
-          m.className = 'good'; m.textContent = 'Stone remembers what paper forgets.';
-        } else if (d && d.reason === 'no_proof') {
-          m.textContent = 'First speak the fourth word in the box above — then carve.';
-          var wb = $('flatWord'); if (wb) { try { wb.scrollIntoView({ block: 'center' }); wb.focus(); } catch (e) {} }
-        } else if (d && d.reason === 'bad_initials') {
-          m.textContent = 'The stone refuses those letters.';
-        } else if (d && d.reason === 'slow_down') {
-          m.textContent = 'The chisel needs a rest. A moment, please.';
-        } else {
-          m.textContent = 'The stone will not take the mark right now. Try again shortly.';
-        }
-      }).catch(function () {
-        fcBusy = false;
-        m.textContent = 'The stone will not take the mark right now. Try again shortly.';
-      });
+    window.__flatMode = !want3d;              // read by vault.astro's loader before any module runs
+    window.__flatReason = want3d ? null : 'painted';
+    if (!want3d) {
+      // hide the 3D gate/fade right now so the painted gate is what paints first
+      var s = document.createElement('style'); s.textContent = '#gate,#fade,#hud{display:none!important}'; document.head.appendChild(s);
     }
-
-    function init() {
-      var f = $('flatForm');
-      if (f) f.addEventListener('submit', submit);
-      var fcf = $('fcForm');
-      if (fcf) fcf.addEventListener('submit', carve);
-      var fci = $('fcInput');
-      if (fci) fci.addEventListener('input', function () {
-        fci.value = fci.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-      });
-      if (reason) show(reason);
-    }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
   })();
 </script>
+<script is:inline src="/js/painted-vault.js" defer></script>

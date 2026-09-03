@@ -120,6 +120,7 @@ const HOME_LD = {
     <meta name="theme-color" content="#0a0a0c" />
     <link rel="stylesheet" href="/fonts/fonts.css" />
     <link rel="preload" as="image" href="/art/door-v10.webp" />
+    <link rel="preload" as="image" href="/art/rooms/study.webp" />
     <script type="application/ld+json" set:html={JSON.stringify(HOME_LD)} />
   </head>
 
@@ -148,6 +149,19 @@ const HOME_LD = {
                 alt="" width="1200" height="1788"
                 fetchpriority={v.active ? "high" : undefined} loading={v.active ? "eager" : "lazy"} />
             ))}
+            <!-- THE DOOR OPENS. A fixed-aspect box (the cover's 1400:2086) that covers its
+                 container exactly like the layers' object-fit:cover at 50% 44%, so anything
+                 placed in it lines up with the painting. It holds the Writer's Study standing
+                 in the doorway (clipped to the door plate) and, built only on the correct
+                 word, a copy of the plate that swings inward on its left hinges. The wall,
+                 floor and hinge knuckles stay in the static layers and never move. -->
+            <div class="doorbox" id="doorbox">
+              <div class="droom">
+                <img class="room-art" src="/art/rooms/study.webp" alt="" width="900" height="503" decoding="async" />
+                <div class="room-motes">{Array.from({ length: 12 }).map((_, i) => <i style={`--m:${i}`}></i>)}</div>
+                <div class="room-bloom"></div>
+              </div>
+            </div>
             <div class="seam"></div>
             <div class="flare" aria-hidden="true"></div>
             <div class="burst" aria-hidden="true">
@@ -191,6 +205,7 @@ const HOME_LD = {
             <p class="soundcue">This experience <em>speaks.</em> Turn your sound up, and step to the door.</p>
             <button class="enter" id="enterBtn">Enter Volume I</button>
             <p class="g-mute">Prefer silence? <button class="linklike" id="enterMuted">Enter muted</button> — captions stay on.</p>
+            <p class="g-mute remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="linklike rem-link" href="/vault">Step back inside →</a></p>
           </div>
 
           <!-- LIVE: the Keeper speaks + word slot -->
@@ -213,6 +228,7 @@ const HOME_LD = {
                 </button>
               </form>
               <p class="entry-hint">Tap <em>Speak</em> and say the word aloud — or type it in the boxes.</p>
+              <p class="entry-hint remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="rem-link" href="/vault">Step back inside →</a></p>
             </div>
           </div>
 
@@ -227,6 +243,8 @@ const HOME_LD = {
       </div>
 
       <div class="veil" id="veil" aria-hidden="true"></div>
+      <div class="subs" id="subs"></div>
+      <div class="blackout" id="blackout" aria-hidden="true"></div>
     </main>
 
     <!-- ======================= BELOW THE FOLD ======================= -->
@@ -367,6 +385,74 @@ const HOME_LD = {
           osc.connect(g).connect(master); osc.start(t + 0.05); osc.stop(t + 2.4);
         });
       }
+      // ---- the door's mechanical voice: ticks, bolts, a groan, a clunk ----
+      function thud(t, f0, f1, vol, dur = 0.42) {
+        const o = actx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.55);
+        const g = actx.createGain();
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0006, t + dur);
+        o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
+        // the steel "tick" that rides on top of every impact
+        const n = actx.sampleRate * 0.06, buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
+        const src = actx.createBufferSource(); src.buffer = buf;
+        const hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800;
+        const ng = actx.createGain(); ng.gain.value = vol * 0.35;
+        src.connect(hp).connect(ng).connect(master); src.start(t);
+      }
+      // one soft mechanical tick per typed letter — the dials turning
+      function playTick() {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        const o = actx.createOscillator(); o.type = 'square'; o.frequency.value = 1300 + Math.random() * 300;
+        const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = 3;
+        const g = actx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + 0.06);
+      }
+      // a bolt drawing back (n = 0,1 heavy; n = 2 is the one that only half-lands)
+      function playBolt(n) {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        if (n === 0) thud(t, 150, 52, 0.5);
+        else if (n === 1) thud(t, 130, 44, 0.65, 0.5);
+        else thud(t, 170, 90, 0.22, 0.16);
+      }
+      // a wrong word: the mechanism refuses with one dull clunk and a short ring
+      function playClunk() {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        thud(t, 110, 55, 0.45, 0.3);
+        const r = actx.createOscillator(); r.type = 'triangle'; r.frequency.value = 310;
+        const rg = actx.createGain(); rg.gain.setValueAtTime(0.0001, t + 0.02); rg.gain.exponentialRampToValueAtTime(0.05, t + 0.04); rg.gain.exponentialRampToValueAtTime(0.0005, t + 0.5);
+        r.connect(rg).connect(master); r.start(t + 0.02); r.stop(t + 0.6);
+      }
+      // the long stone-and-steel groan of the slab swinging (ported from the vault crawl)
+      function playCreak(L = 2.6) {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        const noise = makeNoise();
+        const bf = actx.createBiquadFilter(); bf.type = 'bandpass'; bf.Q.value = 6;
+        bf.frequency.setValueAtTime(170, t); bf.frequency.linearRampToValueAtTime(85, t + L);
+        const g = actx.createGain();
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.17, t + 0.25);
+        g.gain.linearRampToValueAtTime(0.11, t + L * 0.75); g.gain.exponentialRampToValueAtTime(0.001, t + L);
+        noise.connect(bf).connect(g).connect(master); noise.start(t); noise.stop(t + L + 0.1);
+        const o = actx.createOscillator(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(52, t); o.frequency.linearRampToValueAtTime(34, t + L);
+        const og = actx.createGain();
+        og.gain.setValueAtTime(0.0001, t); og.gain.linearRampToValueAtTime(0.08, t + 0.3); og.gain.exponentialRampToValueAtTime(0.0008, t + L);
+        o.connect(og).connect(master); o.start(t); o.stop(t + L + 0.1);
+      }
+      // the wheel spinning free: a rising metallic whirr
+      function playWhirr() {
+        if (!audioReady || muted) return;
+        const t = actx.currentTime;
+        const noise = makeNoise();
+        const bf = actx.createBiquadFilter(); bf.type = 'bandpass'; bf.Q.value = 9;
+        bf.frequency.setValueAtTime(600, t); bf.frequency.exponentialRampToValueAtTime(1900, t + 0.5);
+        const g = actx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.09, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.62);
+        noise.connect(bf).connect(g).connect(master); noise.start(t); noise.stop(t + 0.7);
+      }
       function setMuted(m) {
         muted = m;
         if ('speechSynthesis' in window) speechSynthesis.cancel();  // always stop the voice on toggle
@@ -480,6 +566,11 @@ const HOME_LD = {
         }
       }
 
+      // The stage's "dawn" animation is filter-based; once it has played, drop the filter so the
+      // door layers stay composited (a persisting filter forces the whole stage to rasterize).
+      const stageEl = document.querySelector('.stage');
+      stageEl?.addEventListener('animationend', (e) => { if (e.animationName === 'dawn') stageEl.classList.add('dawned'); });
+
       function beginExperience(withSound = true) {
         initAudio(); resumeAudio();
         if (withSound && !muted) startAmbient();
@@ -576,6 +667,7 @@ const HOME_LD = {
       };
       function onWrong() {
         misses += 1;
+        playClunk();
         scene.classList.remove('shudder'); void scene.offsetWidth; scene.classList.add('shudder');
         typeCaption(failLines[Math.min(misses - 1, failLines.length - 1)]);
         if (misses >= 3 && slot && !document.getElementById('hintLink')) {
@@ -587,22 +679,111 @@ const HOME_LD = {
       }
       function onCorrect(data) {
         misses = 0;
-        playBoom();                  // this vault's door cracks open too
-        playUnlock();                // the deep thud + victorious swell — only on a correct word
-        scene.classList.remove('igniting'); void scene.offsetWidth; scene.classList.add('igniting');
-        setTimeout(() => scene.classList.remove('igniting'), 1400);
-        typeCaption(successLines[data.act] || 'The vault opens.');
         const form = document.getElementById('tileForm');
-        const hint = slot?.querySelector('.entry-hint');
+        slot?.querySelectorAll('.entry-hint').forEach((h) => { h.style.display = 'none'; });
         if (form) form.style.display = 'none';
-        if (hint) hint.style.display = 'none';
         let panel = document.getElementById('rewardPanel');
         if (!panel && slot) { panel = document.createElement('div'); panel.id = 'rewardPanel'; panel.className = 'reward'; slot.appendChild(panel); }
         if (panel) panel.innerHTML =
-          `<p class="r-tag">Vault ${data.act} — unlocked</p>` +
-          `<p class="r-body">The door swings wide. Step inside…</p>`;
-        setTimeout(() => { window.location.href = '/vault'; }, 2800); // walk into the 3D vault crawl
+          `<p class="r-tag">Vault ${data.act} — the word was true</p>` +
+          `<p class="r-body">…</p>`;
+        openTheDoor(data.act);
       }
+
+      /* THE OPENING — the moment the whole book builds toward. Beat sheet (~6 s):
+           0.00  a held breath: nothing happens (the "did it work?" beat)
+           0.40  bolt one draws back — the door jolts
+           0.85  bolt two, heavier
+           1.30  the third only half-lands… silence
+           1.75  the fracture blazes: the seam widens to a blade of light, sparks, rumble; the wheel spins free
+           2.55  THE HOLD — the slab is ajar, one blade of gold down its edge, nothing moves
+           3.30  the slab swings inward on its hinges; the Keeper speaks INTO the opening; the room resolves
+                 from white-gold to the painted study; the camera pushes in with the swing
+           5.60  blackout → /vault?from=door, whose gate is the same painting
+         Click anywhere to skip ahead. prefers-reduced-motion gets a plain crossfade. */
+      const doorbox = document.getElementById('doorbox');
+      // Size the box so it COVERS .door-inner at the cover's exact aspect, anchored at 50% 44%
+      // (== the layers' object-fit: cover; object-position: 50% 44%). Percent coordinates inside
+      // it are then picture coordinates, so the slab and the room line up with the painting.
+      const DOOR_AR = 1400 / 2086;
+      function sizeDoor() {
+        if (!doorInner || !doorbox) return;
+        const cw = doorInner.clientWidth, ch = doorInner.clientHeight;
+        if (!cw || !ch) return;
+        let bw = cw, bh = cw / DOOR_AR;
+        if (bh < ch) { bh = ch; bw = ch * DOOR_AR; }
+        doorbox.style.width = bw + 'px'; doorbox.style.height = bh + 'px';
+        doorbox.style.left = ((cw - bw) * 0.5) + 'px';
+        doorbox.style.top = ((ch - bh) * 0.44) + 'px';
+        doorbox.style.setProperty('--wr', (bw * 0.133) + 'px');   // the wheel's radius
+      }
+      sizeDoor();
+      addEventListener('resize', sizeDoor);
+      let opening = false;
+      function buildSlab() {
+        // a copy of the plate, cut from the same picture at the same size, so the swap is invisible
+        const slab = document.createElement('div'); slab.className = 'dleaf';
+        const img = document.createElement('img'); img.src = '/art/door-v10.webp'; img.alt = ''; img.width = 1400; img.height = 2086; img.decoding = 'sync';
+        const wheel = document.createElement('img'); wheel.src = '/art/door-v10.webp'; wheel.alt = ''; wheel.className = 'dwheel';
+        const rim = document.createElement('i'); rim.className = 'leaf-rim';
+        const shade = document.createElement('i'); shade.className = 'leaf-shade';
+        slab.append(img, wheel, rim, shade);
+        doorbox.appendChild(slab);
+        return slab;
+      }
+      function openTheDoor(act, stay = false) {
+        if (opening) return; opening = true;
+        showVolume(0, DEFAULT_SC);                   // the visitor may be hovering Volume III
+        // the vault is next — fetch it now so the tap at the gate is the only cost
+        const pf = document.createElement('link'); pf.rel = 'prefetch'; pf.href = '/vault'; document.head.appendChild(pf);
+        const dest = '/vault?from=door' + (act ? '&act=' + encodeURIComponent(act) : '');
+        let gone = false;
+        const go = () => { if (gone) return; gone = true; if (!stay) window.location.href = dest; };
+        const say = () => {
+          typeCaption(successLines[act] || 'The vault opens.');
+          const p = document.getElementById('rewardPanel');
+          if (p) p.querySelector('.r-body').textContent = 'The door swings wide. Step inside…';
+        };
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          scene.classList.add('open', 'reduced'); say(); playUnlock();
+          setTimeout(go, 2800);
+          return;
+        }
+        const T = (ms, fn) => setTimeout(fn, ms);
+        T(400,  () => { scene.classList.add('bolt1'); playBolt(0); });
+        T(850,  () => { scene.classList.add('bolt2'); playBolt(1); });
+        T(1300, () => { scene.classList.add('bolt3'); playBolt(2); });
+        T(1750, () => {
+          buildSlab();                                // exists from here on, still shut
+          scene.classList.add('fracture');            // seam widens to a blade of light
+          scene.classList.remove('igniting'); void scene.offsetWidth; scene.classList.add('igniting');
+          playBoom(); playWhirr();
+        });
+        T(2550, () => {                                                         // THE HOLD
+          // the console clears; only the Keeper's caption stays, as a subtitle over the doorway
+          const cap = document.getElementById('caption'), subs = document.getElementById('subs');
+          if (cap && subs) subs.appendChild(cap);
+          scene.classList.add('ajar');
+        });
+        T(3300, () => { scene.classList.add('open', 'pushing'); playCreak(2.6); playUnlock(); say(); });
+        T(5600, () => document.getElementById('blackout')?.classList.add('on'));
+        T(6250, go);
+        // click anywhere to skip the rest
+        setTimeout(() => document.addEventListener('pointerdown', () => { document.getElementById('blackout')?.classList.add('on'); setTimeout(go, 450); }, { once: true }), 900);
+      }
+      if (q.get('open') === '1') {   // preview hook: run the opening without a word (stay=1 keeps the page)
+        scene.classList.add('live'); initAudio();
+        setTimeout(() => openTheDoor('I', q.get('stay') === '1'), 700);
+      }
+      // A returning solver need not prove the word twice: the passport record opens the way.
+      try {
+        const v = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}');
+        const opened = ['I', 'II', 'III', 'IV'].filter((a) => v && v[a]);
+        if (opened.length) {
+          const txt = opened.length === 1 ? 'The first door remembers you.' : `${opened.length} doors remember you.`;
+          document.querySelectorAll('.remembered').forEach((el) => { el.hidden = false; el.querySelector('.rem-txt').textContent = txt; });
+        }
+      } catch (e) { /* private mode — the door simply asks again */ }
       async function tryWord() {
         if (submitting) return; submitting = true;
         const word = tileEls.map((t) => t.value).join('');
@@ -619,6 +800,7 @@ const HOME_LD = {
       tileEls.forEach((t, i) => {
         t.addEventListener('input', () => {
           t.value = t.value.replace(/[^a-z]/gi, '').toUpperCase();
+          if (t.value) { playTick(); t.classList.remove('lit'); void t.offsetWidth; t.classList.add('lit'); }
           if (t.value && tileEls[i + 1]) tileEls[i + 1].focus();
           if (tileEls.every((x) => x.value)) setTimeout(tryWord, 320); // auto-submit when full
         });
@@ -671,6 +853,7 @@ const HOME_LD = {
       }
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html { scroll-behavior: smooth; }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
       body { background: var(--void); color: var(--ivory); font-family: var(--serif); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
       a { color: inherit; text-decoration: none; }
       em { font-style: normal; }
@@ -704,6 +887,73 @@ const HOME_LD = {
       /* stacked per-volume layers; hovering a volume crossfades to that book's art */
       .door-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 44%; opacity: 0; filter: brightness(.82) saturate(.99); transition: opacity .5s ease, filter 1.4s ease; }
       .door-layer.is-active { opacity: 1; }
+      .stage.dawned { animation: none; filter: none; }
+
+      /* ---- THE DOOR THAT OPENS ----
+         .doorbox = the cover's exact aspect, covering its container at 50% 44% (== the layers'
+         object-fit). Percent coordinates inside it are picture coordinates. */
+      .doorbox { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 2; perspective: 1500px; perspective-origin: 50% 46%; pointer-events: none; }
+      /* the door PLATE (hinge knuckles excluded): x 15.2–90.5%, y 7–90% of the picture */
+      .droom { position: absolute; left: 15.2%; top: 7%; width: 75.3%; height: 83%; overflow: hidden; background: #17100a; opacity: 0; }
+      .room-art { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; transform: scale(1.22); filter: brightness(1.12) saturate(1.05); }
+      .room-bloom { position: absolute; inset: 0; mix-blend-mode: screen; opacity: 1; background: radial-gradient(62% 52% at 50% 46%, rgba(255,247,225,1), rgba(255,205,120,.9) 38%, rgba(255,160,60,.4) 72%, transparent); }
+      .room-motes { position: absolute; inset: 0; pointer-events: none; }
+      .room-motes i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #ffe6b8; box-shadow: 0 0 8px 2px rgba(255,205,125,.85); left: calc(8% + var(--m) * 7.4%); top: 100%; opacity: 0; }
+      .scene.open .room-motes i { animation: mote 8s linear infinite; animation-delay: calc(var(--m) * -0.7s); }
+      /* the slab: a copy of the plate that swings inward on its LEFT hinges */
+      .dleaf { position: absolute; inset: 0; clip-path: polygon(15.2% 7%, 90.5% 7%, 90.5% 90%, 15.2% 90%); transform-origin: 15.2% 50%;
+        backface-visibility: hidden; -webkit-backface-visibility: hidden; will-change: transform; transition: transform .55s cubic-bezier(.4, 0, .6, 1); }
+      .dleaf > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+      .scene:not(.live) .dleaf > img { filter: brightness(.82) saturate(.99); }
+      .dleaf .dwheel { clip-path: circle(var(--wr, 10.5%) at 50.7% 50%); transform-origin: 50.7% 50%; opacity: 0; }
+      .leaf-rim { position: absolute; left: 15.2%; top: 7%; width: 75.3%; height: 83%; opacity: 0; mix-blend-mode: screen; pointer-events: none; transition: opacity .5s;
+        background: linear-gradient(270deg, rgba(255,232,180,.95) 0%, rgba(255,200,110,.45) 3%, transparent 14%); }
+      .leaf-shade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 2.4s ease-in; }
+      /* bolts: three jolts, the third only half-lands */
+      .scene.bolt1 .door-inner { animation: jolt .32s ease-out; }
+      .scene.bolt2 .door-inner { animation: jolt2 .36s ease-out; }
+      .scene.bolt3 .door-inner { animation: jolt3 .2s ease-out; }
+      @keyframes jolt  { 20% { transform: translate(-6px, 1px); } 60% { transform: translate(2px, 0); } }
+      @keyframes jolt2 { 20% { transform: translate(7px, -2px); } 60% { transform: translate(-2px, 1px); } }
+      @keyframes jolt3 { 30% { transform: translate(-2px, 1px); } }
+      /* the fracture: the seam widens into a blade of light; the wheel spins free */
+      .seam { z-index: 3; transition: transform .9s ease-out, filter .9s ease-out; }
+      .scene.fracture .seam { transform: translateX(-48%) scaleX(2.4); filter: brightness(1.9); }
+      .scene.fracture .dwheel { animation: wheelspin 1.1s cubic-bezier(.3, .5, .3, 1) both; }
+      @keyframes wheelspin { 0% { transform: rotate(0deg); opacity: 1; } 88% { opacity: 1; } 100% { transform: rotate(-360deg); opacity: 0; } }
+      /* the hold: ajar — a blade of gold down the free edge */
+      .scene.ajar .droom { opacity: 1; transition: opacity .3s; }
+      .scene.ajar .dleaf { transform: rotateY(7deg); }
+      .scene.ajar .leaf-rim { opacity: 1; }
+      /* the swing */
+      .scene.open .dleaf { transform: rotateY(78deg); transition: transform 2.5s cubic-bezier(.55, 0, .2, 1); }
+      .scene.open .leaf-shade { opacity: .55; }
+      .scene.open .room-bloom { opacity: .1; transition: opacity 2.6s ease-out .2s; }
+      .scene.open .room-art { transform: scale(1); transition: transform 7s ease-out; }
+      .scene.open .seam, .scene.open .ghosts { opacity: 0 !important; transition: opacity 1.2s; }
+      .scene.open .door::after { opacity: 0; }
+      /* the push-in rides on the swing */
+      .stage { transform-origin: 50% 44%; }
+      .scene.pushing .stage { transform: scale(1.6); transition: transform 2.7s cubic-bezier(.5, 0, .8, .5); }
+      .scene.ajar .console { opacity: 0; transition: opacity .8s; }
+      .subs { position: absolute; left: 0; right: 0; bottom: 7svh; z-index: 45; display: flex; justify-content: center; padding: 0 20px; pointer-events: none; }
+      .subs .caption { max-width: 48ch; text-align: center; padding: 10px 18px; border-radius: 8px; background: rgba(4,3,2,.42); backdrop-filter: blur(3px); }
+      .subs .caption p { text-shadow: 0 1px 2px #000, 0 2px 18px #000; }
+      .scene.pushing .subs { opacity: 0; transition: opacity 1s 1.9s; }
+      .blackout { position: absolute; inset: 0; z-index: 50; background: #000; opacity: 0; pointer-events: none; transition: opacity .65s; }
+      .blackout.on { opacity: 1; }
+      /* reduced motion: a plain reveal, no swing */
+      .scene.reduced .dleaf { display: none; }
+      .scene.reduced .droom { opacity: 1; transition: opacity 1.4s; }
+      .scene.reduced .room-bloom { opacity: .1; transition: opacity 1.4s; }
+      .scene.reduced .seam, .scene.reduced .ghosts { opacity: 0 !important; transition: opacity 1.4s; }
+      /* a wrong word: the seam dims for a beat while the door shudders */
+      .scene.shudder .seam { animation: seamdim .75s ease-out; }
+      @keyframes seamdim { 25% { opacity: .12; filter: brightness(.5); } }
+      .tile.lit { animation: tilelit .5s ease-out; }
+      @keyframes tilelit { 0% { box-shadow: inset 0 2px 6px rgba(0,0,0,.7), 0 0 0 0 rgba(246,178,60,.7); } 100% { box-shadow: inset 0 2px 6px rgba(0,0,0,.7), 0 0 22px 4px rgba(246,178,60,0); } }
+      .remembered { color: var(--ash); }
+      .remembered .rem-link { color: var(--gold-hi); border-bottom: 1px solid rgba(246,178,60,.45); }
       .scene.live .door-layer { filter: brightness(1.04) saturate(1.03); }
       .door::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 60% at 50% 46%, transparent, rgba(6,6,9,.72)); transition: opacity 1.2s ease; }
       .scene.live .door::after { opacity: .4; }
@@ -824,7 +1074,9 @@ const HOME_LD = {
         .door-inner { position: absolute; inset: 0; height: 100%; width: 100%; display: block; }
         .door::after { background: radial-gradient(72% 72% at 50% 48%, transparent 44%, rgba(6,6,9,.5)); }
         /* door COVERS its half at any viewport width (never a gap) + left edge feathers into the console */
-        .door-layer { -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 100%); }
+        .door::before { content: ''; position: absolute; inset: 0; z-index: 7; pointer-events: none; background: linear-gradient(90deg, var(--void) 0%, transparent 16%); }
+        .stage { transform-origin: 75% 46%; }
+        .scene.pushing .stage { transform: translateX(-25%) scale(1.9); }
         /* left half reads like the book cover: everything centered on the half's axis */
         .console { grid-column: 1; grid-row: 1; min-height: auto; justify-content: center; align-items: center; text-align: center; padding: 4.5vh 5% 4.5vh 5%; gap: clamp(11px, 1.7vh, 22px); }
         .brandmark { font-size: clamp(12px, 1vw, 15px); }
@@ -911,6 +1163,7 @@ const HOME_LD = {
         /* mobile: door is the backdrop and the seam runs through the text — scrim for legibility */
         .door-layer { filter: brightness(.5) saturate(.88); }
         .scene.live .door-layer { filter: brightness(.9) saturate(1); }
+        .dleaf > img { filter: brightness(.9); }
         .console { background: radial-gradient(130% 62% at 50% 42%, rgba(6,6,9,.62), rgba(6,6,9,.2) 68%, transparent); }
         .titlelock h1, .tagline, .series-cap, .caption p { text-shadow: 0 1px 2px #000, 0 2px 20px #000; }
         .series { align-items: center; }
@@ -922,7 +1175,9 @@ const HOME_LD = {
       }
       @media (prefers-reduced-motion: reduce) {
         .stage, .door-inner, .seam, .ghosts span, .dust i, .reveal,
-        .scene.igniting, .scene.igniting .door-inner, .scene.igniting .flare, .scene.igniting .seam, .scene.igniting .burst i { animation: none !important; }
+        .scene.igniting, .scene.igniting .door-inner, .scene.igniting .flare, .scene.igniting .seam, .scene.igniting .burst i,
+        .scene.bolt1 .door-inner, .scene.bolt2 .door-inner, .scene.bolt3 .door-inner, .room-motes i, .tile.lit, .dwheel { animation: none !important; }
+        .scene.pushing .stage { transform: none; }
         .stage { filter: none !important; }
         .door-inner, .reveal { opacity: 1; transform: none; }
         .flare, .burst i { opacity: 0 !important; }
