@@ -2,12 +2,12 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Your Passport · PuzzleSecret" description="Your official PuzzleSecret Solver Passport. Track cracked vaults, collected stamps, and unlocked reward PDFs.">
+<Layout title="Your Passport · PuzzleSecret" description="Your PuzzleSecret Solver's Passport. Every vault you crack in the book stamps it here, and each stamp hands you a bonus puzzle pack.">
   <main class="page-passport">
     <div class="passport-hero">
       <p class="eyebrow">Official Record</p>
       <h1>The Solver's Passport</h1>
-      <p class="lede">Every vault you crack stamps your passport. This page remembers your own hunt — it lives in this browser, and we never see it.</p>
+      <p class="lede">Every vault you crack stamps this passport. A stamp is earned one way only: solve the puzzles in the book, decode the Keeper's word, and type it into the vault door on our homepage.</p>
     </div>
 
     <section class="wrap passport-body">
@@ -15,70 +15,115 @@ import Layout from '../layouts/Layout.astro';
       <div class="passport-book">
         <div class="p-header">
           <div class="p-brand">PUZZLE<span>SECRET</span></div>
-          <div class="p-title">Volume 1 · Solver Certificate</div>
+          <div class="p-title">Volume 1 · Solver's Passport</div>
         </div>
 
+        <!-- How a stamp is earned: the book → the word → the door -->
+        <div class="howto" id="howto">
+          <h2 class="howto-kicker">How a stamp is earned</h2>
+          <p class="howto-next" id="howtoNext" hidden></p>
+          <ol class="howto-steps" id="howtoSteps" role="list">
+            <li>
+              <span class="step-n" aria-hidden="true">1</span>
+              <strong>Solve the book</strong>
+              <span>Twenty puzzles in <em>Sudoku with a Secret</em> carry a shaded cell. Solve them and each gives up a digit. The book runs in three acts (easy, medium, hard), and each act hides one word.</span>
+            </li>
+            <li>
+              <span class="step-n" aria-hidden="true">2</span>
+              <strong>Decode the word</strong>
+              <span>Write the digits on the book's Vault Door tally page, then decode them with the Keyplate at the back of the book. Out comes that act's word.</span>
+            </li>
+            <li>
+              <span class="step-n" aria-hidden="true">3</span>
+              <strong>Type it at the door</strong>
+              <span>Come to this site's homepage and type the word into the vault door there. It opens, the stamp lands here, and the bonus-puzzle PDF is yours to download.</span>
+            </li>
+          </ol>
+          <div class="howto-cta">
+            <a href="/" class="btn-gold" id="howtoBtn">I have the book · type my word <span aria-hidden="true">→</span></a>
+            <a href="https://www.amazon.com/dp/B0HB9K8PXC" class="btn-ghost" target="_blank" rel="noopener">No book yet? Get Volume 1 on Amazon <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
+          </div>
+          <p class="howto-foot">Every stamp starts with the book. Nothing here can be bought, only cracked.</p>
+        </div>
+
+        <h2 class="stamps-kicker" id="stampsKicker">Your stamps · <span id="stampsInline">0 of 4</span></h2>
         <div class="stamps-grid">
           <!-- Stamp 1 -->
           <div class="stamp-slot" id="slot-v1">
             <div class="stamp-inner">
               <div class="stamp-num">I</div>
-              <div class="stamp-icon">🖋</div>
+              <div class="stamp-icon" aria-hidden="true">🖋</div>
               <div class="stamp-name">The Writer's Study</div>
-              <div class="stamp-status">Not yet cracked</div>
+              <div class="stamp-act">Act I of the book · Easy</div>
+              <div class="stamp-status"><span aria-hidden="true">🔒</span> Locked</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="#" download class="stamp-dl" data-act="I" hidden>50 Easy PDF ⬇</a><span class="stamp-locked" data-act="I">Speak its word to fetch the 50</span>
+            <a href="#" download class="stamp-dl" data-act="I" hidden>Download 50 easy puzzles (PDF) <span aria-hidden="true">⬇</span></a>
+            <span class="stamp-locked" data-act="I">Solve Act I in the book, then type its word at the door to unlock <b>50 bonus easy puzzles</b>.</span>
           </div>
 
           <!-- Stamp 2 -->
           <div class="stamp-slot" id="slot-v2">
             <div class="stamp-inner">
               <div class="stamp-num">II</div>
-              <div class="stamp-icon">📜</div>
+              <div class="stamp-icon" aria-hidden="true">📜</div>
               <div class="stamp-name">Library of Puzzles</div>
-              <div class="stamp-status">Not yet cracked</div>
+              <div class="stamp-act">Act II of the book · Medium</div>
+              <div class="stamp-status"><span aria-hidden="true">🔒</span> Locked</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="#" download class="stamp-dl" data-act="II" hidden>100 Med PDF ⬇</a><span class="stamp-locked" data-act="II">Speak its word to fetch the 100</span>
+            <a href="#" download class="stamp-dl" data-act="II" hidden>Download 100 medium puzzles (PDF) <span aria-hidden="true">⬇</span></a>
+            <span class="stamp-locked" data-act="II">Solve Act II in the book, then type its word at the door to unlock <b>100 bonus medium puzzles</b>.</span>
           </div>
 
           <!-- Stamp 3 -->
           <div class="stamp-slot" id="slot-v3">
             <div class="stamp-inner">
               <div class="stamp-num">III</div>
-              <div class="stamp-icon">🏆</div>
+              <div class="stamp-icon" aria-hidden="true">🏆</div>
               <div class="stamp-name">Grand Treasure Vault</div>
-              <div class="stamp-status">Not yet cracked</div>
+              <div class="stamp-act">Act III of the book · Hard</div>
+              <div class="stamp-status"><span aria-hidden="true">🔒</span> Locked</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="#" download class="stamp-dl" data-act="III" hidden>200 Hard PDF ⬇</a><span class="stamp-locked" data-act="III">Speak its word to fetch the 200</span>
+            <a href="#" download class="stamp-dl" data-act="III" hidden>Download 200 hard puzzles (PDF) <span aria-hidden="true">⬇</span></a>
+            <span class="stamp-locked" data-act="III">Solve Act III in the book, then type its word at the door to unlock <b>200 bonus hard puzzles</b>.</span>
           </div>
 
           <!-- Stamp 4 (Secret) -->
           <div class="stamp-slot secret-slot" id="slot-v4">
             <div class="stamp-inner">
               <div class="stamp-num">IV</div>
-              <div class="stamp-icon">🕯</div>
+              <div class="stamp-icon" aria-hidden="true">🕯</div>
               <div class="stamp-name">The Secret Sanctum</div>
-              <div class="stamp-status">Never announced</div>
+              <div class="stamp-act">A door the book never mentions</div>
+              <div class="stamp-status"><span aria-hidden="true">🔒</span> Hidden</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="#" download class="stamp-dl" data-act="IV" hidden>20 Master PDF ⬇</a><span class="stamp-locked" data-act="IV">Never announced</span>
+            <a href="#" download class="stamp-dl" data-act="IV" hidden>Download 20 master puzzles (PDF) <span aria-hidden="true">⬇</span></a>
+            <span class="stamp-locked" data-act="IV">Something was never announced. Find it, and a fourth stamp appears.</span>
           </div>
         </div>
 
+        <p class="p-warn">
+          <strong>Your passport is saved on this device only.</strong> We never receive it, so we can't
+          restore it. Clear your browsing data, switch browsers, or open the site on another phone or
+          computer, and the stamps and downloads won't be there. No harm done: type your words at the
+          door again and everything comes straight back. The words are in your book. That is your backup.
+        </p>
+
         <!-- The Keeper's key-tiles (the two games in the painted vault) + the standing -->
         <div class="p-row">
-          <div class="tiles-row" aria-label="Key-tiles recovered">
-            <div class="ktile" id="tile-II"><span>5</span><small>Library</small></div>
-            <div class="ktile" id="tile-III"><span>7</span><small>Treasure</small></div>
-            <p class="tiles-note" id="tilesNote">Two key-tiles wait in the vaults — one in the library’s dark, one inside a locked chest.</p>
+          <div class="tiles-row" role="group" aria-label="Key-tiles recovered">
+            <div class="ktile" id="tile-II" data-digit="5"><span>?</span><small>Library</small></div>
+            <div class="ktile" id="tile-III" data-digit="7"><span>?</span><small>Treasure</small></div>
+            <p class="tiles-note" id="tilesNote">Two key-tiles are hidden inside the vault: one in the library's dark, one in a locked chest. Beat the Keeper's two little games to collect them. Hold both and the Keeper's Mark seals your certificate.</p>
           </div>
           <div class="rank-box">
-            <p class="rank-lbl">Standing</p>
+            <p class="rank-lbl">Your standing</p>
             <p class="rank" id="rankName">Visitor</p>
             <p class="rank-sub" id="rankSub">Crack the first vault to earn a title.</p>
+            <a href="/" class="rank-next" id="rankNext" hidden>Type the next word <span aria-hidden="true">→</span></a>
           </div>
         </div>
 
@@ -86,50 +131,36 @@ import Layout from '../layouts/Layout.astro';
         <div class="cert-box" id="certBox" hidden>
           <div>
             <h3>Your certificate</h3>
-            <p>“Cracked the Keeper’s Vault” — your initials, the date, the vaults you opened. Drawn here, saved to your device, never sent anywhere.</p>
+            <p>“Cracked the Keeper's Vault”: your initials, the date, the vaults you opened. Made here, saved to your device, never sent anywhere.</p>
           </div>
-          <button type="button" class="btn-cert" id="certBtn">Draw my certificate</button>
+          <button type="button" class="btn-cert" id="certBtn">Make my certificate</button>
         </div>
 
         <!-- The next stamp: a book not yet written -->
-        <div class="next-slot" aria-label="Volume II — coming">
-          <div class="stamp-num" style="color:var(--v2)">II</div>
+        <div class="next-slot" role="group" aria-label="Volume II, coming">
+          <div class="stamp-num next-num" style="color:var(--v2)">Vol. II</div>
           <div>
-            <div class="stamp-name">Volume II · The Corsair’s Chart</div>
-            <div class="stamp-status">A stamp waiting for a book still being drawn</div>
+            <div class="stamp-name">Volume II · The Corsair's Chart</div>
+            <div class="next-status">Coming soon. Its own stamps will appear here.</div>
           </div>
         </div>
 
-        <!-- Passport Stats Bar -->
-        <div class="p-stats">
+        <!-- Passport Stats Bar: shown once there is something to count -->
+        <div class="p-stats" id="stats" hidden>
           <div class="stat">
             <span class="stat-num" id="unlockedPuzzles">0</span>
-            <span class="stat-lbl">Puzzles Unlocked</span>
+            <span class="stat-lbl">Bonus puzzles unlocked</span>
           </div>
-          <div class="stat">
-            <span class="stat-num" id="stampsCount">0 / 4</span>
-            <span class="stat-lbl">Stamps Earned</span>
-          </div>
-          <div class="stat">
+          <div class="stat" id="pagesStat" hidden>
             <span class="stat-num" id="storyPages">0 / 9</span>
-            <span class="stat-lbl">Keeper's Pages Found</span>
+            <span class="stat-lbl">Pages of the Keeper's story found while exploring the vault</span>
           </div>
         </div>
-
-        <p class="p-note">
-          Every gift is handed over the moment you speak its word — and only then. The stamps, the
-          key-tiles and the certificate are the record of what <em>you</em> cracked.
-        </p>
-        <p class="p-note p-warn">
-          <strong>This passport lives in this browser only.</strong> Nothing is sent to us, so we cannot
-          restore it: if you clear this browser’s cookies or site data, or open the site on another
-          device, the stamps and downloads here will be gone. Speak your words again at the vault
-          door and they come straight back.
-        </p>
       </div>
 
       <div class="passport-cta">
-        <a href="/vault" class="btn-vault">Return to the Vaults →</a>
+        <a href="/" class="btn-vault" id="ctaBtn">Type your first word <span aria-hidden="true">→</span></a>
+        <a href="/vault" class="cta-alt" id="ctaAlt">Or look inside the vaults first (no word needed)</a>
       </div>
     </section>
   </main>
@@ -139,84 +170,118 @@ import Layout from '../layouts/Layout.astro';
     #certPanel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.72); backdrop-filter: blur(3px); padding: 16px; overflow-y: auto; }
     #certPanel[hidden] { display: none; }
     .cert-card { max-width: 480px; width: 100%; margin: auto; text-align: center; background: linear-gradient(180deg, #1d1207, #120a04); border: 1px solid rgba(246,178,60,.45); border-radius: 8px; padding: 28px 24px 20px; box-shadow: 0 0 60px rgba(246,178,60,.18), 0 18px 50px rgba(0,0,0,.7); font-family: var(--serif); color: var(--ivory); }
-    .cert-kicker { font-family: var(--display); font-size: 10px; letter-spacing: .38em; color: #b07c25; margin-bottom: 12px; }
+    .cert-kicker { font-family: var(--display); font-size: 12px; letter-spacing: .3em; color: #c78d2e; margin-bottom: 12px; }
     .cert-line { font-size: 16px; font-style: italic; color: var(--ash); margin-bottom: 16px; line-height: 1.45; }
     .cert-row { display: flex; gap: 8px; margin-bottom: 14px; }
     .cert-row input { flex: 1; min-width: 0; font-family: var(--display); font-size: 22px; letter-spacing: .4em; text-align: center; text-transform: uppercase; color: var(--gold); background: rgba(0,0,0,.45); border: 1px solid rgba(246,178,60,.4); border-radius: 4px; padding: 10px 4px 10px 12px; min-height: 48px; }
-    .cert-row input::placeholder { color: rgba(232,213,174,.3); letter-spacing: .04em; text-transform: none; font-style: italic; font-size: 15px; }
+    .cert-row input::placeholder { color: rgba(232,213,174,.55); letter-spacing: .04em; text-transform: none; font-style: italic; font-size: 15px; }
     .cert-row input.bad { border-color: #e08a6a; }
     .cert-row .gold-btn { margin: 0; white-space: nowrap; padding: 0 18px; display: flex; align-items: center; }
     .cert-out img { width: 100%; height: auto; border: 1px solid rgba(246,178,60,.35); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.7); }
-    .cert-hint { font-size: 13px; font-style: italic; color: var(--ash-dim); margin: 8px 0 12px; }
+    .cert-hint { font-size: 14px; font-style: italic; color: #b3a98f; margin: 8px 0 12px; }
     .cert-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
     .cert-actions .gold-btn, .cert-actions .ghost-btn { margin: 0; }
+    .cert-actions[hidden], .cert-out[hidden], #certPanel .ghost-btn[hidden], #certPanel .gold-btn[hidden] { display: none; }
     #certPanel .gold-btn { display: block; font-family: var(--display); font-size: 13px; letter-spacing: .16em; color: #0b0704; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 4px; padding: 14px 10px; text-decoration: none; border: none; cursor: pointer; box-shadow: 0 0 24px rgba(246,178,60,.3); }
-    #certPanel .ghost-btn { display: block; width: 100%; font-family: var(--display); font-size: 12px; letter-spacing: .16em; color: var(--ash); background: none; border: 1px solid rgba(232,213,174,.25); border-radius: 4px; padding: 11px 10px; cursor: pointer; min-height: 44px; margin-top: 4px; }
+    #certPanel .ghost-btn { display: block; width: 100%; font-family: var(--display); font-size: 13px; letter-spacing: .16em; color: var(--ash); background: none; border: 1px solid rgba(232,213,174,.25); border-radius: 4px; padding: 11px 10px; cursor: pointer; min-height: 44px; margin-top: 4px; }
 
-    .page-passport { padding-top: 90px; padding-bottom: 80px; }
-    .passport-hero { text-align: center; max-width: 660px; margin: 0 auto 40px; padding: 0 20px; }
-    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
-    .passport-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
-    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+    /* ---- the passport itself. Brighter and larger than the rest of the site: this is a page people READ. ---- */
+    .page-passport { --pp-text: #d9cfb8; --pp-soft: #b3a98f; padding-top: 90px; padding-bottom: 80px; }
+    .page-passport .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .page-passport a:focus-visible, .page-passport button:focus-visible { outline: 3px solid var(--gold-hi); outline-offset: 3px; border-radius: 6px; }
+    .btn-gold:focus-visible, .btn-vault:focus-visible, .btn-cert:focus-visible { outline-color: var(--ivory); }
+    .passport-hero { text-align: center; max-width: 700px; margin: 0 auto 36px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .passport-hero h1 { font-family: var(--display); font-size: clamp(34px, 5.5vw, 54px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .lede { font-size: clamp(17px, 2.1vw, 20px); color: var(--pp-text); line-height: 1.5; }
 
-    .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px; }
 
-    .passport-book { background: linear-gradient(180deg, #181410, #0e0b08); border: 2px solid var(--brass); border-radius: 16px; padding: 36px; box-shadow: 0 12px 50px rgba(0,0,0,.7), inset 0 0 20px rgba(246,178,60,.1); position: relative; }
-    .p-header { text-align: center; margin-bottom: 32px; border-bottom: 1px solid rgba(185,143,82,.2); padding-bottom: 20px; }
-    .p-brand { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .3em; color: var(--ash); }
+    .passport-book { background: linear-gradient(180deg, #1b1712, #0f0c09); border: 2px solid var(--brass); border-radius: 16px; padding: 36px; box-shadow: 0 12px 50px rgba(0,0,0,.7), inset 0 0 20px rgba(246,178,60,.1); position: relative; }
+    .p-header { text-align: center; margin-bottom: 26px; border-bottom: 1px solid rgba(185,143,82,.3); padding-bottom: 18px; }
+    .p-brand { font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: .3em; color: var(--pp-text); }
     .p-brand span { color: var(--gold); }
-    .p-title { font-style: italic; font-size: 15px; color: var(--ash-dim); margin-top: 4px; }
+    .p-title { font-style: italic; font-size: 16px; color: var(--pp-soft); margin-top: 4px; }
 
-    .stamps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 32px; }
-    .stamp-slot { background: rgba(10,8,6,.7); border: 1px dashed rgba(185,143,82,.3); border-radius: 12px; padding: 20px 14px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; }
-    .stamp-slot.unlocked { border-style: solid; border-color: var(--gold); background: rgba(246,178,60,.08); }
-    .stamp-num { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold); opacity: .7; }
-    .stamp-icon { font-size: 32px; margin: 4px 0; }
-    .stamp-name { font-family: var(--display); font-size: 13px; letter-spacing: .08em; color: var(--ivory); }
-    .stamp-status { font-family: var(--display); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--ash-dim); }
-    .stamp-dl { display: block; font-family: var(--display); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 8px; border: 1px solid rgba(246,178,60,.4); border-radius: 6px; color: var(--gold-hi); transition: background .2s; }
-    .stamp-dl:hover { background: rgba(246,178,60,.2); }
+    /* how a stamp is earned */
+    .howto { background: rgba(246,178,60,.05); border: 1px solid rgba(246,178,60,.3); border-radius: 12px; padding: 22px 22px 18px; margin-bottom: 30px; }
+    .howto[hidden] { display: none; }
+    .howto-kicker { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--gold-hi); text-align: center; margin: 0 0 16px; }
+    .howto-next { font-size: 17px; color: var(--pp-text); text-align: center; line-height: 1.45; margin: -4px 0 14px; }
+    .howto-next[hidden] { display: none; }
+    .howto-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .howto-steps[hidden] { display: none; }
+    .howto-steps li { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 4px; align-items: start; }
+    .step-n { grid-row: 1 / span 2; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--gold); color: var(--gold-hi); font-family: var(--display); font-size: 15px; font-weight: 700; }
+    .howto-steps strong { font-family: var(--display); font-size: 16px; letter-spacing: .04em; color: var(--ivory); font-weight: 700; }
+    .howto-steps li > span:last-child { font-size: 15.5px; line-height: 1.45; color: var(--pp-text); }
+    .howto-steps em { font-style: italic; color: var(--gold-hi); }
+    .howto-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; }
+    .btn-gold { display: inline-flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; max-width: 100%; padding: 12px 22px; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); text-decoration: none; }
+    .btn-ghost { display: inline-flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; max-width: 100%; padding: 12px 20px; font-family: var(--display); font-size: 13px; letter-spacing: .08em; color: var(--gold-hi); border: 1px solid var(--gold); border-radius: 6px; text-decoration: none; background: rgba(0,0,0,.25); }
+    .btn-ghost:hover { background: rgba(246,178,60,.14); }
+    .howto-foot { margin-top: 14px; text-align: center; font-size: 15px; font-style: italic; color: var(--pp-soft); }
 
-    .p-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; background: rgba(0,0,0,.4); border-radius: 10px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,.05); }
-    .stat-num { display: block; font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--gold-hi); margin-bottom: 4px; }
-    .stat-lbl { font-size: 12px; font-style: italic; color: var(--ash); }
-
-    .passport-cta { text-align: center; margin-top: 32px; }
-    .btn-vault { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
-
-    .p-note { margin-top: 18px; text-align: center; font-size: 13px; font-style: italic; color: var(--ash-dim); line-height: 1.5; }
-    .p-warn { margin-top: 10px; padding: 12px 14px; border: 1px dashed rgba(246,178,60,.35); border-radius: 8px; color: var(--ash); font-style: normal; }
-    .p-warn strong { color: var(--gold-hi); }
+    .stamps-kicker { font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--pp-soft); margin: 0 0 12px; }
+    .stamps-kicker span { color: var(--gold-hi); }
+    .stamps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .stamp-slot { background: rgba(10,8,6,.7); border: 1px dashed rgba(185,143,82,.5); border-radius: 12px; padding: 20px 14px 16px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+    .stamp-slot.unlocked { border-style: solid; border-color: var(--gold); background: rgba(246,178,60,.09); box-shadow: 0 0 28px rgba(246,178,60,.12); }
+    .stamp-num { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--gold); opacity: .8; }
+    .stamp-icon { font-size: 34px; margin: 4px 0; }
+    .stamp-name { font-family: var(--display); font-size: 15px; letter-spacing: .06em; color: var(--ivory); line-height: 1.25; }
+    .stamp-act { font-size: 14.5px; font-style: italic; color: var(--pp-soft); margin-top: 4px; }
+    .stamp-status { font-family: var(--display); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--pp-soft); margin-top: 8px; }
+    .stamp-dl { display: flex; align-items: center; justify-content: center; min-height: 44px; font-family: var(--display); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; padding: 12px 10px; border: 1px solid rgba(246,178,60,.55); border-radius: 6px; color: var(--gold-hi); background: rgba(246,178,60,.08); transition: background .2s; line-height: 1.35; }
+    .stamp-dl:hover { background: rgba(246,178,60,.22); }
     .stamp-dl[hidden] { display: none; }
-    .stamp-locked { display: block; font-size: 12px; font-style: italic; color: var(--ash-dim); padding: 8px 4px; }
+    .stamp-locked { display: block; font-size: 14.5px; line-height: 1.45; color: var(--pp-text); padding: 8px 2px 0; border-top: 1px solid rgba(185,143,82,.2); }
+    .stamp-locked b { color: var(--gold-hi); font-weight: 600; }
     .stamp-locked[hidden] { display: none; }
 
-    .p-row { display: grid; grid-template-columns: 1fr 220px; gap: 18px; margin-bottom: 20px; }
-    .tiles-row { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: center; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.05); border-radius: 10px; padding: 16px; }
-    .ktile { width: 58px; height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #2a2620, #1a1712); color: rgba(232,213,174,.25); border: 2px dashed rgba(185,143,82,.3); border-radius: 4px; font-family: var(--display); }
+    .p-warn { margin: 0 0 22px; padding: 14px 16px; border: 1px dashed rgba(246,178,60,.45); border-radius: 8px; color: var(--pp-text); font-size: 15px; line-height: 1.55; }
+    .p-warn strong { color: var(--gold-hi); }
+
+    .p-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; background: rgba(0,0,0,.4); border-radius: 10px; padding: 22px 20px; text-align: center; border: 1px solid rgba(255,255,255,.07); }
+    .p-stats[hidden], .stat[hidden] { display: none; }
+    .p-stats.one { grid-template-columns: 1fr; }
+    .stat-num { display: block; font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--gold-hi); margin-bottom: 6px; }
+    .stat-lbl { font-size: 15px; color: var(--pp-text); line-height: 1.35; }
+
+    .passport-cta { text-align: center; margin-top: 32px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .btn-vault { display: inline-flex; align-items: center; justify-content: center; text-align: center; max-width: 100%; min-height: 48px; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
+    .cta-alt { display: inline-block; padding: 12px 8px; font-size: 15.5px; color: var(--pp-soft); text-decoration: underline; text-underline-offset: 3px; }
+    .cta-alt:hover { color: var(--gold-hi); }
+
+    .p-row { display: grid; grid-template-columns: 1fr 230px; gap: 18px; margin-bottom: 20px; }
+    .tiles-row { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: center; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 16px; }
+    .ktile { width: 60px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #2a2620, #1a1712); color: rgba(232,213,174,.55); border: 2px dashed rgba(185,143,82,.45); border-radius: 4px; font-family: var(--display); }
     .ktile span { font-size: 24px; font-weight: 700; line-height: 1; }
-    .ktile small { font-size: 8px; letter-spacing: .12em; text-transform: uppercase; margin-top: 4px; }
+    .ktile small { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
     .ktile.have { background: linear-gradient(180deg, #d9cdb1, #bfb296); color: #1a1206; border: 2px solid #1a1206; outline: 2px solid var(--gold); outline-offset: 1px; box-shadow: 0 0 22px rgba(246,178,60,.4); }
-    .tiles-note { font-size: 13.5px; font-style: italic; color: var(--ash); line-height: 1.45; }
-    .rank-box { background: rgba(246,178,60,.06); border: 1px solid rgba(246,178,60,.25); border-radius: 10px; padding: 16px; text-align: center; }
-    .rank-lbl { font-family: var(--display); font-size: 9px; letter-spacing: .3em; text-transform: uppercase; color: var(--ash-dim); }
-    .rank { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold-hi); margin: 6px 0 4px; }
-    .rank-sub { font-size: 12.5px; font-style: italic; color: var(--ash); }
+    .tiles-note { font-size: 15px; color: var(--pp-text); line-height: 1.45; }
+    .rank-box { background: rgba(246,178,60,.07); border: 1px solid rgba(246,178,60,.35); border-radius: 10px; padding: 16px; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+    .rank-lbl { font-family: var(--display); font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--pp-soft); }
+    .rank { font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--gold-hi); margin: 6px 0 4px; }
+    .rank-sub { font-size: 14.5px; font-style: italic; color: var(--pp-text); line-height: 1.4; }
+    .rank-next { display: inline-block; margin-top: 8px; padding: 10px 6px; font-family: var(--display); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-hi); text-decoration: underline; text-underline-offset: 4px; }
+    .rank-next[hidden] { display: none; }
     .cert-box { display: flex; align-items: center; justify-content: space-between; gap: 18px; background: linear-gradient(180deg, rgba(40,32,18,.6), rgba(16,12,6,.6)); border: 1px solid rgba(246,178,60,.35); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
     .cert-box[hidden] { display: none; }
-    .cert-box h3 { font-family: var(--display); font-size: 16px; color: var(--gold-hi); margin-bottom: 4px; }
-    .cert-box p { font-size: 14px; font-style: italic; color: var(--ash); line-height: 1.45; }
-    .btn-cert { flex: none; padding: 12px 18px; font-family: var(--display); font-weight: 700; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
-    .next-slot { display: flex; align-items: center; gap: 16px; border: 1px dashed rgba(53,207,127,.3); border-radius: 10px; padding: 14px 18px; margin-bottom: 4px; opacity: .8; }
+    .cert-box h3 { font-family: var(--display); font-size: 17px; color: var(--gold-hi); margin-bottom: 4px; }
+    .cert-box p { font-size: 15px; font-style: italic; color: var(--pp-text); line-height: 1.45; }
+    .btn-cert { flex: none; min-height: 44px; padding: 13px 20px; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
+    .next-slot { display: flex; align-items: center; gap: 16px; border: 1px dashed rgba(53,207,127,.4); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; }
     .next-slot .stamp-name { color: var(--ivory); }
-    @media (max-width: 640px) { .p-row { grid-template-columns: 1fr; } .cert-box { flex-direction: column; align-items: stretch; text-align: center; } }
+    .next-num { font-size: 15px; letter-spacing: .06em; white-space: nowrap; }
+    .next-status { font-size: 15px; font-style: italic; color: var(--pp-soft); margin-top: 3px; line-height: 1.4; }
 
     /* a sealed slot reads as an empty space waiting for ink */
-    .stamp-slot:not(.unlocked) .stamp-icon { filter: grayscale(1); opacity: .28; }
-    .stamp-slot:not(.unlocked) .stamp-name { color: var(--ash-dim); }
+    .stamp-slot:not(.unlocked) .stamp-icon { filter: grayscale(1); opacity: .35; }
+    .stamp-slot:not(.unlocked) .stamp-name { color: var(--pp-text); }
     .stamp-slot.unlocked .stamp-num { opacity: 1; }
     .stamp-slot.unlocked .stamp-status { color: var(--gold-hi); }
-    .stamp-date { display: block; font-family: var(--display); font-size: 9px; letter-spacing: .14em; color: var(--brass); margin-top: 5px; min-height: 1px; }
+    .stamp-date { display: block; font-family: var(--display); font-size: 12px; letter-spacing: .1em; color: var(--brass-hi); margin-top: 5px; min-height: 1px; }
 
     /* the press: a stamp landing on the page for the first time */
     @keyframes stampPress {
@@ -230,8 +295,22 @@ import Layout from '../layouts/Layout.astro';
       .stamp-slot.just-earned .stamp-inner { animation: none; }
     }
 
+    @media (max-width: 720px) {
+      .howto-steps { grid-template-columns: 1fr; gap: 14px; }
+      .p-row { grid-template-columns: 1fr; }
+      .cert-box { flex-direction: column; align-items: stretch; text-align: center; }
+    }
     @media (max-width: 600px) {
-      .p-stats { grid-template-columns: 1fr; }
+      .passport-book { padding: 22px 16px; }
+      .howto { padding: 18px 16px 16px; }
+      .howto-cta { flex-direction: column; align-items: stretch; }
+      .p-stats { grid-template-columns: 1fr; gap: 14px; }
+      .tiles-row { grid-template-columns: auto auto; }
+      .tiles-note { grid-column: 1 / -1; }
+      .stamps-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 400px) {
+      .btn-gold, .btn-vault, .btn-ghost { letter-spacing: .06em; padding-left: 14px; padding-right: 14px; }
     }
   </style>
 
@@ -263,34 +342,68 @@ import Layout from '../layouts/Layout.astro';
         if (!when) return;
         earned++; puzzles += PUZZLES[act];
         slot.classList.add('unlocked');
-        slot.querySelector('.stamp-status').textContent = 'Cracked';
-        slot.querySelector('.stamp-date').textContent = String(when);
+        var st = slot.querySelector('.stamp-status'); st.textContent = '';
+        var tick = document.createElement('span'); tick.setAttribute('aria-hidden', 'true'); tick.textContent = '✔ ';
+        st.appendChild(tick); st.appendChild(document.createTextNode('Cracked'));
+        slot.querySelector('.stamp-date').textContent = 'Stamped ' + String(when);
         if (seen.indexOf(act) === -1) { fresh.push(act); slot.classList.add('just-earned'); }
       });
 
       var pages = story.filter(function (n) { return typeof n === 'number'; }).length;
       document.getElementById('unlockedPuzzles').textContent = String(puzzles);
-      document.getElementById('stampsCount').textContent = earned + ' / 4';
+      document.getElementById('stampsInline').textContent = earned + ' of 4';
       document.getElementById('storyPages').textContent = pages + ' / 9';
+      // the counters only appear once there is something to count
+      var stats = document.getElementById('stats'), pagesStat = document.getElementById('pagesStat');
+      if (puzzles > 0 || pages > 0) { stats.hidden = false; if (pages > 0) pagesStat.hidden = false; else stats.classList.add('one'); }
 
       // key-tiles (from the painted vault's two games) and the standing
       var tiles = read('ps_tiles_v1', {}) || {};
-      ['II', 'III'].forEach(function (k) { if (tiles[k]) document.getElementById('tile-' + k).classList.add('have'); });
+      ['II', 'III'].forEach(function (k) {
+        var t = document.getElementById('tile-' + k);
+        if (tiles[k]) { t.classList.add('have'); t.querySelector('span').textContent = t.getAttribute('data-digit'); }
+      });
       var both = tiles.II && tiles.III;
       document.getElementById('tilesNote').textContent = both
-        ? 'Both key-tiles recovered — the Keeper’s Mark now seals your certificate.'
-        : (tiles.II || tiles.III) ? 'One key-tile recovered. The other still waits in the vaults.'
-        : 'Two key-tiles wait in the vaults — one in the library’s dark, one inside a locked chest.';
+        ? 'Both key-tiles recovered. The Keeper’s Mark now seals your certificate.'
+        : (tiles.II || tiles.III) ? 'One key-tile recovered. The other is still hidden inside the vault: beat the Keeper’s other little game to collect it, and the Keeper’s Mark will seal your certificate.'
+        : 'Two key-tiles are hidden inside the vault: one in the library’s dark, one in a locked chest. Beat the Keeper’s two little games to collect them. Hold both and the Keeper’s Mark seals your certificate.';
       // only the EARNED title is ever shown; unearned names stay unwritten
       var RANK = [
-        ['Visitor', 'Crack the first vault to earn a title.'],
-        ['Apprentice', 'One door opened. The Keeper has noticed.'],
-        ['Solver', 'Two doors. You read the letter, and it read you.'],
-        ['Vault Cracker', 'Three words, three doors. The vault is yours.'],
-        ['The Keeper’s Equal', 'You found what was never lit.'],
+        ['Visitor', 'Crack the first vault to earn a title.', '', '/'],
+        ['Apprentice', 'One door opened. The Keeper has noticed.', 'Type the second word →', '/'],
+        ['Solver', 'Two doors. You read the letter, and it read you.', 'Type the third word →', '/'],
+        ['Vault Cracker', 'Three words, three doors. The vault is yours.', 'Back to the vaults →', '/vault'],
+        ['The Keeper’s Equal', 'You found what was never lit.', 'Back to the vaults →', '/vault'],
       ][Math.min(earned, 4)];
       document.getElementById('rankName').textContent = RANK[0];
       document.getElementById('rankSub').textContent = RANK[1];
+      var nx = document.getElementById('rankNext');
+      if (RANK[2]) { nx.textContent = RANK[2]; nx.href = RANK[3]; nx.hidden = false; }
+
+      // the how-to shrinks once the passport has ink in it, and goes once the three acts are done
+      var NEXT_ACT = { 1: 'Act II', 2: 'Act III' };
+      var cta = document.getElementById('ctaBtn'), alt = document.getElementById('ctaAlt');
+      if (earned === 0) {
+        cta.textContent = 'Type your first word →'; cta.href = '/';
+        alt.textContent = 'Or look inside the vaults first (no word needed)'; alt.href = '/vault';
+      } else if (earned < 3) {
+        cta.textContent = 'Type the next word →'; cta.href = '/';
+        alt.textContent = 'Return to the vaults'; alt.href = '/vault';
+        document.getElementById('howtoSteps').hidden = true;
+        var hn = document.getElementById('howtoNext');
+        hn.textContent = 'Next: decode ' + NEXT_ACT[earned] + '’s word in the book, then type it into the vault door on the homepage.';
+        hn.hidden = false;
+        document.getElementById('howtoBtn').textContent = 'Type the next word →';
+        // a stamp proves the book is in hand: no need to sell it again
+        document.querySelector('.btn-ghost').hidden = true;
+        document.querySelector('.howto-foot').hidden = true;
+      } else {
+        cta.textContent = 'Return to the vaults →'; cta.href = '/vault';
+        alt.textContent = 'Type a word again'; alt.href = '/';
+        document.getElementById('howto').hidden = true;
+      }
+
       if (earned > 0) {
         var box = document.getElementById('certBox'); box.hidden = false;
         document.getElementById('certBtn').addEventListener('click', function () {
