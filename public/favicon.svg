@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs><clipPath id="p"><rect width="100" height="100" rx="22"/></clipPath></defs>
+  <g clip-path="url(#p)">
+    <rect width="100" height="100" rx="22" fill="#0e0d0b"/>
+    <rect x="2" y="2" width="96" height="96" rx="20" fill="none" stroke="#785c32" stroke-width="1.4"/>
+    <g fill="none" stroke="#967440" stroke-width="4.2">
+      <circle cx="50" cy="50" r="27"/>
+      <circle cx="50" cy="50" r="7.6" stroke-width="3.4"/>
+      <path d="M50 42.4V23M50 57.6V77M42.4 50H23M57.6 50H77M55.4 44.6l13.7-13.7M44.6 55.4L30.9 69.1M44.6 44.6L30.9 30.9M55.4 55.4l13.7 13.7" stroke-width="3.4"/>
+    </g>
+    <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M53-2 46 17 56 31 45 47 55 61 44 76 54 90 49 102" stroke="#ff8c14" stroke-width="13" opacity=".22"/>
+      <path d="M53-2 46 17 56 31 45 47 55 61 44 76 54 90 49 102" stroke="#ffa028" stroke-width="8" opacity=".45"/>
+      <path d="M53-2 46 17 56 31 45 47 55 61 44 76 54 90 49 102" stroke="#ffc850" stroke-width="5"/>
+      <path d="M53-2 46 17 56 31 45 47 55 61 44 76 54 90 49 102" stroke="#ffe8a8" stroke-width="2.6"/>
+      <path d="M53-2 46 17 56 31 45 47 55 61 44 76 54 90 49 102" stroke="#fffaea" stroke-width="1"/>
+    </g>
+  </g>
+</svg>
