@@ -5,6 +5,7 @@ export const prerender = false;
 
 import crypto from 'node:crypto';
 import { notify, solverTag, country } from '../../lib/keeper-telegram.js';
+import { rewardUrl } from './reward.js';
 
 // Salt lives ONLY in the VAULT_SALT env var (site/.env locally — gitignored;
 // a Vercel env var in production). It must NEVER be committed: without it the
@@ -58,7 +59,7 @@ export async function POST({ request, clientAddress }) {
       ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens`
       : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}`;
     await notify(line);
-    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
+    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
   }
   await notify(`\u274C ${tag} \u00b7 ${geo} \u00b7 guessed \u201c${w}\u201d`);
   return json({ ok: false });

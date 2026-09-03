@@ -8,7 +8,10 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: 'https://puzzlesecret.com',
   server: { host: true },
-  adapter: vercel(),
+  adapter: vercel({
+    // the reward PDFs ride inside the function bundle; /api/reward reads them from rewards-src/
+    includeFiles: ['rewards-src/PuzzleSecret-Vault-I-50-Easy.pdf', 'rewards-src/PuzzleSecret-Vault-II-100-Medium.pdf', 'rewards-src/PuzzleSecret-Vault-III-200-Hard.pdf', 'rewards-src/PuzzleSecret-Secret-Vault-20-Master.pdf'],
+  }),
   integrations: [
     sitemap({
       // /vault is the surprise — keep it out of search results so the reveal

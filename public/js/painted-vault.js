@@ -102,12 +102,17 @@
     },
   };
   const ORDER = ['I', 'II', 'III', 'IV'];
-  const DOORS = { door2: { act: 'II', kicker: 'THE SECOND DOOR', vo: 'door2' }, door3: { act: 'III', kicker: 'THE THIRD DOOR', vo: 'door3' }, fourth: { act: 'IV', kicker: 'THE FOURTH SECRET', vo: 'fourth' } };
+  const DOORS = { first: { act: 'I', kicker: 'THE FIRST WORD', vo: 'first' }, door2: { act: 'II', kicker: 'THE SECOND DOOR', vo: 'door2' }, door3: { act: 'III', kicker: 'THE THIRD DOOR', vo: 'door3' }, fourth: { act: 'IV', kicker: 'THE FOURTH SECRET', vo: 'fourth' } };
+  const DOOR_FOR_ACT = { I: 'first', II: 'door2', III: 'door3', IV: 'fourth' };
+  const REWARD_KEY = 'ps_rewards_v1';
+  function rewardsHeld() { return store.get(REWARD_KEY, {}) || {}; }
+  function holdReward(act, url) { if (!url) return; const r = rewardsHeld(); r[act] = url; store.set(REWARD_KEY, r); }
 
   // The Keeper's spoken lines (recorded) — same map the 3D crawl uses. Captions ship in page
   // source, so none of them may ever contain an answer word.
   const VO = {
     entry:    { file: '/audio/vo/vo_vault1_entry.wav',   text: 'So… you found my first word. Take what the first door guarded.' },
+    first:    { file: '/audio/vo/vo_scene0_entry.wav',   text: 'Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening.' },
     reward1:  { file: '/audio/vo/vo_vault1_reward.wav',  text: 'Fifty puzzles, yours — no word, no name, no price. The first door is open.' },
     door2:    { file: '/audio/vo/vo_vault2_door.wav',    text: "The fire took my second plate. But you read my letter anyway… didn't you? Say the word." },
     libentry: { file: '/audio/vo/vo_lib_entry.wav',      text: 'My library. Every puzzle I ever loved… and a hundred more, waiting at the stand.' },
@@ -163,10 +168,10 @@
   const FINAL_LETTER = VO.pagefinal.text + ' Keep the habit. I have hidden another chart, another seam, another door. The Corsair’s Chart is already being drawn, and it will not be kinder than this one. — The Keeper';
   const NUM_WORD = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
   const REWARDS = {
-    I:   { kicker: "THE KEEPER'S FIRST GIFT", title: 'FIFTY PUZZLES, YOURS', text: "No word, no name, no price. Fifty easy puzzles from the Keeper's own desk — the first door is open.", btn: 'Download the 50 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf', vo: 'reward1' },
-    II:  { kicker: 'THE SECOND GIFT', title: 'ONE HUNDRED MORE', text: 'A hundred medium puzzles, bound for the readers of my letter. The library approves of you.', btn: 'Download the 100 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf', vo: 'reward2' },
-    III: { kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON', text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.', btn: 'Download the 200 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf', vo: 'finale', ask: true },
-    IV:  { kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES', text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.", btn: 'Download the 20 Master Puzzles (PDF)', file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf', vo: 'sanctum', ask: true },
+    I:   { kicker: "THE KEEPER'S FIRST GIFT", title: 'FIFTY PUZZLES, YOURS', text: "No name, no price. Fifty easy puzzles from the Keeper's own desk — the first door is open.", btn: 'Download the 50 puzzles (PDF)', vo: 'reward1' },
+    II:  { kicker: 'THE SECOND GIFT', title: 'ONE HUNDRED MORE', text: 'A hundred medium puzzles, bound for the readers of my letter. The library approves of you.', btn: 'Download the 100 puzzles (PDF)', vo: 'reward2' },
+    III: { kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON', text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.', btn: 'Download the 200 puzzles (PDF)', vo: 'finale', ask: true },
+    IV:  { kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES', text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.", btn: 'Download the 20 Master Puzzles (PDF)', vo: 'sanctum', ask: true },
   };
   // The acrostic, as SEPARATE capitals — the answer never exists as a string in this file.
   const ACROSTIC = [
@@ -528,9 +533,11 @@
   /* ---- rewards (shared #reward panel) ---- */
   const rewardsGiven = {};
   function openReward(act) {
+    const held = rewardsHeld()[act];
+    if (!held) { caption(act === 'I' ? 'Speak my first word, and the gift is yours.' : 'Speak this vault’s word first — the gift is kept for those who did.', 5200); openWordbox(DOOR_FOR_ACT[act]); return; }
     const RW = REWARDS[act];
     $('rwKicker').textContent = RW.kicker; $('rwTitle').textContent = RW.title; $('rwText').textContent = RW.text;
-    const btn = $('rwBtn'); btn.href = RW.file; btn.textContent = RW.btn;
+    const btn = $('rwBtn'); btn.href = held; btn.textContent = RW.btn;
     const ask = $('rwAsk'); if (ask) ask.hidden = !RW.ask;
     $('reward').hidden = false;
     burstConfetti(); playUnlock();
@@ -598,11 +605,13 @@
     if (j.error === 'slow_down') { wbMsg.textContent = 'Too many tries at once. Take a breath, then speak again.'; return; }
     if (j.ok) {
       const act = j.act;
+      holdReward(act, j.rewardUrl);
       if (act === 'IV') { fourthWord = wbWord; try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); } catch (e) {} }
       if (act !== DOORS[wbTarget].act) wbMsg.textContent = 'A true word — but for another door. I will open that one.';
       closeWordbox(); markDoor(act); stampVault(act); renderStrip();
       playBoom(); burstConfetti();
-      if (act === 'IV') { caption('The floor answers. A stair, cut long before this vault was sealed — go down.', 6000); setTimeout(() => enterRoom('IV'), 1400); }
+      if (act === 'I') { setTimeout(() => openReward('I'), 500); }
+      else if (act === 'IV') { caption('The floor answers. A stair, cut long before this vault was sealed — go down.', 6000); setTimeout(() => enterRoom('IV'), 1400); }
       else { playCreak(1.6); setTimeout(() => enterRoom(act), 900); }
     } else {
       wbFails++; playThud();

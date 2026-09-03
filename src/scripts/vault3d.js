@@ -1591,6 +1591,7 @@ document.getElementById('muteBtn').addEventListener('click', () => setMuted(!mut
 // visitor's view-source. (The canon "Clever. Yes…" lines live only in the book/VO doc.)
 const VO = {
   entry:   { file: '/audio/vo/vo_vault1_entry.wav',   text: 'So… you found my first word. Take what the first door guarded.' },
+  first:   { file: '/audio/vo/vo_scene0_entry.wav',   text: 'Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening.' },
   reward1: { file: '/audio/vo/vo_vault1_reward.wav',  text: 'Fifty puzzles, yours — no word, no name, no price. The first door is open.' },
   door2:   { file: '/audio/vo/vo_vault2_door.wav',    text: "The fire took my second plate. But you read my letter anyway… didn't you? Say the word." },
   libentry:{ file: '/audio/vo/vo_lib_entry.wav',      text: 'My library. Every puzzle I ever loved… and a hundred more, waiting at the stand.' },
@@ -1851,24 +1852,24 @@ function walkToward(cx, cy) {
 const REWARDS = {
   I: {
     kicker: "THE KEEPER'S FIRST GIFT", title: 'FIFTY PUZZLES, YOURS',
-    text: "No word, no name, no price. Fifty easy puzzles from the Keeper's own desk — the first door is open.",
-    btn: 'Download the 50 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-I-50-Easy.pdf', vo: 'reward1',
+    text: "No name, no price. Fifty easy puzzles from the Keeper's own desk — the first door is open.",
+    btn: 'Download the 50 puzzles (PDF)', vo: 'reward1',
   },
   II: {
     kicker: 'THE SECOND GIFT', title: 'ONE HUNDRED MORE',
     text: 'A hundred medium puzzles, bound for the readers of my letter. The library approves of you.',
-    btn: 'Download the 100 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-II-100-Medium.pdf', vo: 'reward2',
+    btn: 'Download the 100 puzzles (PDF)', vo: 'reward2',
   },
   III: {
     kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON',
     text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.',
-    btn: 'Download the 200 puzzles (PDF)', file: '/rewards/PuzzleSecret-Vault-III-200-Hard.pdf', vo: 'finale',
+    btn: 'Download the 200 puzzles (PDF)', vo: 'finale',
     ask: true,   // they finished the hard act - the one moment worth asking
   },
   IV: {
     kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES',
     text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.",
-    btn: 'Download the 20 Master Puzzles (PDF)', file: '/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf', vo: 'fourth',
+    btn: 'Download the 20 Master Puzzles (PDF)', vo: 'fourth',
     ask: true,   // found the hidden fourth word - the most invested solver there is
   },
 };
@@ -1938,12 +1939,23 @@ function dimPage(no) {
 pagesFound.forEach((n) => { if (typeof n === 'number') dimPage(n); });
 document.getElementById('pageClose').addEventListener('click', () => { pageviewEl.hidden = true; });
 
+/* the gifts' addresses — handed out by /api/unlock for a true word, kept in this browser only */
+const REWARD_KEY = 'ps_rewards_v1';
+function rewardsHeld() { try { const v = JSON.parse(localStorage.getItem(REWARD_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
+function holdReward(act, url) { if (!url) return; try { const r = rewardsHeld(); r[act] = url; localStorage.setItem(REWARD_KEY, JSON.stringify(r)); } catch (e) {} }
+const DOOR_FOR_ACT = { I: 'first', II: 'door2', III: 'door3', IV: 'fourth' };
 function openReward(act) {
+  const held = rewardsHeld()[act];
+  if (!held) {   // no word spoken in this browser: the gift waits until it is
+    showCaption(act === 'I' ? 'Speak my first word, and the gift is yours.' : 'Speak this vault’s word first — the gift is kept for those who did.', 5200);
+    openWordbox(DOOR_FOR_ACT[act]);
+    return;
+  }
   const RW = REWARDS[act];
   document.getElementById('rwKicker').textContent = RW.kicker;
   document.getElementById('rwTitle').textContent = RW.title;
   document.getElementById('rwText').textContent = RW.text;
-  const b = document.getElementById('rwBtn'); b.href = RW.file; b.textContent = RW.btn;
+  const b = document.getElementById('rwBtn'); b.href = held; b.textContent = RW.btn;
   document.getElementById('rwAsk').hidden = !RW.ask;
   rewardEl.hidden = false;
   burstConfetti();
@@ -1976,6 +1988,9 @@ const DOORS = {
   // The fourth secret has no door object any more -- lanternSuccess() opens the FLOOR.
   fourth: { act: 'IV', stand: { x: V3.minX + 1.2, z: -24.8 }, inside: { x: AX, z: -28.5 },
            kicker: 'THE FOURTH SECRET', vo: 'fourth', isOpen: () => door4Open, setOpen: () => { door4Open = true; }, obj: null },
+  // the first word, asked for at the desk when a visitor arrived without speaking it at the door
+  first:  { act: 'I', stand: { x: 0, z: 2.0 }, inside: { x: 0, z: 2.0 },
+           kicker: 'THE FIRST WORD', vo: 'first', isOpen: () => false, setOpen: () => {}, obj: null },
 };
 const doorAnims = [];
 function openVaultDoor(key) {
@@ -2046,8 +2061,10 @@ async function submitWord() {
   wbBusy = false; wbSubmit.textContent = 'Open the door';
   if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
   const D = DOORS[wbTarget];
+  if (j.ok) holdReward(j.act, j.rewardUrl);       // any true word banks its gift
   if (j.ok && j.act === D.act) {
     const key = wbTarget;
+    if (key === 'first') { closeWordbox(); openReward('I'); return; }
     if (key === 'fourth') {
       fourthWord = wbWord;                              // in-memory proof for this session
       try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); } catch (e) {}
@@ -2057,7 +2074,7 @@ async function submitWord() {
     else openVaultDoor(key);
   } else if (j.ok) {
     playThud();
-    wbMsg.textContent = 'A true word… but it belongs to a different door.';
+    wbMsg.textContent = 'A true word… but it belongs to a different door. Its gift is banked.';
     wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
   } else {
     wbFails++;

@@ -28,7 +28,7 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-status">Not yet cracked</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="/rewards/PuzzleSecret-Vault-I-50-Easy.pdf" download class="stamp-dl">50 Easy PDF ⬇</a>
+            <a href="#" download class="stamp-dl" data-act="I" hidden>50 Easy PDF ⬇</a><span class="stamp-locked" data-act="I">Speak its word to fetch the 50</span>
           </div>
 
           <!-- Stamp 2 -->
@@ -40,7 +40,7 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-status">Not yet cracked</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="/rewards/PuzzleSecret-Vault-II-100-Medium.pdf" download class="stamp-dl">100 Med PDF ⬇</a>
+            <a href="#" download class="stamp-dl" data-act="II" hidden>100 Med PDF ⬇</a><span class="stamp-locked" data-act="II">Speak its word to fetch the 100</span>
           </div>
 
           <!-- Stamp 3 -->
@@ -52,7 +52,7 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-status">Not yet cracked</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="/rewards/PuzzleSecret-Vault-III-200-Hard.pdf" download class="stamp-dl">200 Hard PDF ⬇</a>
+            <a href="#" download class="stamp-dl" data-act="III" hidden>200 Hard PDF ⬇</a><span class="stamp-locked" data-act="III">Speak its word to fetch the 200</span>
           </div>
 
           <!-- Stamp 4 (Secret) -->
@@ -64,7 +64,7 @@ import Layout from '../layouts/Layout.astro';
               <div class="stamp-status">Never announced</div>
               <span class="stamp-date"></span>
             </div>
-            <a href="/rewards/PuzzleSecret-Secret-Vault-20-Master.pdf" download class="stamp-dl">20 Master PDF ⬇</a>
+            <a href="#" download class="stamp-dl" data-act="IV" hidden>20 Master PDF ⬇</a><span class="stamp-locked" data-act="IV">Never announced</span>
           </div>
         </div>
 
@@ -117,8 +117,14 @@ import Layout from '../layouts/Layout.astro';
         </div>
 
         <p class="p-note">
-          The puzzle packs are the Keeper’s gifts, open to anyone. The stamps, the key-tiles and
-          the certificate are yours alone — the record of what <em>you</em> cracked.
+          Every gift is handed over the moment you speak its word — and only then. The stamps, the
+          key-tiles and the certificate are the record of what <em>you</em> cracked.
+        </p>
+        <p class="p-note p-warn">
+          <strong>This passport lives in this browser only.</strong> Nothing is sent to us, so we cannot
+          restore it: if you clear this browser’s cookies or site data, or open the site on another
+          device, the stamps and downloads here will be gone. Speak your words again at the vault
+          door and they come straight back.
         </p>
       </div>
 
@@ -179,6 +185,11 @@ import Layout from '../layouts/Layout.astro';
     .btn-vault { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; box-shadow: 0 6px 20px rgba(246,178,60,.3); }
 
     .p-note { margin-top: 18px; text-align: center; font-size: 13px; font-style: italic; color: var(--ash-dim); line-height: 1.5; }
+    .p-warn { margin-top: 10px; padding: 12px 14px; border: 1px dashed rgba(246,178,60,.35); border-radius: 8px; color: var(--ash); font-style: normal; }
+    .p-warn strong { color: var(--gold-hi); }
+    .stamp-dl[hidden] { display: none; }
+    .stamp-locked { display: block; font-size: 12px; font-style: italic; color: var(--ash-dim); padding: 8px 4px; }
+    .stamp-locked[hidden] { display: none; }
 
     .p-row { display: grid; grid-template-columns: 1fr 220px; gap: 18px; margin-bottom: 20px; }
     .tiles-row { display: grid; grid-template-columns: auto auto 1fr; gap: 14px; align-items: center; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.05); border-radius: 10px; padding: 16px; }
@@ -238,6 +249,12 @@ import Layout from '../layouts/Layout.astro';
       var PUZZLES = { I: 50, II: 100, III: 200, IV: 20 };
       var ACTS = ['I', 'II', 'III', 'IV'];
       var earned = 0, puzzles = 0, fresh = [];
+      // the gifts' addresses, handed out only for a true word — a download shows only when held
+      var held = read('ps_rewards_v1', {}) || {};
+      ACTS.forEach(function (act) {
+        var a = document.querySelector('.stamp-dl[data-act="' + act + '"]'), l = document.querySelector('.stamp-locked[data-act="' + act + '"]');
+        if (held[act]) { a.href = held[act]; a.hidden = false; if (l) l.hidden = true; }
+      });
 
       ACTS.forEach(function (act, i) {
         var slot = document.getElementById('slot-v' + (i + 1));

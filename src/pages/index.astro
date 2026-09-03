@@ -738,6 +738,8 @@ const HOME_LD = {
       }
       function onCorrect(data) {
         misses = 0;
+        // the gift's address — handed out only for a true word, kept in this browser
+        try { const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { r[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(r)); } } catch (e) {}
         const form = document.getElementById('tileForm');
         slot?.querySelectorAll('.entry-hint').forEach((h) => { h.style.display = 'none'; });
         if (form) form.style.display = 'none';
