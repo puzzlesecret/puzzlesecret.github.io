@@ -83,7 +83,21 @@
         { id: 'p9', page: 9, x: 20, y: 85, w: 7, h: 6 },
       ],
     },
-    IV: { name: 'VAULT IV — THE SECRET SANCTUM', art: null, amb: 'treasure', entry: 'sanctum', lights: [], hots: [] },
+    IV: {
+      name: 'VAULT IV — THE SECRET SANCTUM', art: '/art/rooms/sanctum.webp', amb: 'sanctum', entry: 'sanctum',
+      lights: [
+        { x: 50, y: 33, r: 24, c: '255,190,90', a: 0.6, k: 1 },      // the lamp, lit
+        { x: 50, y: 57, r: 11, c: '255,214,130', a: 0.45, k: 2 },    // the tome
+      ],
+      hots: [
+        { id: 'tome', x: 50, y: 57, w: 11, h: 11, label: 'The master reward', act: 'reward', arg: 'IV' },
+        { id: 'lamp', x: 50, y: 33, w: 8, h: 16, label: 'The lamp, lit', act: 'say', arg: 'lamp' },
+        { id: 'plaque', x: 19, y: 41, w: 17, h: 40, label: "The Keeper's register", act: 'register' },
+        { id: 'parch', x: 81, y: 40, w: 15, h: 42, label: "The Keeper's three letters", act: 'letters' },
+        { id: 'easel', x: 33, y: 63, w: 20, h: 38, label: 'Something half-covered on an easel', act: 'say', arg: 'chart' },
+        { id: 'stair4', x: 65, y: 55, w: 12, h: 34, label: 'The stair, back up', act: 'stair' },
+      ],
+    },
   };
   const ORDER = ['I', 'II', 'III', 'IV'];
   const DOORS = { door2: { act: 'II', kicker: 'THE SECOND DOOR', vo: 'door2' }, door3: { act: 'III', kicker: 'THE THIRD DOOR', vo: 'door3' }, fourth: { act: 'IV', kicker: 'THE FOURTH SECRET', vo: 'fourth' } };
@@ -136,6 +150,7 @@
     stair: 'A stair, cut long before this vault was sealed. Go down — and come back up when you please.',
     chart: "Under the cloth, a chart still being drawn — The Corsair's Chart. Volume II. The hunt is not over.",
     letters: 'The secret you cracked, laid bare: one gilded letter at the start of every thought. Read them down.',
+    lamp: 'What was never lit, burning. You did that.',
     registerMine: 'Your mark is on this wall.',
     tileII: "A key-tile — one shaded square from the Keeper's own set. One of two.",
     tileIII: 'The second key-tile. Two of two — the Keeper’s Mark is yours, on your certificate.',
@@ -453,12 +468,8 @@
     setTimeout(() => {
       room = key;
       els.pvTitle.textContent = R.name;
-      els.pvSanctum.hidden = key !== 'IV';
-      els.pvHots.hidden = key === 'IV';
-      els.pvMotes.hidden = key === 'IV';
-      if (R.art) { els.pvArt.hidden = false; els.pvArt.src = R.art; } else { els.pvArt.hidden = true; }
+      els.pvArt.src = R.art;
       buildLights(R); buildHots(R, key); renderStrip();
-      if (key === 'IV') buildSanctum();
       pan = 0; sizeRoom();
       setAmbRoom(key === 'IV' ? 'sanctum' : R.amb);
       els.pvStage.classList.remove('fade');
@@ -505,6 +516,9 @@
       }
       case 'fourth': if (doorOpen('IV')) { enterRoom('IV'); } else openWordbox('fourth'); break;
       case 'game': if (h.arg === 'round') startRound(); else openLock(); break;
+      case 'register': openRegister(); break;
+      case 'letters': openLetters(); break;
+      case 'stair': say('stair', 4000); playCreak(1.2); setTimeout(() => enterRoom('III'), 700); break;
     }
   }
 
@@ -608,7 +622,30 @@
 
   /* ---- the sanctum (Vault IV): a dark room, built in HTML ---- */
   let wallMarks = [], wallCount = 0, wallFetched = false;
-  function buildSanctum() {
+  function openRegister() {
+    let mine = null; try { mine = localStorage.getItem('ps_mark_v1'); } catch (e) {}
+    const G = els.pvGame;
+    G.innerHTML = `
+      <div class="pv-card" role="dialog" aria-label="The Keeper's register">
+        <div class="plaque"><h3>THE KEEPER’S REGISTER</h3><p class="sub">those who found what was never lit</p><div class="marks" id="scMarks"></div><p class="count" id="scCount"></p></div>
+        ${mine ? '<p class="reg-mine">Your mark — <b>' + mine + '</b> — is cut into the stone.</p>' : '<button type="button" class="gold-btn" id="regCarve">Carve your mark</button>'}
+        <button type="button" class="ghost-btn" id="regClose">Step back</button>
+      </div>`;
+    G.hidden = false; drawRegister(); fetchWall();
+    $('regClose').addEventListener('click', () => { G.hidden = true; });
+    const c = $('regCarve'); if (c) c.addEventListener('click', () => { G.hidden = true; openCarvebox(); });
+  }
+  function openLetters() {
+    const G = els.pvGame;
+    G.innerHTML = `
+      <div class="pv-card" role="dialog" aria-label="The Keeper's three letters">
+        <div class="parch"><p class="from">From the Keeper’s three letters</p>${ACROSTIC.map(([c, r]) => `<p><b>${c}</b>${r}</p>`).join('')}<p class="foot">one letter, hidden at the start of every thought</p></div>
+        <button type="button" class="ghost-btn" id="letClose">Set it back</button>
+      </div>`;
+    G.hidden = false; say('letters', 8000);
+    $('letClose').addEventListener('click', () => { G.hidden = true; });
+  }
+  function buildSanctumUnused() {
     const S = els.pvSanctum;
     if (S.dataset.built) { drawRegister(); return; }
     S.dataset.built = '1';

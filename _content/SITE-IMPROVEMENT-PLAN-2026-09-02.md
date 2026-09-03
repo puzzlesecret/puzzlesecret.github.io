@@ -117,6 +117,15 @@ passport, the drawer lists the vaults (painted) and the 3D walk separately.
 `src/components/FlatVault.astro`, inline script: `var want3d = pref === '3d';` →
 `var want3d = pref !== 'painted';`
 
+### Update 2026-09-03 — the Sanctum is painted too
+Dan approved Gemini artwork, so Vault IV now has its own painting (`public/art/rooms/sanctum.webp`,
+1600 px, 66 KB): the lamp, lit, over a pedestal with the glowing tome; the register plaque on the
+left wall; the framed letters on the right; the covered Chart on an easel; the stair back up.
+Generated with Nano Banana in Dan's `dshcorporations@gmail.com` Gemini Pro profile (a first copy
+also exists in `genxaijourney`'s chat); source saved at
+`assets/vault_concepts/vault4_secret_sanctum_v1.jpg`. The HTML sanctum is gone; the register and
+the acrostic open as panels from their painted objects.
+
 ### Not done / ideas parked
 - The "missing 2" easter egg (the cover's number column has no 2 — designer's suggestion).
 - Spot-the-difference / cut-out layers per painting (needs offline alpha cutting).
