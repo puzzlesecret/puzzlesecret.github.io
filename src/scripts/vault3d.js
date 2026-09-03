@@ -2683,7 +2683,7 @@ if (qs.get('wb') === '1') openWordbox(qs.get('wbk') || 'door2');
    lamp in your hand) and the Listening Lock in the treasure room (crack a small chest by
    ear and by eye). Tiles are keepsakes: they open nothing, they prove you were here. Both
    tiles = the Keeper's Mark on the certificate. Stored in ps_tiles_v1, read by /passport.
-   Nothing here may ever contain an answer word or "win/prize/chance" language. */
+   Nothing here may ever contain an answer word or any sweepstakes-style wording. */
 const TILE_KEY = 'ps_tiles_v1';
 function tilesHeld() { try { const v = JSON.parse(localStorage.getItem(TILE_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
 const TILE_SAY = {
