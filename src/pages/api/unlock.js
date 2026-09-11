@@ -18,6 +18,18 @@ const HASHES = {
   '09ebb42c1c790c0df466c2594ed1f9412746e5fd1183f047bf5509bf77042376': { act: 'II', reward: '100 bonus Medium puzzles', tier: 'medium', discount: 20 },
   '14931225a6efb6f746b42dd5dc7d068af053a88cd3bcec24c7d21827e558f72a': { act: 'III', reward: '200 bonus Hard puzzles', tier: 'hard', discount: 30 },
   '7009db01f308f2c18da9b71bfcda568213d322a136fd95b8e5a9da5d2b8c5abe': { act: 'IV', reward: "the Keeper's private epilogue", tier: 'lantern', discount: 0, hidden: true },
+
+  // ── GUEST KEYS ───────────────────────────────────────────────────────────
+  // A guest key opens Vault I for readers of an outlet that printed one of our
+  // puzzles. It is NOT one of the book's four words and never will be: printing
+  // a real answer word would let anyone skip an act of the book, and that secret
+  // is the one thing a buyer cannot get anywhere else. A guest gets the same
+  // vault and the same gift — vault access costs us nothing and a delighted
+  // stranger is a warmer prospect than one who never saw the door.
+  // `guest` is a label only; it changes the Keeper's Telegram line so Dan can
+  // tell WHICH placement sent someone. That is the only attribution this
+  // program has. Add one line per outlet; never reuse a key across two.
+  '179d3b60d2b445d5ef073dfea5ddc3b401fce6779eceed81a11912de85ce03db': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Magazin Mensa (CZ)' },
 };
 
 // An opaque, unguessable proof that SOMEONE solved the fourth word. Returned only on that
@@ -55,9 +67,11 @@ export async function POST({ request, clientAddress }) {
   const tag = solverTag(body && body.vid);
   const geo = country(request);
   if (hit) {
-    const line = hit.act === 'IV'
-      ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens`
-      : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}`;
+    const line = hit.guest
+      ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY \u2014 came in from ${hit.guest}`
+      : hit.act === 'IV'
+        ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens`
+        : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}`;
     await notify(line);
     return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
   }
