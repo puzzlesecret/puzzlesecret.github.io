@@ -45,6 +45,9 @@ paper escape room.
 - [The vault door (home)](https://puzzlesecret.com/): the entry point; enter a decoded word here.
 - [Escape room sudoku explained](https://puzzlesecret.com/escape-room-sudoku-book): the full
   explanation of how a sudoku book can contain an escape room, and how this one works.
+- [How to play sudoku for beginners](https://puzzlesecret.com/how-to-play-sudoku): the one rule,
+  how to find your first certain number, and when to switch from boxes to rows, taught the way a
+  real first-timer learned it on Puzzle 1 of the book.
 - [Play 200 free sudoku puzzles](https://puzzlesecret.com/play): a free browser sudoku arcade,
   200 puzzles, with pencil notes and error checking. No account needed.
 - [Shop](https://puzzlesecret.com/shop): where to buy Volume 1, plus bonus puzzle packs.

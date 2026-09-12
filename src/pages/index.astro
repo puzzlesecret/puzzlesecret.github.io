@@ -10,7 +10,7 @@ const keeperFirstLine =
 // Clean product URL, not a shortener — shorteners strip Amazon Attribution
 // tags, and the old amzn.to link carried a stale search session. tag= is the
 // Associates ID (site links only; NEVER in email or print — Associates ToS).
-const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=genxvsai-20";   // Volume 1, $14.99
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";   // Volume 1, $14.99
 const tiles = 6;
 const volumes = [
   { rn: "I", c: "var(--v1)", rgb: "255,180,72", img: "/art/door-v10.webp", name: "The Keeper's Vault", active: true },
@@ -278,7 +278,7 @@ const HOME_LD = {
           <article class="card card-buy">
             <h3>Don't have it yet?</h3>
             <p><strong>Sudoku with a Secret · Volume 1</strong> — 200 puzzles, 3 vaults, one hidden password. $14.99 in paperback. Or try 200 free puzzles here first.</p>
-            <p class="explain-link">New here? <a href="/escape-room-sudoku-book">Read how a sudoku book can hide an escape room</a> — the whole mechanic, explained.</p>
+            <p class="explain-link">New here? <a href="/escape-room-sudoku-book">Read how a sudoku book can hide an escape room</a> — the whole mechanic, explained. Never done a sudoku? <a href="/how-to-play-sudoku">Start with the one rule</a>.</p>
             <div class="card-actions">
               <a class="btn" href={AMAZON_URL} target="_blank" rel="noopener">Get the book on Amazon ↗</a>
               <a class="btn ghost" href="/play">Play 200 free first</a>

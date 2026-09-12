@@ -7,7 +7,7 @@
       "permanent": true
     },
     {
-      "source": "/(escape-room-sudoku-book|faq|hints|newsletter|passport|play|privacy|shop|terms|the-keeper|unsubscribed)",
+      "source": "/(escape-room-sudoku-book|faq|hints|how-to-play-sudoku|newsletter|passport|play|privacy|shop|terms|the-keeper|unsubscribed)",
       "destination": "/$1/",
       "permanent": true
     }

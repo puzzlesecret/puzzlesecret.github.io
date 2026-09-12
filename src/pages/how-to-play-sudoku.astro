@@ -1,0 +1,161 @@
+---
+import Layout from '../layouts/Layout.astro';
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
+
+// The beginner page. Every other page assumes the reader can already solve a sudoku;
+// this one is for the person who has never done one. It is also the destination for the
+// "how to play" Pinterest pins and the home of the long lesson video (real footage, Sept 2026,
+// Dan teaching his uncle on Puzzle 1). Set YOUTUBE_ID once the PuzzleSecret channel has the upload.
+const YOUTUBE_ID = "";
+const PAGE_TITLE = "How to Play Sudoku for Beginners — The One Rule, Your First Number, Then Puzzle 1";
+const PAGE_DESC = "Sudoku in one rule: 1 to 9 in every row, column and 3×3 box, no repeats. Learn how to find your first certain number, why you never write a guess, and when to switch from boxes to rows — taught the way a first-timer actually learned it.";
+
+const HOWTO_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HowTo",
+      "name": "How to play Sudoku for beginners",
+      "description": PAGE_DESC,
+      "totalTime": "PT10M",
+      "supply": [{ "@type": "HowToSupply", "name": "A pencil with an eraser" }, { "@type": "HowToSupply", "name": "An easy sudoku puzzle" }],
+      "step": [
+        { "@type": "HowToStep", "name": "Learn the one rule", "text": "Every row, every column and every 3×3 box must contain the digits 1 to 9 exactly once. Nothing else." },
+        { "@type": "HowToStep", "name": "Pick the fullest box", "text": "Start with a 3×3 box that already has six or seven numbers in it. Fewer gaps means fewer possibilities." },
+        { "@type": "HowToStep", "name": "Find the number with only one place to go", "text": "Take a missing digit. Look along each empty cell's row and column; if that digit already appears there, the cell is out. When only one cell is left, that is where the digit goes." },
+        { "@type": "HowToStep", "name": "Do not write it until it is certain", "text": "If a digit could go in two cells, leave it and try another digit. A pencilled guess turns into an error three moves later." },
+        { "@type": "HowToStep", "name": "Switch from boxes to rows", "text": "When a box stalls, look at a row or column with only one or two gaps instead. Every number you place removes possibilities somewhere else." },
+        { "@type": "HowToStep", "name": "Check the last number", "text": "When a box, row or column has one gap left, the missing digit must fit in every direction. If it does not, something earlier was wrong." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "What is the one rule of Sudoku?", "acceptedAnswer": { "@type": "Answer", "text": "Fill the grid so that every row, every column and every 3×3 box contains the digits 1 to 9 exactly once. There is no arithmetic and no adding up; it is a placement puzzle." } },
+        { "@type": "Question", "name": "Where do I start on a Sudoku?", "acceptedAnswer": { "@type": "Answer", "text": "Start with the 3×3 box that has the fewest empty cells. Then take one missing digit at a time and ask where in that box it could legally go. Place only the digits that have exactly one possible cell." } },
+        { "@type": "Question", "name": "Should I guess in Sudoku?", "acceptedAnswer": { "@type": "Answer", "text": "No. Every properly made sudoku has exactly one solution reachable by logic alone. If a digit could go in two cells, move on to another digit and come back later. Use a pencil so you can erase." } },
+        { "@type": "Question", "name": "How long does a first Sudoku take?", "acceptedAnswer": { "@type": "Answer", "text": "On an easy puzzle, a complete beginner with a little coaching finished Puzzle 1 of Sudoku with a Secret in about nine minutes. Solo first attempts commonly take fifteen to thirty." } }
+      ]
+    }
+  ]
+};
+---
+
+<Layout title={PAGE_TITLE} description={PAGE_DESC}>
+  <main class="page-htp">
+    <script type="application/ld+json" set:html={JSON.stringify(HOWTO_LD)} />
+
+    <div class="htp-hero">
+      <p class="eyebrow">Beginners · The one rule · Your first number</p>
+      <h1>How to Play Sudoku</h1>
+      <p class="lede">Taught the way a first-timer actually learned it: one rule, one certain number at a time, and a pencil.</p>
+    </div>
+
+    <section class="wrap">
+      <div class="answer-card">
+        <h2>The one rule</h2>
+        <p><strong>Every row, every column and every 3&times;3 box must contain the digits 1 to 9 exactly once.</strong>
+        That is the whole game. There is no adding up. A sudoku is solved by asking, over and over,
+        &ldquo;where is the only place this digit can go?&rdquo; &mdash; and writing it in only when the answer is one cell.</p>
+      </div>
+
+      {YOUTUBE_ID && (
+        <div class="video">
+          <div class="frame">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}`}
+              title="How to solve Sudoku for beginners — teaching a first-timer, uncut"
+              loading="lazy"
+              allow="accelerometer; encrypted-media; picture-in-picture"
+              allowfullscreen></iframe>
+          </div>
+          <p class="video-note">Fifteen unscripted minutes: the author teaching his uncle his first sudoku on Puzzle 1 of the book. The pauses are the lesson.</p>
+        </div>
+      )}
+
+      <h2 class="sec-h">Six moves, in order</h2>
+      <p class="sec-sub">Everything below was said out loud at a kitchen table in September 2026, to someone who had never done a sudoku. It worked.</p>
+      <div class="steps">
+        <div class="step"><div class="s-num">01</div><h3>Pick the fullest box</h3><p>&ldquo;I usually try to start with ones that are kind of mostly filled in.&rdquo; A box with two or three gaps has two or three possibilities. A box with six gaps has too many.</p></div>
+        <div class="step"><div class="s-num">02</div><h3>Ask where a digit <em>can&rsquo;t</em> go</h3><p>Take one missing digit. Look along each empty cell&rsquo;s row and column. &ldquo;It can&rsquo;t, because there&rsquo;s an eight here.&rdquo; Cross those cells off.</p></div>
+        <div class="step"><div class="s-num">03</div><h3>One cell left? Write it</h3><p>&ldquo;So we know a hundred percent &mdash; that&rsquo;s an eight.&rdquo; When exactly one cell survives, the digit goes there. That is the only kind of move you ever make.</p></div>
+        <div class="step"><div class="s-num">04</div><h3>Two cells left? Leave it</h3><p>&ldquo;If you write the nine in, it still might be able to go there. So you don&rsquo;t want to write it in yet.&rdquo; Try a different digit. Come back later; it will have narrowed.</p></div>
+        <div class="step"><div class="s-num">05</div><h3>Stuck? Switch to a row</h3><p>&ldquo;Instead of thinking of it in a square, change your brain to try to finish that row.&rdquo; A row with one gap is a free number, and every number you place removes a possibility somewhere else.</p></div>
+        <div class="step"><div class="s-num">06</div><h3>Check with the last number</h3><p>&ldquo;That&rsquo;s how you know you got it right &mdash; the last number works.&rdquo; If the final digit in a box clashes with its row or column, something earlier was a guess.</p></div>
+      </div>
+
+      <h2 class="sec-h">What a first puzzle feels like</h2>
+      <p class="body">The first two or three numbers are slow. Then the grid starts giving them back to you:
+      &ldquo;it gets a little easier as you go along towards the end.&rdquo; On an easy puzzle a complete beginner,
+      with someone pointing now and then, finished the first grid in the book in about nine minutes and said,
+      about a third of the way in, &ldquo;Oh good. Now I can do it.&rdquo; That sentence is the whole point of the
+      first act of <em>Sudoku with a Secret</em>: seventy easy puzzles, so the click happens early and often.</p>
+
+      <h2 class="sec-h">Practice on a real page</h2>
+      <div class="fors">
+        <div class="for"><h3>Free, in your browser</h3><p><a href="/play">Play the puzzles online</a> &mdash; no account, no app, and the easy ones come first.</p></div>
+        <div class="for"><h3>On paper, with a pencil</h3><p>The book prints one 9&times;9 grid per 8.5 &times; 11 inch page with room to pencil candidates, and it opens with a &ldquo;New to Sudoku? Start Here&rdquo; page that teaches exactly this method.</p></div>
+        <div class="for"><h3>Then the secret</h3><p>Twenty of the 200 puzzles hide a shaded key. <a href="/escape-room-sudoku-book">Here is how the escape-room layer works</a> once you can solve.</p></div>
+      </div>
+
+      <h2 class="sec-h">Questions beginners ask</h2>
+      <div class="faqs">
+        <details><summary>What is the one rule of Sudoku?</summary><p>Fill the grid so every row, every column and every 3&times;3 box holds the digits 1 to 9 exactly once. No arithmetic, no adding up. It is a placement puzzle.</p></details>
+        <details><summary>Where do I start?</summary><p>The 3&times;3 box with the fewest gaps. Take one missing digit at a time and ask where in that box it could legally go. Place only the digits with exactly one possible cell.</p></details>
+        <details><summary>Should I ever guess?</summary><p>No. Every properly made sudoku has exactly one solution reachable by logic. If a digit could go in two cells, try another digit and come back. Use a pencil; &ldquo;it always helps to have an eraser.&rdquo;</p></details>
+        <details><summary>How long does a first Sudoku take?</summary><p>On an easy puzzle, about nine minutes with a little coaching; fifteen to thirty alone is normal. It gets faster quickly.</p></details>
+        <details><summary>Do I need to be good at maths?</summary><p>No. The digits could be letters or colours. Nothing is added, subtracted or counted beyond &ldquo;which of 1 to 9 is missing here?&rdquo;</p></details>
+      </div>
+
+      <div class="cta">
+        <h2>Start on page five</h2>
+        <p>Volume 1 opens with a Start Here page, then 70 easy puzzles before anything gets hard. $14.99 in paperback.</p>
+        <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get Volume 1 on Amazon ↗</a>
+        <p class="alt">Or <a href="/play">try the puzzles free</a> first.</p>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    .page-htp { padding-top: 90px; padding-bottom: 80px; }
+    .htp-hero { text-align: center; max-width: 760px; margin: 0 auto 44px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .htp-hero h1 { font-family: var(--display); font-size: clamp(30px, 5vw, 50px); font-weight: 600; color: var(--ivory); line-height: 1.12; margin-bottom: 14px; }
+    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+    .answer-card { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.35); border-radius: 14px; padding: 30px 32px; margin-bottom: 44px; }
+    .answer-card h2 { font-family: var(--display); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .answer-card p { font-size: 17px; line-height: 1.65; color: var(--ivory); }
+    .video { margin: 0 0 56px; }
+    .frame { position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden; border: 1px solid rgba(185,143,82,.25); background: #000; }
+    .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .video-note { font-size: 14.5px; font-style: italic; color: var(--ash); margin-top: 10px; }
+    .sec-h { font-family: var(--display); font-size: clamp(22px, 3vw, 28px); color: var(--gold-hi); margin-bottom: 8px; }
+    .sec-sub { font-style: italic; color: var(--ash); margin-bottom: 22px; font-size: 15px; }
+    .body { font-size: 16.5px; line-height: 1.7; color: var(--ash); margin-bottom: 56px; }
+    .body em { color: var(--ivory); }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 22px 0 56px; }
+    .step { background: #110f15; border: 1px solid rgba(185,143,82,.18); border-radius: 10px; padding: 22px; }
+    .s-num { font-family: var(--display); font-size: 12px; letter-spacing: .2em; color: var(--gold); opacity: .8; margin-bottom: 8px; }
+    .step h3 { font-family: var(--display); font-size: 19px; color: var(--ivory); margin-bottom: 8px; }
+    .step p { font-size: 15px; line-height: 1.6; color: var(--ash); }
+    .fors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 22px 0 56px; }
+    .for { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 20px; }
+    .for h3 { font-family: var(--display); font-size: 16px; color: var(--gold-hi); margin-bottom: 8px; }
+    .for p { font-size: 15px; line-height: 1.55; color: var(--ash); }
+    .for a { color: var(--gold); text-decoration: underline; }
+    .faqs { margin-bottom: 56px; }
+    .faqs details { border-bottom: 1px solid rgba(255,255,255,.07); padding: 14px 0; }
+    .faqs summary { cursor: pointer; font-family: var(--display); font-size: 16px; color: var(--ivory); list-style: none; }
+    .faqs summary::-webkit-details-marker { display: none; }
+    .faqs summary::before { content: '+'; color: var(--gold); margin-right: 10px; }
+    .faqs details[open] summary::before { content: '−'; }
+    .faqs details p { font-size: 15.5px; line-height: 1.6; color: var(--ash); padding: 10px 0 4px 22px; }
+    .cta { text-align: center; background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px 28px; }
+    .cta h2 { font-family: var(--display); font-size: 26px; color: var(--gold-hi); margin-bottom: 8px; }
+    .cta p { color: var(--ash); font-size: 16px; margin-bottom: 18px; }
+    .btn-amz { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; }
+    .cta .alt { font-size: 14.5px; font-style: italic; margin: 18px 0 0; }
+    .cta .alt a { color: var(--gold); text-decoration: underline; }
+  </style>
+</Layout>
