@@ -576,7 +576,8 @@
   /* ---- the word box (shared #wordbox; the server decides) ---- */
   const wordboxEl = $('wordbox'), tilesEl = $('tiles'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
   const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
-  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(5, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
+  // one open tile at rest: the box never advertises a length
+  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(1, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
   let wbOpenFails = 0;                                // misses since THIS box opened (wbFails drives the VO across the visit)
   function openWordbox(key) {
     wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
@@ -799,11 +800,16 @@
         <button type="button" class="ghost-btn" id="lockBack">Step back</button>
       </div>`;
     G.hidden = false;
-    lock.on = true; lock.i = 0; lock.pos = 0;
+    // Look the card's parts up INSIDE this card. The 3D vault's own (hidden) lock card shares
+    // this page and uses the same ids, so document.getElementById returned its invisible dial
+    // and every listener, the renderer and the focus landed on an element nobody could see.
+    const el = (id) => G.querySelector('#' + id);
+    clearTimeout(lock.holdT); lock.holdT = null;   // a hold timer from an earlier open must never fall a fresh lock
+    lock.on = true; lock.i = 0; lock.pos = 0; lock.dragging = false; lock.lastAngle = 0;
     lock.targets = [];
     while (lock.targets.length < 3) { const n = Math.floor(Math.random() * 40); if (lock.targets.every((t) => Math.min(Math.abs(t - n), 40 - Math.abs(t - n)) > 6)) lock.targets.push(n); }
-    const dial = $('lockDial');
-    const render = () => { dial.style.setProperty('--rot', (-lock.pos * 9) + 'deg'); $('lockNum').textContent = lock.pos; dial.setAttribute('aria-valuenow', lock.pos); };
+    const dial = el('lockDial');
+    const render = () => { dial.style.setProperty('--rot', (-lock.pos * 9) + 'deg'); el('lockNum').textContent = lock.pos; dial.setAttribute('aria-valuenow', lock.pos); };
     const dist = () => { const t = lock.targets[lock.i]; const d = Math.abs(t - lock.pos); return Math.min(d, 40 - d); };
     const step = (dir) => {
       lock.pos = (lock.pos + dir + 40) % 40; render();
@@ -816,28 +822,31 @@
     const fall = () => {
       if (!lock.on) return;
       playThud(120, 45, 0.6, 0.5); playChime(lock.i + 1);
-      $('lockTumblers').children[lock.i].classList.add('fell');
+      el('lockTumblers').children[lock.i].classList.add('fell');
       lock.i++;
-      $('lockMsg').textContent = ['One.', 'Two.', ''][lock.i - 1] || '';
+      el('lockMsg').textContent = ['One.', 'Two.', ''][lock.i - 1] || '';
       if (lock.i >= 3) {
-        lock.on = false; $('lockMsg').textContent = 'The last tumbler falls.';
+        lock.on = false; el('lockMsg').textContent = 'The last tumbler falls.';
         try { window.psEvent && window.psEvent('lock.solved'); } catch (e) {}
         setTimeout(() => { G.hidden = true; burstConfetti(); playUnlock(); awardTile('III', 'The chest gives up its secret.'); }, 900);
       }
     };
     // drag: angle around the dial's centre
     const angleAt = (e) => { const r = dial.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
-    dial.addEventListener('pointerdown', (e) => { lock.dragging = true; lock.lastAngle = angleAt(e); dial.setPointerCapture(e.pointerId); e.preventDefault(); });
+    dial.addEventListener('pointerdown', (e) => { lock.dragging = true; lock.lastAngle = angleAt(e); try { dial.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
     dial.addEventListener('pointermove', (e) => {
       if (!lock.dragging) return;
       const a = angleAt(e); let da = a - lock.lastAngle; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
       const stepAngle = 2 * Math.PI / 40;
-      while (Math.abs(da) >= stepAngle) { step(da > 0 ? -1 : 1); da -= Math.sign(da) * stepAngle; lock.lastAngle += Math.sign(a - lock.lastAngle) * stepAngle; }
+      // walk the reference angle by the NORMALISED direction (the raw a - lastAngle points the
+      // wrong way across the ±π seam and over-counted a full sweep), and keep it inside ±π
+      while (Math.abs(da) >= stepAngle - 1e-9) { const s = Math.sign(da); step(s > 0 ? -1 : 1); da -= s * stepAngle; lock.lastAngle += s * stepAngle; }
+      if (lock.lastAngle > Math.PI) lock.lastAngle -= 2 * Math.PI; else if (lock.lastAngle < -Math.PI) lock.lastAngle += 2 * Math.PI;
     });
     const up = () => { lock.dragging = false; };
     dial.addEventListener('pointerup', up); dial.addEventListener('pointercancel', up);
     dial.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { step(1); e.preventDefault(); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { step(-1); e.preventDefault(); } });
-    $('lockBack').addEventListener('click', () => { lock.on = false; G.hidden = true; });
+    el('lockBack').addEventListener('click', () => { lock.on = false; clearTimeout(lock.holdT); G.hidden = true; });
     render(); setTimeout(() => dial.focus(), 80);
     caption('Three tumblers. Turn the dial and listen.', 5000);
   }

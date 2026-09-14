@@ -2193,7 +2193,7 @@ const WORD_LEN = 12;                     // the box no longer advertises any wor
 let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
 function renderTiles() {
   tilesEl.innerHTML = '';
-  const shown = Math.min(WORD_LEN, Math.max(5, wbWord.length + 1));
+  const shown = Math.min(WORD_LEN, Math.max(1, wbWord.length + 1));   // one open tile at rest: the box never advertises a length
   for (let i = 0; i < shown; i++) {
     const t = document.createElement('div');
     t.className = 'tile' + (wbWord[i] ? ' filled' : '');
