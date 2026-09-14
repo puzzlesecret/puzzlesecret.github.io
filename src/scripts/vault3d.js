@@ -1746,7 +1746,7 @@ function playThud() { // locked door
 function setMuted(m) {
   muted = m;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
-  if (currentVO) { try { currentVO.pause(); } catch (e) {} }
+  if (m) stopVoice();
   if (master && actx) master.gain.setTargetAtTime(m ? 0 : 0.9, actx.currentTime, 0.03);
   if (actx) { if (m) actx.suspend(); else actx.resume(); }
   document.getElementById('muteBtn').textContent = m ? '🔇' : '🔊';
@@ -1782,7 +1782,7 @@ const VO = {
   page9:   { file: '/audio/vo/vo_page9.wav', text: 'If you are reading this, you did not simply solve my book. You searched it. That is the rarer thing, and this vault knows the difference.' },
   pagefinal:{ file: '/audio/vo/vo_pagefinal.wav', text: 'Nine pages, and you found every one. Most never look up from the grid. So here is the truth of it: the puzzles were never the secret. The looking was.' },
 };
-let currentVO = null, capTimer = null;
+let currentVO = null, voGen = 0, capTimer = null;
 function showCaption(text, holdMs = 5200) {
   capText.textContent = text;
   capText.classList.add('show');
@@ -1805,23 +1805,49 @@ function unlockVO() {          // must be called from inside a genuine user gest
   Object.values(VO_PLAYERS).forEach((a) => {
     a.muted = true;
     const p = a.play();
-    if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
+    // never pause a line the Keeper has since started for real (slow phones resolve this late)
+    if (p && p.then) p.then(() => { if (currentVO !== a) { a.pause(); a.currentTime = 0; } a.muted = false; })
                       .catch(() => { a.muted = false; });
     else a.muted = false;
   });
 }
 renderer.domElement.addEventListener('pointerdown', unlockVO, { once: true });
+/* ONE voice at a time. The newest line always wins: whatever the Keeper was saying stops the
+   moment a new line starts, and the caption follows the voice. No queue. */
+function stopVoice() {
+  const a = currentVO; currentVO = null; voGen++;
+  if (!a) return;
+  try { a.pause(); a.currentTime = 0; } catch (e) {}
+}
+function voiceHold(a, floor) {
+  const d = a && isFinite(a.duration) && a.duration > 0 ? a.duration * 1000 + 700 : 0;   // the caption outlives the voice by a beat
+  return Math.max(floor || 6500, d);
+}
 function keeper(key) {
   const line = VO[key]; if (!line) return;
-  showCaption(line.text, 6500);
-  if (muted) return;
+  stopVoice();
   const a = VO_PLAYERS[key];
+  showCaption(line.text, voiceHold(a, 6500));
+  if (muted || !a) return;
+  const gen = voGen; currentVO = a;                       // tracked NOW, not after play() resolves
+  a.muted = false;
   try { a.currentTime = 0; } catch (e) {}
-  a.play().then(() => { currentVO = a; }).catch(() => { /* caption carries it */ });
+  const p = a.play();
+  if (p && p.catch) p.catch(() => { if (gen === voGen && currentVO === a) currentVO = null; });   // the caption carries it
+}
+Object.values(VO_PLAYERS).forEach((a) => a.addEventListener('ended', () => { if (currentVO === a) currentVO = null; }));
+/* Run fn when the Keeper has finished the line he is saying now (or at once if he is silent).
+   If a newer line cuts this one off, fn is dropped: the moment it was waiting for is gone. */
+function afterVoice(fn, minMs = 0) {
+  const a = currentVO, gen = voGen, t0 = performance.now();
+  const go = () => { if (performance.now() - t0 < minMs) { setTimeout(go, minMs - (performance.now() - t0)); return; } fn(); };
+  if (!a || a.paused) { go(); return; }
+  const done = () => { a.removeEventListener('ended', done); if (gen === voGen) go(); };
+  a.addEventListener('ended', done);
 }
 function silenceAll() {
   try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
-  try { if (currentVO) currentVO.pause(); } catch (e) {}
+  stopVoice();
   try { if (actx && actx.state === 'running') actx.suspend(); } catch (e) {}
 }
 window.addEventListener('pagehide', silenceAll);
@@ -2079,8 +2105,9 @@ function openPage(no) {
   keeper('page' + no);
   dimPage(no);
   if (n >= 9 && !pagesFound.includes('final')) {
-    // the payoff: hand over the final letter a beat after this page finishes
-    setTimeout(() => {
+    // the payoff: the last page, once he has finished reading this one (never over it)
+    afterVoice(() => {
+      if (pageviewEl.hidden) { pagesFound.push('final'); saveStory(pagesFound); return; }   // they set it down early: keep the record, skip the reading
       document.getElementById('pgNo').textContent = 'THE KEEPER’S LAST PAGE';
       document.getElementById('pgBody').textContent = FINAL_LETTER;
       document.getElementById('pgFound').textContent = 'The story is complete';

@@ -341,34 +341,52 @@
   }
   function setMuted(m) {
     muted = m;
-    if (currentVO) { try { currentVO.pause(); } catch (e) {} }
+    if (m) stopVoice();
     if (master && actx) master.gain.setTargetAtTime(m ? 0 : 0.9, actx.currentTime, 0.03);
     if (actx) { if (m) actx.suspend(); else actx.resume(); }
     const b = $('pvMute'); if (b) { b.textContent = m ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(m)); }
   }
 
   /* ---- the Keeper: one recorded voice; captions always ---- */
-  const VO_PLAYERS = {}; let voUnlocked = false, currentVO = null, capTimer = null;
-  for (const [k, line] of Object.entries(VO)) { const a = new Audio(line.file + '?v=3'); a.preload = 'auto'; a.volume = 0.95; VO_PLAYERS[k] = a; }
+  const VO_PLAYERS = {}; let voUnlocked = false, currentVO = null, voGen = 0, capTimer = null;
+  for (const [k, line] of Object.entries(VO)) { const a = new Audio(line.file + '?v=3'); a.preload = 'auto'; a.volume = 0.95; a.addEventListener('ended', () => { if (currentVO === a) currentVO = null; }); VO_PLAYERS[k] = a; }
   function unlockVO() {
     if (voUnlocked) return; voUnlocked = true;
-    Object.values(VO_PLAYERS).forEach((a) => { a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; }); else a.muted = false; });
+    // never pause a line the Keeper has since started for real (slow phones resolve this late)
+    Object.values(VO_PLAYERS).forEach((a) => { a.muted = true; const p = a.play(); if (p && p.then) p.then(() => { if (currentVO !== a) { a.pause(); a.currentTime = 0; } a.muted = false; }).catch(() => { a.muted = false; }); else a.muted = false; });
   }
   function caption(text, holdMs = 6000) {
     const c = $('pvCap'), t = $('pvCapText'); if (!c || !t) return;
     t.textContent = text; c.classList.add('show'); clearTimeout(capTimer);
     capTimer = setTimeout(() => c.classList.remove('show'), holdMs);
   }
+  /* ONE voice at a time. The newest line always wins; the caption follows the voice. No queue. */
+  function stopVoice() { const a = currentVO; currentVO = null; voGen++; if (!a) return; try { a.pause(); a.currentTime = 0; } catch (e) {} }
+  function voiceHold(a, floor) { const d = a && isFinite(a.duration) && a.duration > 0 ? a.duration * 1000 + 700 : 0; return Math.max(floor || 6500, d); }
   function keeper(key, hold = 6500) {
     const line = VO[key]; if (!line) return;
-    caption(line.text, hold);
-    if (muted) return;
-    if (currentVO) { try { currentVO.pause(); } catch (e) {} }
-    const a = VO_PLAYERS[key]; try { a.currentTime = 0; } catch (e) {}
-    a.play().then(() => { currentVO = a; }).catch(() => { /* the caption carries it */ });
+    stopVoice();
+    const a = VO_PLAYERS[key];
+    caption(line.text, voiceHold(a, hold));
+    if (muted || !a) return;
+    const gen = voGen; currentVO = a;                       // tracked NOW, not after play() resolves
+    a.muted = false;
+    try { a.currentTime = 0; } catch (e) {}
+    const p = a.play();
+    if (p && p.catch) p.catch(() => { if (gen === voGen && currentVO === a) currentVO = null; });   // the caption carries it
   }
-  function say(key, hold = 5600) { const t = SAY[key]; if (t) caption(t, hold); }
-  function silenceAll() { try { if (currentVO) currentVO.pause(); } catch (e) {} try { if (actx && actx.state === 'running') actx.suspend(); } catch (e) {} }
+  // a caption-only line is still the Keeper speaking: it cuts a recorded line so screen and voice never disagree
+  function say(key, hold = 5600) { const t = SAY[key]; if (t) { stopVoice(); caption(t, hold); } }
+  /* Run fn when the Keeper has finished the line he is saying now (or at once if silent).
+     If a newer line cuts this one off, fn is dropped. */
+  function afterVoice(fn, minMs = 0) {
+    const a = currentVO, gen = voGen, t0 = performance.now();
+    const go = () => { if (performance.now() - t0 < minMs) { setTimeout(go, minMs - (performance.now() - t0)); return; } fn(); };
+    if (!a || a.paused) { go(); return; }
+    const done = () => { a.removeEventListener('ended', done); if (gen === voGen) go(); };
+    a.addEventListener('ended', done);
+  }
+  function silenceAll() { stopVoice(); try { if (actx && actx.state === 'running') actx.suspend(); } catch (e) {} }
   addEventListener('pagehide', silenceAll); addEventListener('beforeunload', silenceAll);
   document.addEventListener('visibilitychange', () => { if (document.hidden) silenceAll(); else if (!muted && actx && actx.state === 'suspended') actx.resume(); });
 
@@ -567,7 +585,9 @@
     $('pageview').hidden = false; if (b) b.classList.add('read');
     keeper('page' + no, 9000);
     if (n >= 9 && !pagesFound.includes('final')) {
-      setTimeout(() => {
+      // the last page, once he has finished reading this one (never over it)
+      afterVoice(() => {
+        if ($('pageview').hidden) { pagesFound.push('final'); store.set(STORY_KEY, pagesFound); return; }   // set down early: keep the record, skip the reading
         $('pgNo').textContent = 'THE KEEPER’S LAST PAGE'; $('pgBody').textContent = FINAL_LETTER; $('pgFound').textContent = 'The story is complete';
         keeper('pagefinal', 12000); burstConfetti(); pagesFound.push('final'); store.set(STORY_KEY, pagesFound);
       }, 2600);
@@ -998,7 +1018,7 @@
     sizeRoom();
     // slow idle pan on portrait screens, so the room breathes even untouched
     if (!REDUCED) (function idle() { if (panMax > 8 && !drag) { autoPan = Math.sin(performance.now() / 9000) * panMax * 0.7; setPan(autoPan); } requestAnimationFrame(idle); })();
-    window.__painted = { enterRoom, openReward, openWordbox, startRound, openLock, awardTile, get room() { return room; }, ROOMS,
+    window.__painted = { enterRoom, openReward, openWordbox, startRound, openLock, awardTile, openPage, get room() { return room; }, ROOMS,
       get lock() { return lock; }, get round() { return round; }, endRound };   // QA hooks + the page guard's hook
     // A tiny session-depth summary — sent once on tab hide via sendBeacon so it survives
     // Safari's aggressive lifecycle. Counts the distinct rooms the visitor actually saw.
