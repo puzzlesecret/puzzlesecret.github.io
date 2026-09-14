@@ -2232,8 +2232,12 @@ addEventListener('keydown', (e) => {
   if (wordboxEl.hidden) return;
   if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
   else if (e.key === 'Escape') dismissWordbox();
-  else if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
-  else if (/^[a-zA-Z]$/.test(e.key)) { wbSet(wbWord + e.key); wbInput.value = wbWord; }
+  else if (e.target !== wbInput) {   // typed with the box open but the field unfocused: still counts.
+    // When the field IS focused, the browser's own insert fires the 'input' handler above — appending
+    // here as well doubled every letter (A → AA), and every typed word was refused at the door.
+    if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
+    else if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { wbSet(wbWord + e.key); wbInput.value = wbWord; e.preventDefault(); try { wbInput.focus({ preventScroll: true }); } catch (x) {} }
+  }
   e.stopPropagation();
 }, true);
 async function submitWord() {
