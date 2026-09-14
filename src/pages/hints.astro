@@ -8,6 +8,7 @@ import Layout from '../layouts/Layout.astro';
       <p class="eyebrow">The Hint Chamber</p>
       <h1>Need a Nudge, Solver?</h1>
       <p class="lede">Every puzzle in the book is solvable with logic alone. If you're stuck on finding key digits or decoding a secret word, step through the progressive hints below.</p>
+      <p class="lede-note">The words themselves are never printed here. They are in the book, and only there.</p>
     </div>
 
     <section class="wrap hints-body">
@@ -56,14 +57,6 @@ import Layout from '../layouts/Layout.astro';
             </div>
           </details>
 
-          <details class="hint-card reveal-card">
-            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act I Secret Word</summary>
-            <div class="hint-content">
-              <p>Are you sure? Only reveal if you are completely stuck!</p>
-              <button class="btn-reveal" data-sealed="FOHYHU">Click to Reveal Word</button>
-              <div class="revealed-word"></div>
-            </div>
-          </details>
         </div>
       </div>
 
@@ -106,13 +99,6 @@ import Layout from '../layouts/Layout.astro';
             </div>
           </details>
 
-          <details class="hint-card reveal-card">
-            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act II Secret Word</summary>
-            <div class="hint-content">
-              <button class="btn-reveal" data-sealed="VROYHUV">Click to Reveal Word</button>
-              <div class="revealed-word"></div>
-            </div>
-          </details>
         </div>
       </div>
 
@@ -154,13 +140,6 @@ import Layout from '../layouts/Layout.astro';
             </div>
           </details>
 
-          <details class="hint-card reveal-card">
-            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the Act III Secret Word</summary>
-            <div class="hint-content">
-              <button class="btn-reveal" data-sealed="WULXPSK">Click to Reveal Word</button>
-              <div class="revealed-word"></div>
-            </div>
-          </details>
         </div>
       </div>
 
@@ -214,33 +193,9 @@ import Layout from '../layouts/Layout.astro';
       });
     });
 
-    // Word Reveal Buttons.
-    // SECURITY: the answers are stored here Caesar-shifted +3 and decoded only
-    // on click — the same trick the printed book uses on its own answer-key page
-    // ("FOHYHU / VROYHUV / WULXPSK"). This keeps the real words out of page
-    // source, out of search-engine indexes, and out of a casual View Source,
-    // while still letting a genuinely stuck solver reveal them.
-    // NEVER put a plaintext secret word in client code.
-    const unshift3 = (s: string) =>
-      s.replace(/[A-Z]/g, (ch) => String.fromCharCode(((ch.charCodeAt(0) - 65 + 23) % 26) + 65));
-
-    // The Keeper's log: opening this page is the clearest "I'm stuck" signal on the site,
-    // and a reveal says which act. Only the act number travels — never the word.
-    const ACT_OF: Record<string, string> = { act1: 'I', act2: 'II', act3: 'III', act4: 'IV' };
+    // The Keeper's log: opening this page is the clearest "I'm stuck" signal on the site. Only that fact travels.
     const w = window as any;
     document.addEventListener('DOMContentLoaded', () => { try { w.psEventOnce && w.psEventOnce('hint.view'); } catch (e) {} });
-
-    document.querySelectorAll('.btn-reveal').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sealed = btn.getAttribute('data-sealed') || '';
-        const container = btn.nextElementSibling;
-        if (container) {
-          container.innerHTML = `<div class="word-badge">${unshift3(sealed)}</div>`;
-          btn.style.display = 'none';
-        }
-        try { const p = btn.closest('.act-panel'); w.psEvent && w.psEvent('hint.reveal', ACT_OF[p ? p.id : ''] || ''); } catch (e) {}
-      });
-    });
   </script>
 
   <style>
@@ -249,6 +204,7 @@ import Layout from '../layouts/Layout.astro';
     .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
     .hints-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
     .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+    .lede-note { margin-top: 12px; font-family: var(--display); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
 
     .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
 
@@ -276,7 +232,6 @@ import Layout from '../layouts/Layout.astro';
     .hint-content li { margin-bottom: 4px; color: var(--ash); }
     .example-box, .rule-box { background: rgba(246,178,60,.08); border-left: 3px solid var(--gold); padding: 10px 14px; margin-top: 12px; border-radius: 0 6px 6px 0; font-size: 14.5px; }
 
-    .reveal-card { border-color: rgba(231,138,166,.3); }
   </style>
   <style is:global>
     /* the earned section is built by script, so its rules are global (scoped rules would not reach it) */
@@ -293,8 +248,5 @@ import Layout from '../layouts/Layout.astro';
     .page-hints .earned-hints .h-step { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); background: rgba(246,178,60,.12); border: 1px solid rgba(246,178,60,.3); padding: 3px 9px; border-radius: 4px; }
     .page-hints .earned-hints .hint-content { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.06); font-size: 16px; line-height: 1.55; color: var(--ivory); font-style: italic; }
     .page-hints .earned-foot { text-align: center; margin-top: 18px; font-style: italic; color: var(--ash); font-size: 15px; }
-    .btn-reveal { padding: 10px 20px; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; background: rgba(231,138,166,.15); color: var(--v3); border: 1px solid rgba(231,138,166,.4); border-radius: 6px; cursor: pointer; transition: all .2s; margin-top: 8px; }
-    .btn-reveal:hover { background: rgba(231,138,166,.3); }
-    .word-badge { display: inline-block; font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: .28em; color: var(--gold-hi); background: rgba(246,178,60,.15); border: 1px solid var(--gold); padding: 8px 24px; border-radius: 8px; margin-top: 10px; text-shadow: 0 0 16px rgba(246,178,60,.5); }
   </style>
 </Layout>
