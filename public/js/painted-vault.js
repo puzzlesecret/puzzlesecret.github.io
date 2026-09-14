@@ -579,7 +579,7 @@
   const wordboxEl = $('wordbox'), tilesEl = $('tiles'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
   const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
   const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };   // the book states each door's length, so the box shows it
-  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(DOOR_LEN[wbTarget] || 6, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
+  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(DOOR_LEN[wbTarget] || 6, wbWord.length)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
   let wbOpenFails = 0;                                // misses since THIS box opened (wbFails drives the VO across the visit)
   function openWordbox(key) {
     wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;

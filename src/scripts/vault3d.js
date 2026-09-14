@@ -2187,7 +2187,7 @@ let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
 function renderTiles() {
   tilesEl.innerHTML = '';
   const base = DOOR_LEN[wbTarget] || 6;
-  const shown = Math.min(WORD_LEN, Math.max(base, wbWord.length + 1));   // the door's length, growing only if someone types past it
+  const shown = Math.min(WORD_LEN, Math.max(base, wbWord.length));       // the door's length; one more only if someone types past it
   for (let i = 0; i < shown; i++) {
     const t = document.createElement('div');
     t.className = 'tile' + (wbWord[i] ? ' filled' : '');
