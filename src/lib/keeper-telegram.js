@@ -37,7 +37,7 @@ export function place(request) {
   try {
     const h = request.headers;
     const c = (h.get('x-vercel-ip-country') || '').toUpperCase();
-    if (!c) return '??';
+    if (!/^[A-Z]{2}$/.test(c)) return '??';                // a proxy or local dev could hand us anything
     if (c === 'US' || c === 'CA') {
       const r = (h.get('x-vercel-ip-country-region') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 4);
       return r ? `${c} · ${r}` : c;
@@ -56,6 +56,13 @@ export function safeExtra(s, cap = 40) {
   // auto-links bare URLs even with `parse_mode` unset. No real extra needs either
   // character ("first", "5 in 23.4s", "6 rooms · 12m", "listing").
   return String(s || '').replace(/[^A-Za-z0-9 ._·×\-]/g, '').slice(0, cap);
+}
+
+// Crawlers that execute JavaScript (Googlebot, Bingbot, Lighthouse, Playwright audits)
+// would otherwise show up as visitors. Cheap UA sniff — a real person never carries these.
+const BOT_UA = /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|python-requests|curl\/|wget\//i;
+export function isBot(request) {
+  try { return BOT_UA.test(request.headers.get('user-agent') || ''); } catch { return false; }
 }
 
 // A shared, global flood breaker — a hard ceiling that trips a 60-second silent mute if

@@ -4,7 +4,24 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
-import { notify, solverTag, place } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place, isBot } from '../../lib/keeper-telegram.js';
+
+// Wrong guesses are the one place a stranger's typed letters reach Telegram (bare A-Z,
+// 4-12 long). A human at a door misses a handful of times; a script at the 25-per-10s
+// limit could push ~150 chosen words a minute into the chat. So: the first 8 misses per
+// IP in any 10 minutes are relayed, the 9th says the Keeper is going quiet, the rest are
+// silent. Unlocks are never muted.
+const misses = new Map();
+const MISS_WINDOW = 10 * 60 * 1000, MISS_MAX = 8;
+function missCount(ip) {
+  const now = Date.now();
+  const b = misses.get(ip) || { n: 0, t: now };
+  if (now - b.t > MISS_WINDOW) { b.n = 0; b.t = now; }
+  b.n += 1;
+  misses.set(ip, b);
+  if (misses.size > 5000) { const k = misses.keys().next(); if (!k.done) misses.delete(k.value); }
+  return b.n;
+}
 import { rewardUrl } from './reward.js';
 
 // Salt lives ONLY in the VAULT_SALT env var (site/.env locally — gitignored;
@@ -37,6 +54,7 @@ const HASHES = {
 // It reveals nothing (a hash of the salt) and never appears for a non-solver.
 const CARVE_TOKEN = SALT ? crypto.createHash('sha256').update(SALT + '|carve-proof-v1').digest('hex') : '';
 const norm = (w) => String(w || '').toUpperCase().replace(/[^A-Z]/g, '');
+const AT = { door: ' · at the front door', '3d': ' · at the 3D word box', painted: ' · at the painted word box' };
 const hash = (w) => crypto.createHash('sha256').update(SALT + '|' + w).digest('hex');
 
 // Tiny per-IP token bucket (generous for humans, hostile to wordlist scripts).
@@ -66,16 +84,24 @@ export async function POST({ request, clientAddress }) {
   const hit = HASHES[hash(w)];
   const tag = solverTag(body && body.vid);
   const geo = place(request);
+  // Where the word was spoken \u2014 the front door (homepage), the 3D word box, or the painted
+  // one. A fixed enum from the client; anything else is dropped, never echoed.
+  const atKey = String(body && body.at || '');
+  const at = Object.hasOwn(AT, atKey) ? AT[atKey] : '';   // hasOwn: "constructor" / "__proto__" must not resolve
   if (hit) {
     const line = hit.guest
-      ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY \u2014 came in from ${hit.guest}`
+      ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY \u2014 came in from ${hit.guest}${at}`
       : hit.act === 'IV'
-        ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens`
-        : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}`;
+        ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens${at}`
+        : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}${at}`;
     await notify(line);
     return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
   }
-  await notify(`\u274C ${tag} \u00b7 ${geo} \u00b7 guessed \u201c${w}\u201d`);
+  if (!isBot(request)) {
+    const n = missCount(ip);
+    if (n <= MISS_MAX) await notify(`\u274C ${tag} \u00b7 ${geo} \u00b7 guessed \u201c${w}\u201d${at}`);
+    else if (n === MISS_MAX + 1) await notify(`\u{1F910} ${tag} \u00b7 ${geo} \u00b7 ${MISS_MAX} misses in ten minutes \u2014 the Keeper stops repeating them for a while`);
+  }
   return json({ ok: false });
 }
 

@@ -591,7 +591,12 @@ import Analytics from '@vercel/analytics/astro';
         var c = el(painted ? 'pvCap' : 'capText'); if (c) { c.classList.add('show'); setTimeout(function () { c.classList.remove('show'); }, 6500); }
       }
       function closeAll() {
-        IDS.forEach(function (id) { var e = el(id); if (e && !e.hidden) { if (id === 'desk' && window.__vaultRise) window.__vaultRise(); else e.hidden = true; } });
+        IDS.forEach(function (id) {
+          var e = el(id); if (!e || e.hidden) return;
+          if (id === 'desk' && window.__vaultRise) window.__vaultRise();
+          else if (id === 'wordbox' && el('wbCancel')) el('wbCancel').click();   // through the cancel path, so the "gave up at this door" line still fires
+          else e.hidden = true;
+        });
         if (window.__painted && window.__painted.round && window.__painted.round.on && window.__painted.endRound) window.__painted.endRound(false);
       }
       try {

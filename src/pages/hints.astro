@@ -231,6 +231,12 @@ import Layout from '../layouts/Layout.astro';
     const unshift3 = (s: string) =>
       s.replace(/[A-Z]/g, (ch) => String.fromCharCode(((ch.charCodeAt(0) - 65 + 23) % 26) + 65));
 
+    // The Keeper's log: opening this page is the clearest "I'm stuck" signal on the site,
+    // and a reveal says which act. Only the act number travels — never the word.
+    const ACT_OF: Record<string, string> = { act1: 'I', act2: 'II', act3: 'III', act4: 'IV' };
+    const w = window as any;
+    document.addEventListener('DOMContentLoaded', () => { try { w.psEventOnce && w.psEventOnce('hint.view'); } catch (e) {} });
+
     document.querySelectorAll('.btn-reveal').forEach(btn => {
       btn.addEventListener('click', () => {
         const sealed = btn.getAttribute('data-sealed') || '';
@@ -239,6 +245,7 @@ import Layout from '../layouts/Layout.astro';
           container.innerHTML = `<div class="word-badge">${unshift3(sealed)}</div>`;
           btn.style.display = 'none';
         }
+        try { const p = btn.closest('.act-panel'); w.psEvent && w.psEvent('hint.reveal', ACT_OF[p ? p.id : ''] || ''); } catch (e) {}
       });
     });
   </script>

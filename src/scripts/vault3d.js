@@ -7,25 +7,28 @@ import * as THREE from 'three';
    both vault modules. Non-blocking, silent on failure. Every string here must match the
    allowlist in src/lib/events.js; scripts/verify-events.js diffs the two files. */
 const PS_EV = Object.freeze({
+  ARRIVE: 'arrive', PAGE_VIEW: 'page.view',
   BOOKCASE_OPEN: 'bookcase.open',
-  WORDBOX_OPEN: 'wordbox.open',
+  WORDBOX_OPEN: 'wordbox.open', WORDBOX_CLOSE: 'wordbox.close',
   DOOR_OPEN_I: 'door.open.I', DOOR_OPEN_II: 'door.open.II', DOOR_OPEN_III: 'door.open.III',
   STAIR_DESCEND: 'stair.descend', STAIR_ASCEND: 'stair.ascend',
-  PAGE_NOTEBOOK: 'page.notebook', PAGE_REJECTS: 'page.rejects', STUDY_COMPLETE: 'study.complete',
-  ROUND_START: 'round.start', ROUND_SOLVED: 'round.solved',
+  PAGE_NOTEBOOK: 'page.notebook', PAGE_REJECTS: 'page.rejects', STUDY_COMPLETE: 'study.complete', DESK_SOLVED: 'desk.solved',
+  ROUND_START: 'round.start', ROUND_SOLVED: 'round.solved', ROUND_FAIL: 'round.fail',
   LOCK_START: 'lock.start', LOCK_SOLVED: 'lock.solved',
   TILE_5: 'tile.5', TILE_7: 'tile.7',
   REWARD_OPEN_I: 'reward.open.I', REWARD_OPEN_II: 'reward.open.II', REWARD_OPEN_III: 'reward.open.III', REWARD_OPEN_IV: 'reward.open.IV',
   REWARD_CLICK_I: 'reward.click.I', REWARD_CLICK_II: 'reward.click.II', REWARD_CLICK_III: 'reward.click.III', REWARD_CLICK_IV: 'reward.click.IV',
   VAULT4_FLOOR_OPEN: 'vault4.floor_open', VAULT4_ENTERED: 'vault4.entered',
   CARVE_OPEN: 'carve.open',
+  HINT_VIEW: 'hint.view', HINT_REVEAL: 'hint.reveal', IDLE: 'idle', PERF_SLOW: 'perf.slow',
+  PLAY_START: 'play.start', PLAY_SOLVED: 'play.solved', PLAY_OFFER: 'play.offer',
   PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
   SESSION_DEPTH: 'session.depth',
 });
 function psEvent(ev, extra) {
   try {
     const body = { vid: (typeof psVid === 'function' ? psVid() : ''), ev: ev };
-    if (extra != null) body.extra = String(extra).slice(0, 40);
+    if (extra != null) body.extra = String(extra).slice(0, 64);
     fetch('/api/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(function () {});
   } catch (e) { /* best-effort */ }
 }
@@ -33,23 +36,59 @@ function psEventOnce(ev, extra) {
   try { const k = 'ps_ev_once_' + ev; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) {}
   psEvent(ev, extra);
 }
-function psSessionDepth(extra) {
+function psBeacon(ev, extra) {
   try {
-    const body = JSON.stringify({ vid: (typeof psVid === 'function' ? psVid() : ''), ev: PS_EV.SESSION_DEPTH, extra: String(extra || '').slice(0, 40) });
-    const blob = new Blob([body], { type: 'application/json' });
-    if (navigator.sendBeacon) navigator.sendBeacon('/api/event', blob);
+    const body = JSON.stringify({ vid: (typeof psVid === 'function' ? psVid() : ''), ev, extra: String(extra || '').slice(0, 64) });
+    if (navigator.sendBeacon) navigator.sendBeacon('/api/event', new Blob([body], { type: 'application/json' }));
     else fetch('/api/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(function () {});
   } catch (e) { /* best-effort */ }
 }
-/* A tiny session-depth counter — records how many rooms/actions the tab touched. Emitted
-   once on tab hide via sendBeacon so we can see how deep an average session goes. */
+/* The story's last line: how many things this tab touched, how long it stayed, and which
+   room it was standing in. Sent once, on whichever comes first — the tab hiding (phones
+   backgrounding) or pagehide (close / navigate away). */
 const psTouched = new Set();
 function psTouch(name) { psTouched.add(String(name).slice(0, 24)); }
+const psT0 = Date.now();
+let psRoom = 'the study';                         // short room name, kept current by tick()
+const psRooms = new Set(['the study']);           // distinct rooms actually stood in
+const PS_ROOM_SHORT = {
+  "VAULT I — THE WRITER'S STUDY": 'the study',
+  'VAULT II — THE LIBRARY OF PUZZLES': 'the library',
+  'VAULT III — THE GRAND TREASURE VAULT': 'the treasure room',
+  'VAULT IV — THE SECRET SANCTUM': 'the sanctum',
+};
+/* Sent on every tab-hide and on pagehide, re-armed when the tab comes back, so a glance
+   at a text message mid-visit does not end the story early. The server collapses identical
+   repeats; the last one is the exit. Nothing is sent before the gate is passed — a bounce
+   at the gate, or a WebGL failure that hands off to the painted vault, is not a visit. */
+let psArmed = true;
+function psLeave() {
+  try {
+    if (!psArmed || !entered) return; psArmed = false;
+    const mins = Math.max(1, Math.round((Date.now() - psT0) / 60000));
+    psBeacon(PS_EV.SESSION_DEPTH, '3D · ' + psRooms.size + ' rooms · ' + mins + 'm · last ' + psRoom);
+  } catch (e) { /* `entered` not yet declared (module threw early) — nothing to report */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) psLeave(); else psArmed = true; });
+addEventListener('pagehide', psLeave);
+/* "Lingers in the library — 4 minutes without progress." Once per room per session. A
+   hidden tab never counts as stuck, and neither does sitting at the desk — the daily
+   puzzle lives in an iframe whose keystrokes never reach this window. */
+(function psIdle() {
+  const IDLE_MS = 4 * 60 * 1000, said = {}; let last = Date.now();
+  const bump = () => { last = Date.now(); };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach((n) => addEventListener(n, bump, { passive: true, capture: true }));
+  setInterval(() => {
+    try {
+      const deskOpen = (() => { const d = document.getElementById('desk'); return d && !d.hidden; })();
+      if (document.hidden || deskOpen) { last = Date.now(); return; }
+      if (!entered || said[psRoom]) return;
+      if (Date.now() - last > IDLE_MS) { said[psRoom] = true; psEvent(PS_EV.IDLE, psRoom); }
+    } catch (e) { /* `entered` not yet declared — the module threw before the gate */ }
+  }, 20000);
+})();
 /* Once-per-session flags for stair crossings (see the render loop). */
 const stairSeen = { down: false, up: false };
-addEventListener('pagehide', () => {
-  try { psSessionDepth(psTouched.size + ' rooms'); } catch (e) {}
-}, { once: true });
 
 /* ================= setup / params ================= */
 const qs = new URLSearchParams(location.search);
@@ -2091,7 +2130,7 @@ function openReward(act) {
   // Instrument the button so a click on the actual gift is a distinct signal from
   // "opened the card." Bind exactly once — repeated openReward calls are cheap because
   // the previous listener is a no-op on the new act.
-  b.onclick = () => psEvent(PS_EV['REWARD_CLICK_' + act]);
+  b.onclick = () => psBeacon(PS_EV['REWARD_CLICK_' + act], '');   // beacon: iOS may open the PDF in-tab and abort a plain fetch
   psEvent(PS_EV['REWARD_OPEN_' + act]);
   psTouch('reward-' + act);
   document.getElementById('rwAsk').hidden = !RW.ask;
@@ -2162,8 +2201,9 @@ function renderTiles() {
     tilesEl.appendChild(t);
   }
 }
+let wbOpenFails = 0;                                  // misses since THIS box opened (wbFails drives the VO across the visit)
 function openWordbox(key) {
-  wbTarget = key; wbWord = ''; wbBusy = false;
+  wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
   document.getElementById('wbKicker').textContent = DOORS[key].kicker;
   document.getElementById('wbLine').textContent = VO[DOORS[key].vo].text;
   wbMsg.textContent = ''; renderTiles();
@@ -2176,7 +2216,13 @@ function openWordbox(key) {
   keeper(DOORS[key].vo);
 }
 function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
-document.getElementById('wbCancel').addEventListener('click', closeWordbox);
+// Dismissed without a true word — the "gave up at this door" signal. Success paths call
+// closeWordbox() directly and never reach this.
+function dismissWordbox() {
+  if (wbTarget) psEvent(PS_EV.WORDBOX_CLOSE, wbOpenFails ? wbTarget + ' after ' + wbOpenFails + (wbOpenFails === 1 ? ' miss' : ' misses') : wbTarget + ' without a guess');
+  closeWordbox();
+}
+document.getElementById('wbCancel').addEventListener('click', dismissWordbox);
 function wbSet(w) {
   wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, WORD_LEN);
   renderTiles();
@@ -2185,7 +2231,7 @@ wbInput.addEventListener('input', () => wbSet(wbInput.value));
 addEventListener('keydown', (e) => {
   if (wordboxEl.hidden) return;
   if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
-  else if (e.key === 'Escape') closeWordbox();
+  else if (e.key === 'Escape') dismissWordbox();
   else if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
   else if (/^[a-zA-Z]$/.test(e.key)) { wbSet(wbWord + e.key); wbInput.value = wbWord; }
   e.stopPropagation();
@@ -2201,7 +2247,7 @@ async function submitWord() {
   try {
     const r = await fetch('/api/unlock', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ word: wbWord, vid: psVid() }),
+      body: JSON.stringify({ word: wbWord, vid: psVid(), at: '3d' }),
     });
     j = await r.json();
   } catch (e) { /* offline / static preview */ }
@@ -2224,7 +2270,7 @@ async function submitWord() {
     wbMsg.textContent = 'A true word… but it belongs to a different door. Its gift is banked.';
     wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
   } else {
-    wbFails++;
+    wbFails++; wbOpenFails++;
     playThud();
     const failKey = 'fail' + Math.min(wbFails, 3);
     keeper(failKey);
@@ -2660,6 +2706,7 @@ addEventListener('message', (e) => {
   if (!deskState.days[d]) { deskState.days[d] = e.data.id; }
   if (e.data.secs && (!deskState.best || e.data.secs < deskState.best)) deskState.best = e.data.secs;
   saveDesk(); renderDeskStamps(); markFound('desk');
+  psEvent(PS_EV.DESK_SOLVED, e.data.secs ? 'in ' + Math.floor(e.data.secs / 60) + 'm' + String(Math.round(e.data.secs) % 60).padStart(2, '0') + 's' : '');
   showCaption(STUDY_SAY.solved, 6000); burstConfetti(); playUnlock();
 });
 let exitSaid = false;
@@ -2702,8 +2749,8 @@ let entered = false;
 function begin(withAudio) {
   entered = true;
   try {
-    if (!sessionStorage.getItem('ps_visited')) {
-      sessionStorage.setItem('ps_visited', '1');
+    if (!sessionStorage.getItem('ps_visited_3d')) {       // per mode: switching to painted mid-visit gets its own door line
+      sessionStorage.setItem('ps_visited_3d', '1');
       fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ vid: psVid(), mode: '3d' }) }).catch(() => {});
     }
@@ -2940,7 +2987,7 @@ function finishRound() {
     if (isBest) { try { localStorage.setItem('ps_round3d_best', String(secs)); } catch (e) {} }
     note = 'Five in ' + secs.toFixed(1) + ' seconds' + (isBest ? ', your best.' : ' (best ' + best.toFixed(1) + 's).');
   }
-  psEvent(PS_EV.ROUND_SOLVED, note.slice(0, 32));
+  psEvent(PS_EV.ROUND_SOLVED, round.calm ? 'at their own pace' : round.helped ? 'with help' : 'Five in ' + secs.toFixed(1) + 's' + ((!best || secs <= best) ? ' · best' : ''));
   showCaption(secs < 35 && !round.helped && !round.calm ? 'Five, in the dark. You have a keeper’s eyes.' : 'Five. Steady hands.', 4200);
   leaveRoundHud();
   darkTarget = 0; playCreak(); setTimeout(playUnlock, 900);
@@ -2955,7 +3002,7 @@ function leaveRoundHud() {
 function endRound(reason) {
   if (!round.on) return;
   round.on = false; darkTarget = 0; leaveRoundHud();
-  if (reason === 'timeout') { document.getElementById('reText').textContent = 'The dark kept them that time. Rest your eyes, then try again.'; openCard(roundEndEl, document.getElementById('reAgain')); }
+  if (reason === 'timeout') { psEvent(PS_EV.ROUND_FAIL); document.getElementById('reText').textContent = 'The dark kept them that time. Rest your eyes, then try again.'; openCard(roundEndEl, document.getElementById('reAgain')); }
   else showCaption('Another time, then.', 3000);
 }
 document.getElementById('roundQuit').addEventListener('click', () => endRound('quit'));
@@ -3233,6 +3280,7 @@ function watchFrameRate() {
 }
 function offerFlat(fps) {
   if (document.getElementById('slowBar')) return;
+  psEvent(PS_EV.PERF_SLOW, fps + ' fps');           // the device, not the person, is what is stuck here
   const bar = document.createElement('div');
   bar.id = 'slowBar';
   bar.innerHTML = '<span>This is running at about ' + fps +
@@ -3323,6 +3371,7 @@ function tick(dt) {
     : zp > -19.4 ? 'VAULT II — THE LIBRARY OF PUZZLES'
     : 'VAULT III — THE GRAND TREASURE VAULT';
   if (roomNameEl.textContent !== label) roomNameEl.textContent = label;
+  psRoom = PS_ROOM_SHORT[label] || psRoom; psRooms.add(psRoom);
   const inStudy = entered && zp > -3.6 && player.pos.y > -0.4;
   if (studyCountEl.hidden === inStudy) studyCountEl.hidden = !inStudy;
   if (!exitSaid && entered && zp < -4.2 && zp > -7.0) {

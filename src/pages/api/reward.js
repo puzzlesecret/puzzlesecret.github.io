@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { notify, place, solverTag } from '../../lib/keeper-telegram.js';
-import { SERVER_EV, line } from '../../lib/events.js';
+import { SERVER_EV, keeperLine } from '../../lib/events.js';
 
 const SALT = import.meta.env.VAULT_SALT ?? process.env.VAULT_SALT;
 // One "served" ping per act per IP per 5 min. Server-side dedup — this is the truthful
@@ -68,7 +68,7 @@ export async function GET({ url, request, clientAddress }) {
   try {
     if (!servedRecent(clientAddress || 'unknown', act)) {
       const ev = SERVER_EV['REWARD_SERVED_' + act];
-      if (ev) notify(`${line(ev)} · ${solverTag(vid)} · ${place(request)}`);   // fire-and-forget; response is not awaited
+      if (ev) notify(keeperLine(ev, '', solverTag(vid), place(request)));   // fire-and-forget; response is not awaited
     }
   } catch { /* never break a download over a notification */ }
   return new Response(bytes, { status: 200, headers: {

@@ -3,44 +3,55 @@
 // are optional short strings, per-event whitelisted, sanitized before they touch Telegram.
 //
 // Design notes worth carrying into future edits:
-//   * Rate limit key = hash(ip + ev), NOT vid. Vid is client-assigned and trivially rotated;
-//     it stays only for the solver-tag narrative in Telegram, never for throttling.
+//   * Rate limit key = hash(ip + ev [+ extra]), NOT vid. Vid is client-assigned and trivially
+//     rotated; it stays only for the solver-tag narrative in Telegram, never for throttling.
+//     Extra joins the key only for events that declare one, so "word box at door 2" and then
+//     "at door 3" a minute later both arrive — that IS the journey Dan wants to read.
 //   * IPv6 → /64. Otherwise a device that rotates a /128 defeats the limiter for free.
 //   * The Map is a best-effort defence — serverless cold starts make it leaky. The real
 //     backstop is the global flood breaker in keeper-telegram.js (silent 60s mute on burst).
 //   * Unknown ev names → 204. No error. No confirmation to a probe of what does exist.
+//   * Crawlers that execute JS (Googlebot, Bingbot, headless audits) are dropped by user
+//     agent so `arrive` stays a count of people.
 //   * `parse_mode` is deliberately never set on the Telegram side (see keeper-telegram.js).
 //
 // This endpoint MUST NOT be used for `reward.served.*` — those are server-emitted from
 // /api/reward when a PDF actually streams. Anything in SERVER_EV is refused as a probe.
 export const prerender = false;
 
-import { notify, solverTag, place, safeExtra } from '../../lib/keeper-telegram.js';
-import { ALLOW, EXTRA_ALLOWED, line } from '../../lib/events.js';
+import { notify, solverTag, place, safeExtra, isBot } from '../../lib/keeper-telegram.js';
+import { ALLOW, EXTRA_ALLOWED, validExtra, keeperLine } from '../../lib/events.js';
 
-// Per-IP+event cooldown. 5 minutes per (ip64, ev) pair. Also caps the Map to 5000 entries
-// with FIFO pruning so a long-lived warm instance can't grow without bound.
+// Per-IP+event cooldown. 5 minutes per (ip64, ev, extra) tuple. Also caps the Map to 5000
+// entries with FIFO pruning so a long-lived warm instance can't grow without bound.
 const buckets = new Map();
 const COOLDOWN_MS = 5 * 60 * 1000;
 const MAP_CAP = 5000;
 function ip64(ip) {
   if (!ip) return 'unknown';
   if (ip.indexOf(':') === -1) return ip;                   // IPv4 → keep whole
-  return ip.split(':').slice(0, 4).join(':') + '::/64';    // IPv6 → first 64 bits
+  // IPv6 → first 64 bits. Expand a compressed `::` first so `2001:db8::1` and
+  // `2001:db8:0:0:0:0:0:1` land in the same bucket.
+  let groups;
+  if (ip.indexOf('::') !== -1) {
+    const [head, tail] = ip.split('::');
+    const h = head ? head.split(':') : [], t = tail ? tail.split(':') : [];
+    groups = h.concat(Array(Math.max(0, 8 - h.length - t.length)).fill('0'), t);
+  } else groups = ip.split(':');
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '') || '0').join(':') + '::/64';
 }
-function shouldSkip(ip, ev) {
+function prune(map) {
+  if (map.size <= MAP_CAP) return;
+  const keys = map.keys();                                 // FIFO: drop the oldest ~10%
+  for (let i = 0; i < Math.floor(MAP_CAP * 0.1); i++) { const k = keys.next(); if (k.done) break; map.delete(k.value); }
+}
+function shouldSkip(ip, ev, extra) {
   const now = Date.now();
-  const key = ip64(ip) + '|' + ev;
+  const key = ip64(ip) + '|' + ev + (extra ? '|' + extra : '');
   const last = buckets.get(key);
   if (last && now - last < COOLDOWN_MS) return true;
   buckets.set(key, now);
-  if (buckets.size > MAP_CAP) {
-    // FIFO prune: drop the oldest ~10% to keep amortised work small.
-    const keys = buckets.keys();
-    for (let i = 0; i < Math.floor(MAP_CAP * 0.1); i++) {
-      const k = keys.next(); if (k.done) break; buckets.delete(k.value);
-    }
-  }
+  prune(buckets);
   return false;
 }
 
@@ -53,12 +64,7 @@ function ipBurst(ip) {
   if (now - b.t > COOLDOWN_MS) { b.n = 0; b.t = now; }
   b.n += 1;
   ipCounts.set(key, b);
-  if (ipCounts.size > MAP_CAP) {
-    const keys = ipCounts.keys();
-    for (let i = 0; i < Math.floor(MAP_CAP * 0.1); i++) {
-      const k = keys.next(); if (k.done) break; ipCounts.delete(k.value);
-    }
-  }
+  prune(ipCounts);
   return b.n > 40;
 }
 
@@ -73,19 +79,19 @@ export async function POST({ request, clientAddress }) {
   const ev = String(body && body.ev || '');
   // 1. Unknown event → 204 silence (no probe confirmation).
   if (!ALLOW.has(ev)) return NOOP204();
+  // 2. Crawlers and headless audits are not visitors.
+  if (isBot(request)) return NOOP204();
   const ip = clientAddress || 'unknown';
-  // 2. Per-IP burst gate.
+  // 3. Per-IP burst gate.
   if (ipBurst(ip)) return NOOP204();
-  // 3. Per-IP + per-event cooldown.
-  if (shouldSkip(ip, ev)) return NOOP204();
-
-  // 4. Extras — only accepted for events that declare a cap, and only through the sanitizer.
+  // 4. Extras — character-sanitized, then held to the event's exact grammar. Anything that
+  //    is not the shape our own clients produce is dropped; the event still goes through.
   const cap = EXTRA_ALLOWED[ev] || 0;
-  const extra = cap ? safeExtra(body.extra, cap) : '';
+  const extra = cap ? validExtra(ev, safeExtra(body.extra, cap)) : '';
+  // 5. Per-IP + per-event (+ extra) cooldown.
+  if (shouldSkip(ip, ev, extra)) return NOOP204();
 
-  const tag = solverTag(body && body.vid);
-  const geo = place(request);
-  await notify(`${line(ev, extra)} · ${tag} · ${geo}`);
+  await notify(keeperLine(ev, extra, solverTag(body && body.vid), place(request)));
   return NOOP204();
 }
 

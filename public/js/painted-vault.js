@@ -539,7 +539,7 @@
     $('rwKicker').textContent = RW.kicker; $('rwTitle').textContent = RW.title; $('rwText').textContent = RW.text;
     const btn = $('rwBtn'); btn.href = held; btn.textContent = RW.btn;
     // Rebind on every open — the previous act's click handler is replaced, keeping the pipe tidy.
-    btn.onclick = function () { try { window.psEvent && window.psEvent('reward.click.' + act); } catch (e) {} };
+    btn.onclick = function () { try { window.psBeacon && window.psBeacon('reward.click.' + act); } catch (e) {} };   // beacon: iOS may open the PDF in-tab
     try { window.psEvent && window.psEvent('reward.open.' + act); } catch (e) {}
     const ask = $('rwAsk'); if (ask) ask.hidden = !RW.ask;
     $('reward').hidden = false;
@@ -577,8 +577,9 @@
   const wordboxEl = $('wordbox'), tilesEl = $('tiles'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
   const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
   function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(5, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
+  let wbOpenFails = 0;                                // misses since THIS box opened (wbFails drives the VO across the visit)
   function openWordbox(key) {
-    wbTarget = key; wbWord = ''; wbBusy = false;
+    wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
     $('wbKicker').textContent = DOORS[key].kicker; $('wbLine').textContent = VO[DOORS[key].vo].text;
     wbMsg.textContent = ''; renderTiles(); wordboxEl.hidden = false;
     wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; try { wbInput.focus({ preventScroll: true }); } catch (err) {}
@@ -586,13 +587,19 @@
     keeper(DOORS[key].vo);
   }
   function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
-  $('wbCancel').addEventListener('click', closeWordbox);
+  // Dismissed without a true word — the "gave up at this door" signal. Success paths call
+  // closeWordbox() directly and never reach this.
+  function dismissWordbox() {
+    try { if (wbTarget) window.psEvent && window.psEvent('wordbox.close', wbOpenFails ? wbTarget + ' after ' + wbOpenFails + (wbOpenFails === 1 ? ' miss' : ' misses') : wbTarget + ' without a guess'); } catch (e) {}
+    closeWordbox();
+  }
+  $('wbCancel').addEventListener('click', dismissWordbox);
   function wbSet(w) { wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, WORD_LEN); renderTiles(); }
   wbInput.addEventListener('input', () => { wbSet(wbInput.value); if (wbInput.value !== wbWord) wbInput.value = wbWord; });
   addEventListener('keydown', (e) => {
     if (wordboxEl.hidden) return;
     if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
-    else if (e.key === 'Escape') closeWordbox();
+    else if (e.key === 'Escape') dismissWordbox();
     else if (e.target !== wbInput) {   // typed with the box open but the field unfocused: still counts
       if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
       else if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { wbSet(wbWord + e.key); wbInput.value = wbWord; e.preventDefault(); try { wbInput.focus({ preventScroll: true }); wbInput.setSelectionRange(wbWord.length, wbWord.length); } catch (err) {} }
@@ -604,7 +611,7 @@
     if (wbWord.length < 4) { shake(wordboxEl); return; }
     wbBusy = true; wbSubmit.textContent = 'The vault is listening…';
     let j = null;
-    try { const r = await fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word: wbWord, vid: psVid() }) }); j = await r.json(); } catch (e) { /* offline */ }
+    try { const r = await fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word: wbWord, vid: psVid(), at: 'painted' }) }); j = await r.json(); } catch (e) { /* offline */ }
     wbBusy = false; wbSubmit.textContent = 'Open the door';
     if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
     if (j.error === 'slow_down') { wbMsg.textContent = 'Too many tries at once. Take a breath, then speak again.'; return; }
@@ -624,7 +631,7 @@
       else if (act === 'IV') { caption('The floor answers. A stair, cut long before this vault was sealed — go down.', 6000); setTimeout(() => enterRoom('IV'), 1400); }
       else { playCreak(1.6); setTimeout(() => enterRoom(act), 900); }
     } else {
-      wbFails++; playThud();
+      wbFails++; wbOpenFails++; playThud();
       const fk = 'fail' + Math.min(wbFails, 3); keeper(fk);
       wbMsg.innerHTML = wbFails >= 3 ? 'Perhaps you need <a href="/hints" style="color:var(--gold)">the Keeper’s hints</a>.' : VO[fk].text;
       wbSet(''); wbInput.value = ''; shake(wordboxEl);
@@ -765,10 +772,10 @@
     if (won) {
       const secs = Math.round((performance.now() - round.t0) / 10) / 100;
       if (!round.best || secs < round.best) { round.best = secs; store.set('ps_round_best', secs); }
-      const note = 'Five in ' + secs + 's' + (round.best === secs ? ' — best' : '');
+      const note = 'Five in ' + secs + 's' + (round.best === secs ? ' · best' : '');
       try { window.psEvent && window.psEvent('round.solved', note); } catch (e) {}
       awardTile('II', 'Five in ' + secs + ' seconds' + (round.best === secs ? ' — your best.' : ' (best ' + round.best + 's).'));
-    } else caption('The dark kept them that time. Rest your eyes, then try again.', 5000);
+    } else { caption('The dark kept them that time. Rest your eyes, then try again.', 5000); try { window.psEvent && window.psEvent('round.fail'); } catch (e) {} }
   }
 
   /* ================= MINI-GAME 2 — THE LISTENING LOCK (treasure, the locked chest) ================= */
@@ -931,7 +938,7 @@
       startAmbient();
       els.pvGate.classList.add('gone');
       try {
-        if (!sessionStorage.getItem('ps_visited')) { sessionStorage.setItem('ps_visited', '1'); fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ vid: psVid(), mode: 'painted' }) }).catch(() => {}); }
+        if (!sessionStorage.getItem('ps_visited_painted')) { sessionStorage.setItem('ps_visited_painted', '1'); fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ vid: psVid(), mode: 'painted' }) }).catch(() => {}); }
       } catch (e) {}
       enterRoom(act && ROOMS[act] && act !== 'IV' && doorOpen(act) ? act : 'I');
       setTimeout(() => { els.pvHint.classList.add('show'); setTimeout(() => els.pvHint.classList.remove('show'), 7000); }, 2400);
@@ -958,11 +965,21 @@
     // A tiny session-depth summary — sent once on tab hide via sendBeacon so it survives
     // Safari's aggressive lifecycle. Counts the distinct rooms the visitor actually saw.
     const roomsTouched = new Set();
+    const ROOM_SHORT = { I: 'the study', II: 'the library', III: 'the treasure room', IV: 'the sanctum' };
     (function watchRooms() {
       let last = room; setInterval(() => { if (room && room !== last) { roomsTouched.add(room); last = room; } }, 800);
       if (room) roomsTouched.add(room);
     })();
-    addEventListener('pagehide', () => { try { window.psSessionDepth && window.psSessionDepth(roomsTouched.size + ' rooms'); } catch (e) {} }, { once: true });
+    // The story's last line — rooms seen, minutes stayed, and where they were standing.
+    // psOnLeave fires on tab-hide or pagehide, whichever comes first (phones rarely pagehide).
+    try {
+      window.psOnLeave && window.psOnLeave(() => {
+        if (!room) return;                          // still at the gate — not a visit
+        window.psSessionDepth('painted · ' + roomsTouched.size + ' rooms · ' + window.psMinutes() + 'm · last ' + (ROOM_SHORT[room] || 'the study'));
+      });
+      // "Lingers in the library — 4 minutes without progress."
+      window.psIdleWatch && window.psIdleWatch(() => ROOM_SHORT[room] || '');
+    } catch (e) { /* events.js missing — the vault does not care */ }
     // Amazon click-through delegation lives in Layout.astro so every page picks it up.
   }
   window.PSPaintedBoot = boot;

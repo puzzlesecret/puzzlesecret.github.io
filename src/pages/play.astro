@@ -294,6 +294,13 @@ import webPuzzles from '../data/web_puzzles.json';
     function loadPuzzle(id) {
       const puz = PUZZLES.find((p) => p.id === id) || PUZZLES[0];
       currentId = puz.id;
+      // the Keeper's log, once a session. The first loadPuzzle() runs while the page is still
+      // parsing, before the deferred events.js exists — so wait for DOMContentLoaded then.
+      // Inside the vault's desk (EMBED) the parent logs `desk.solved` instead — stay quiet.
+      try {
+        const fire = () => { try { !EMBED && window.psEventOnce && window.psEventOnce('play.start'); } catch (e) {} };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fire, { once: true }); else fire();
+      } catch (e) {}
       renderCount = 0;
       history = [];
       gridState = Array(81).fill(0);
@@ -547,6 +554,11 @@ import webPuzzles from '../data/web_puzzles.json';
         solvedSet.add(currentId);
         saveSolved();
         stopTimer();
+        // the Keeper's log: tier, time, and how many this browser has solved in all
+        try {
+          const m = Math.floor(timerSec / 60), s = timerSec % 60;
+          !EMBED && window.psEvent && window.psEvent('play.solved', `${puz.tier} · ${m}m${String(s).padStart(2, '0')}s · ${solvedSet.size} total`);
+        } catch (e) {}
         showVictory(puz);
       } else if (!currentStr.includes('0')) {
         // every square filled, but not the answer: say so once, without pointing at the square
@@ -595,6 +607,7 @@ import webPuzzles from '../data/web_puzzles.json';
         localStorage.setItem('ps_play_nudge', '1');
         // let the victory modal be seen first, then raise the nudge behind it
         setTimeout(() => { document.getElementById('nudgeModal').hidden = false; }, 400);
+        try { window.psEvent && window.psEvent('play.offer'); } catch (e) {}
       } catch (e) { /* private mode — skip the nudge */ }
     }
     document.getElementById('nudgeClose').addEventListener('click', () => {

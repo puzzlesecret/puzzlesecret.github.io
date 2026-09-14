@@ -126,6 +126,8 @@ const HOME_LD = {
     <link rel="preload" as="image" href="/art/door-v10.webp" />
     <link rel="preload" as="image" href="/art/rooms/study.webp" />
     <script type="application/ld+json" set:html={JSON.stringify(HOME_LD)} />
+    <!-- The Keeper's event helper: `arrive` once per session + Amazon click-through ping. -->
+    <script is:inline src="/js/events.js" defer></script>
   </head>
 
   <body>
@@ -859,7 +861,7 @@ const HOME_LD = {
         const word = tileEls.map((t) => t.value).join('');
         try {
           const res = await fetch('/api/unlock', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word, vid: psVid() }),
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word, vid: psVid(), at: 'door' }),
           });
           const data = await res.json();
           if (data.ok) onCorrect(data); else onWrong();
