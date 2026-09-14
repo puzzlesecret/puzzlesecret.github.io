@@ -8,6 +8,10 @@
    never gated on reviews or email; no "win / prize" language; no new personal data. */
 (function () {
   'use strict';
+  // The 3D vault is the default. When it is running, this file must do nothing at all: both
+  // scripts share the word box and the speak button, and binding them twice started two
+  // recognisers on one tap (they abort each other) and rendered the tiles twice.
+  if (!window.__flatMode) return;
   const $ = (id) => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -574,8 +578,8 @@
   /* ---- the word box (shared #wordbox; the server decides) ---- */
   const wordboxEl = $('wordbox'), tilesEl = $('tiles'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
   const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
-  // one open tile at rest: the box never advertises a length
-  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(1, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
+  const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };   // the book states each door's length, so the box shows it
+  function renderTiles() { tilesEl.innerHTML = ''; const shown = Math.min(WORD_LEN, Math.max(DOOR_LEN[wbTarget] || 6, wbWord.length + 1)); for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
   let wbOpenFails = 0;                                // misses since THIS box opened (wbFails drives the VO across the visit)
   function openWordbox(key) {
     wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
@@ -639,15 +643,42 @@
   wbSubmit.addEventListener('click', submitWord);
   function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition, speakBtn = $('speakBtn');
+  let speakRec = null;
   if (!SR) speakBtn.style.display = 'none';
   else speakBtn.addEventListener('click', () => {
+    if (speakRec) { try { speakRec.stop(); } catch (e) {} return; }         // a second tap stops listening
+    let heard = false;
     try {
-      const rec = new SR(); rec.lang = 'en-US'; rec.maxAlternatives = 1;
+      const rec = speakRec = new SR();                                      // kept in a module variable: never collected mid-listen
+      rec.lang = 'en-US'; rec.maxAlternatives = 3; rec.interimResults = false; rec.continuous = false;
       speakBtn.classList.add('listening'); speakBtn.textContent = '🎙  Listening…';
-      rec.onresult = (e) => { wbSet(e.results[0][0].transcript || ''); if (wbWord.length >= 4) submitWord(); };
-      rec.onend = () => { speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; };
-      rec.onerror = rec.onend; rec.start();
-    } catch (e) { /* ignore */ }
+      wbMsg.textContent = 'Listening… say the word clearly.';
+      rec.onresult = (e) => {
+        heard = true;
+        // the first alternative that is a single plain word wins; else the top guess
+        const alts = Array.from(e.results[0] || []).map((a) => (a.transcript || '').trim());
+        const pick = alts.find((t) => /^[a-z]+$/i.test(t)) || alts[0] || '';
+        wbSet(pick);
+        if (wbWord.length >= 4) { wbMsg.textContent = 'I heard \u201C' + wbWord + '\u201D.'; submitWord(); }
+        else wbMsg.textContent = pick ? 'I heard \u201C' + pick + '\u201D. Say it again, or type it.' : 'I heard nothing. Say it again, or type it.';
+      };
+      rec.onerror = (e) => {
+        heard = true;
+        const why = e && e.error;
+        wbMsg.textContent = why === 'not-allowed' || why === 'service-not-allowed'
+          ? 'The vault may not use your microphone. Allow it in the address bar, or type the word.'
+          : why === 'network' ? 'Speech needs a connection right now. Type the word instead.'
+          : why === 'no-speech' ? 'I heard nothing. Say it again, or type it.'
+          : 'I could not make that out. Say it again, or type the word.';
+      };
+      rec.onend = () => {
+        speakRec = null;
+        speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word';
+        if (!heard) wbMsg.textContent = 'I heard nothing. Say it again, or type it.';
+        try { wbInput.focus({ preventScroll: true }); } catch (e) {}
+      };
+      rec.start();
+    } catch (e) { speakRec = null; speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; wbMsg.textContent = 'Speech is not available here. Type the word.'; }
   });
 
   /* ---- the sanctum (Vault IV): a dark room, built in HTML ---- */

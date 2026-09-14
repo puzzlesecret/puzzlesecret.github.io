@@ -2179,11 +2179,15 @@ const tilesEl = document.getElementById('tiles');
 const wbInput = document.getElementById('wbInput');
 const wbMsg = document.getElementById('wbMsg');
 const wbSubmit = document.getElementById('wbSubmit');
-const WORD_LEN = 12;                     // the box no longer advertises any word's length
+const WORD_LEN = 12;                     // hard cap on what can be typed
+// The book tells the solver how many letters each door's word has (the tally page has one box per
+// key), so the box shows that many tiles from the start: six for the first door, seven for the rest.
+const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };
 let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
 function renderTiles() {
   tilesEl.innerHTML = '';
-  const shown = Math.min(WORD_LEN, Math.max(1, wbWord.length + 1));   // one open tile at rest: the box never advertises a length
+  const base = DOOR_LEN[wbTarget] || 6;
+  const shown = Math.min(WORD_LEN, Math.max(base, wbWord.length + 1));   // the door's length, growing only if someone types past it
   for (let i = 0; i < shown; i++) {
     const t = document.createElement('div');
     t.className = 'tile' + (wbWord[i] ? ' filled' : '');
@@ -2280,21 +2284,42 @@ wbSubmit.addEventListener('click', submitWord);
 // 🎙 the vault listens — same Web Speech trick as the landing
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const speakBtn = document.getElementById('speakBtn');
+let speakRec = null;
 if (!SR) speakBtn.style.display = 'none';
 else speakBtn.addEventListener('click', () => {
+  if (speakRec) { try { speakRec.stop(); } catch (e) {} return; }         // a second tap stops listening
+  let heard = false;
   try {
-    const rec = new SR();
-    rec.lang = 'en-US'; rec.maxAlternatives = 1;
-    speakBtn.classList.add('listening'); speakBtn.textContent = '🎙  Listening…';
+    const rec = speakRec = new SR();                                      // kept in a module variable: never collected mid-listen
+    rec.lang = 'en-US'; rec.maxAlternatives = 3; rec.interimResults = false; rec.continuous = false;
+    speakBtn.classList.add('listening'); speakBtn.textContent = '🎙  Listening…';
+    wbMsg.textContent = 'Listening… say the word clearly.';
     rec.onresult = (e) => {
-      const said = (e.results[0][0].transcript || '');
-      wbSet(said);
-      if (wbWord.length >= 4) submitWord();
+      heard = true;
+      // the first alternative that is a single plain word wins; else the top guess
+      const alts = Array.from(e.results[0] || []).map((a) => (a.transcript || '').trim());
+      const pick = alts.find((t) => /^[a-z]+$/i.test(t)) || alts[0] || '';
+      wbSet(pick);
+      if (wbWord.length >= 4) { wbMsg.textContent = 'I heard \u201C' + wbWord + '\u201D.'; submitWord(); }
+      else wbMsg.textContent = pick ? 'I heard \u201C' + pick + '\u201D. Say it again, or type it.' : 'I heard nothing. Say it again, or type it.';
     };
-    rec.onend = () => { speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; };
-    rec.onerror = rec.onend;
+    rec.onerror = (e) => {
+      heard = true;
+      const why = e && e.error;
+      wbMsg.textContent = why === 'not-allowed' || why === 'service-not-allowed'
+        ? 'The vault may not use your microphone. Allow it in the address bar, or type the word.'
+        : why === 'network' ? 'Speech needs a connection right now. Type the word instead.'
+        : why === 'no-speech' ? 'I heard nothing. Say it again, or type it.'
+        : 'I could not make that out. Say it again, or type the word.';
+    };
+    rec.onend = () => {
+      speakRec = null;
+      speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word';
+      if (!heard) wbMsg.textContent = 'I heard nothing. Say it again, or type it.';
+      try { wbInput.focus({ preventScroll: true }); } catch (e) {}
+    };
     rec.start();
-  } catch (e) { /* ignore */ }
+  } catch (e) { speakRec = null; speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; wbMsg.textContent = 'Speech is not available here. Type the word.'; }
 });
 function psVid() {
   try {
