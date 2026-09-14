@@ -34,7 +34,7 @@ const HASHES = {
   '54cd85880c16e9fdd2e794428ab8cca5e9b9db0dba570914772289495d2fcbee': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10 },
   '09ebb42c1c790c0df466c2594ed1f9412746e5fd1183f047bf5509bf77042376': { act: 'II', reward: '100 bonus Medium puzzles', tier: 'medium', discount: 20 },
   '14931225a6efb6f746b42dd5dc7d068af053a88cd3bcec24c7d21827e558f72a': { act: 'III', reward: '200 bonus Hard puzzles', tier: 'hard', discount: 30 },
-  '7009db01f308f2c18da9b71bfcda568213d322a136fd95b8e5a9da5d2b8c5abe': { act: 'IV', reward: "the Keeper's private epilogue", tier: 'lantern', discount: 0, hidden: true },
+  '7009db01f308f2c18da9b71bfcda568213d322a136fd95b8e5a9da5d2b8c5abe': { act: 'IV', reward: "the Keeper's private epilogue", tier: 'unlit', discount: 0, hidden: true },
 
   // ── GUEST KEYS ───────────────────────────────────────────────────────────
   // A guest key opens Vault I for readers of an outlet that printed one of our
@@ -50,6 +50,17 @@ const HASHES = {
 };
 
 // An opaque, unguessable proof that SOMEONE solved the fourth word. Returned only on that
+// The seven framed lines in the Sanctum. They leave the server only on a true fourth word,
+// so the client bundles never carry the gilded capitals in order.
+const LETTERS = [
+  'Long before this vault was ever sealed,',
+  'A puzzle, I always believed, should not end.',
+  'Never did I make an easy thing look hard.',
+  'Those who look twice will always find more.',
+  'Every shaded square was a choice, not chance.',
+  'Remember this: the looking was the secret.',
+  'Now you hold what almost no one ever will.',
+];
 // success, stored by the client, and accepted by /api/carve instead of re-typing the word.
 // It reveals nothing (a hash of the salt) and never appears for a non-solver.
 const CARVE_TOKEN = SALT ? crypto.createHash('sha256').update(SALT + '|carve-proof-v1').digest('hex') : '';
@@ -95,7 +106,7 @@ export async function POST({ request, clientAddress }) {
         ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens${at}`
         : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}${at}`;
     await notify(line);
-    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
+    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined });
   }
   if (!isBot(request)) {
     const n = missCount(ip);

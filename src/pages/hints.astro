@@ -16,7 +16,6 @@ import Layout from '../layouts/Layout.astro';
         <button class="tab-btn active" data-act="act1" role="tab">Act I · The First Door</button>
         <button class="tab-btn" data-act="act2" role="tab">Act II · The Burned Plate</button>
         <button class="tab-btn" data-act="act3" role="tab">Act III · The Cipher Wheel</button>
-        <button class="tab-btn" data-act="act4" role="tab">Secret · The Fourth Door</button>
       </div>
 
       <!-- Act I Hints -->
@@ -165,48 +164,42 @@ import Layout from '../layouts/Layout.astro';
         </div>
       </div>
 
-      <!-- Act IV (Acrostic) Hints -->
-      <div class="act-panel" id="act4">
-        <div class="act-header">
-          <h2>The Hidden Fourth Secret</h2>
-          <p>Unannounced easter egg. Hidden across the Keeper's three letters.</p>
-        </div>
-
-        <div class="accordion">
-          <details class="hint-card">
-            <summary class="hint-title"><span class="h-step">Nudge 1</span> What is an acrostic?</summary>
-            <div class="hint-content">
-              <p>An acrostic reads the first letter of consecutive paragraphs or sentences in order!</p>
-            </div>
-          </details>
-
-          <details class="hint-card">
-            <summary class="hint-title"><span class="h-step">Nudge 2</span> Which letters should I read?</summary>
-            <div class="hint-content">
-              <p>Read the opening letter of each paragraph across the Keeper's letters in the back of the book (pages 208, 209, and 214).</p>
-            </div>
-          </details>
-
-          <details class="hint-card">
-            <summary class="hint-title"><span class="h-step">Nudge 3</span> Where do I use the 4th word on the site?</summary>
-            <div class="hint-content">
-              <p>In <a href="/vault" style="color:var(--gold)">The 3D Vault Crawl</a>, walk deep into Vault III (The Grand Treasure Vault) and look low, in the far-left corner by the back wall. Among all that gleaming treasure, <strong>one object is not lit</strong>. Click it. (In the painted vault, it waits in the same corner.)</p>
-            </div>
-          </details>
-
-          <details class="hint-card reveal-card">
-            <summary class="hint-title"><span class="h-step">Full Reveal</span> Reveal the 4th Secret Word</summary>
-            <div class="hint-content">
-              <button class="btn-reveal" data-sealed="ODQWHUQ">Click to Reveal Word</button>
-              <div class="revealed-word"></div>
-            </div>
-          </details>
-        </div>
-      </div>
     </section>
   </main>
 
   <script>
+    import { PAGE_WORDS } from '../lib/lore.js';
+    // One secret more. This section exists only for a solver who has opened the third door AND
+    // has read the Keeper's own confession (page 7 or 8) inside the vault. It never ships in
+    // the HTML, it repeats only what he wrote, and there is no reveal for it.
+    (function earnedHints() {
+      let vaults: any = {}, story: any[] = [];
+      try { vaults = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {}; } catch (e) {}
+      try { story = JSON.parse(localStorage.getItem('ps_story_v1') || '[]') || []; } catch (e) {}
+      if (!vaults.III || !(story.includes(7) || story.includes(8))) return;
+      const host = document.querySelector('.hints-body');
+      if (!host) return;
+      const sec = document.createElement('section');
+      sec.className = 'earned-hints';
+      sec.setAttribute('aria-labelledby', 'earnedTitle');
+      const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      sec.innerHTML = `
+        <div class="act-header">
+          <h2 id="earnedTitle">One secret more</h2>
+          <p>You have read what he wrote. He will not write it twice.</p>
+        </div>
+        <div class="accordion">
+          <details class="hint-card"><summary class="hint-title"><span class="h-step">His page</span> What he confessed</summary>
+            <div class="hint-content"><p>${esc(PAGE_WORDS[7])}</p></div></details>
+          <details class="hint-card"><summary class="hint-title"><span class="h-step">His page</span> All the help he gives</summary>
+            <div class="hint-content"><p>${esc(PAGE_WORDS[8])}</p></div></details>
+          <details class="hint-card"><summary class="hint-title"><span class="h-step">Where</span> Where to say it</summary>
+            <div class="hint-content"><p>Where nothing is lit.</p></div></details>
+        </div>
+        <p class="earned-foot">There is no reveal for this one. A keeper keeps.</p>`;
+      host.appendChild(sec);
+    })();
+
     // Tab Switching
     const tabs = document.querySelectorAll('.tab-btn');
     const panels = document.querySelectorAll('.act-panel');
@@ -284,6 +277,22 @@ import Layout from '../layouts/Layout.astro';
     .example-box, .rule-box { background: rgba(246,178,60,.08); border-left: 3px solid var(--gold); padding: 10px 14px; margin-top: 12px; border-radius: 0 6px 6px 0; font-size: 14.5px; }
 
     .reveal-card { border-color: rgba(231,138,166,.3); }
+  </style>
+  <style is:global>
+    /* the earned section is built by script, so its rules are global (scoped rules would not reach it) */
+    .page-hints .earned-hints { margin-top: 48px; padding-top: 36px; border-top: 1px solid rgba(185,143,82,.22); }
+    .page-hints .earned-hints .act-header { text-align: center; margin-bottom: 24px; }
+    .page-hints .earned-hints .act-header h2 { font-family: var(--display); font-size: 24px; color: var(--gold); margin-bottom: 4px; }
+    .page-hints .earned-hints .act-header p { font-style: italic; color: var(--ash); font-size: 15px; }
+    .page-hints .earned-hints .accordion { display: flex; flex-direction: column; gap: 14px; }
+    .page-hints .earned-hints .hint-card { background: #121016; border: 1px solid rgba(185,143,82,.22); border-radius: 10px; padding: 18px 22px; }
+    .page-hints .earned-hints .hint-card[open] { border-color: rgba(246,178,60,.45); background: #16131c; }
+    .page-hints .earned-hints .hint-title { font-family: var(--display); font-size: 15px; letter-spacing: .06em; color: var(--ivory); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 12px; }
+    .page-hints .earned-hints .hint-title::-webkit-details-marker { display: none; }
+    .page-hints .earned-hints .hint-title:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
+    .page-hints .earned-hints .h-step { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); background: rgba(246,178,60,.12); border: 1px solid rgba(246,178,60,.3); padding: 3px 9px; border-radius: 4px; }
+    .page-hints .earned-hints .hint-content { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.06); font-size: 16px; line-height: 1.55; color: var(--ivory); font-style: italic; }
+    .page-hints .earned-foot { text-align: center; margin-top: 18px; font-style: italic; color: var(--ash); font-size: 15px; }
     .btn-reveal { padding: 10px 20px; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; background: rgba(231,138,166,.15); color: var(--v3); border: 1px solid rgba(231,138,166,.4); border-radius: 6px; cursor: pointer; transition: all .2s; margin-top: 8px; }
     .btn-reveal:hover { background: rgba(231,138,166,.3); }
     .word-badge { display: inline-block; font-family: var(--display); font-size: 24px; font-weight: 700; letter-spacing: .28em; color: var(--gold-hi); background: rgba(246,178,60,.15); border: 1px solid var(--gold); padding: 8px 24px; border-radius: 8px; margin-top: 10px; text-shadow: 0 0 16px rgba(246,178,60,.5); }

@@ -2,6 +2,7 @@
 // mode (the default is the painted vault, public/js/painted-vault.js). Split out of the page
 // on 2026-09-02 so the painted path never downloads three.js. Nothing inside changed.
 import * as THREE from 'three';
+import { PAGE_WORDS, FINAL_LETTER, NUM_WORD, NOTEBOOK } from '../lib/lore.js';
 
 /* Small event helpers — the same shape as public/js/events.js so a call reads the same in
    both vault modules. Non-blocking, silent on failure. Every string here must match the
@@ -989,7 +990,7 @@ const tomeGlow = sprite(1.2, 0, 0.25, 0, tomeStack, 0.9);
 const tomeLight = new THREE.PointLight(0xffb84a, 16, 6, 2);
 tomeLight.position.set(0, 0.6, 0.2); lectern.add(tomeLight);
 
-// aisle lanterns (hanging) — the library's main light
+// aisle hungLamps (hanging) — the library's main light
 const libLights = [], libLampSprites = [];
 [-9.4, -12.2, -15].forEach((z) => {
   const lamp = new THREE.Group(); lamp.position.set(AX, LIB.H - 0.9, z); scene.add(lamp);
@@ -1192,17 +1193,17 @@ for (let i = 0; i < 16; i++) {
 // a fallen cryptex by the great chest
 const fallenCx = propCryptex(); fallenCx.position.set(AX + 0.75, 0, -24.15); fallenCx.rotation.y = 1.1; scene.add(fallenCx);
 
-// the unlit lantern — the hidden fourth door's keyhole (Phase-2 payoff, wired to the word box)
-const lantern = new THREE.Group(); lantern.position.set(V3.minX + 0.55, 0, -25.3); lantern.rotation.y = 0.7; scene.add(lantern);
-lantern.userData = { kind: 'fourth', label: 'Something unlit… waiting' };
-box(0.16, 0.02, 0.16, M.iron, 0, 0.01, 0, 0, lantern);
-[[-0.065, -0.065], [0.065, -0.065], [-0.065, 0.065], [0.065, 0.065]].forEach(([x, z]) => box(0.016, 0.24, 0.016, M.iron, x, 0.14, z, 0, lantern));
-box(0.17, 0.03, 0.17, M.iron, 0, 0.26, 0, 0, lantern);
+// the unlit unlitObj — the hidden fourth door's keyhole (Phase-2 payoff, wired to the word box)
+const unlitObj = new THREE.Group(); unlitObj.position.set(V3.minX + 0.55, 0, -25.3); unlitObj.rotation.y = 0.7; scene.add(unlitObj);
+unlitObj.userData = { kind: 'fourth', label: 'Something unlit… waiting' };
+box(0.16, 0.02, 0.16, M.iron, 0, 0.01, 0, 0, unlitObj);
+[[-0.065, -0.065], [0.065, -0.065], [-0.065, 0.065], [0.065, 0.065]].forEach(([x, z]) => box(0.016, 0.24, 0.016, M.iron, x, 0.14, z, 0, unlitObj));
+box(0.17, 0.03, 0.17, M.iron, 0, 0.26, 0, 0, unlitObj);
 const lringM = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.008, 6, 14), M.iron);
-lringM.position.y = 0.3; lantern.add(lringM);
+lringM.position.y = 0.3; unlitObj.add(lringM);
 const lglass = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.2, 0.11), new THREE.MeshStandardMaterial({ color: 0x18130c, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.85 }));
-lglass.position.y = 0.14; lantern.add(lglass);
-const lanternGlim = sprite(0.22, 0, 0.14, 0, lantern, 0.0); // dark until noticed… then the faintest breath of light
+lglass.position.y = 0.14; unlitObj.add(lglass);
+const unlitGlim = sprite(0.22, 0, 0.14, 0, unlitObj, 0.0); // dark until noticed… then the faintest breath of light
 
 // Series Wall Gallery of original still pictures behind the chest in Vault III
 makeFramedPicture('/art/door-v10.webp', 0.9, 1.3, AX - 2.1, 2.4, -25.35);
@@ -1260,7 +1261,7 @@ const slab = new THREE.Group(); scene.add(slab);
 slab.position.set(STAIR.cx, -0.055, STAIR.cz);
 box(STAIR.x1 - STAIR.x0 + 0.02, 0.11, STAIR.zTop - STAIR.zBot + 0.02, M.stonePed, 0, 0, 0, 0, slab);
 // its face carries the SAME world-projected stone as the floor it sits in, so while it is
-// shut there is nothing to see -- the lantern is the only way to know it is there.
+// shut there is nothing to see -- the unlitObj is the only way to know it is there.
 const slabTop = floorSlab(STAIR.x0, STAIR.x1, STAIR.zBot, STAIR.zTop, slab);
 slabTop.position.set(0, 0.056, 0);
 
@@ -1377,42 +1378,35 @@ mtLight.position.set(0, 0.5, 0); masterTome.add(mtLight);
 
 /* ---- THE LAMP, LIT (fourth-vault keystone) ----
    The reward line promises "you found what was never lit." So the fourth vault's light
-   IS a lantern, hung above the reward, finally burning. The generic sanctum fill was
+   IS a unlitObj, hung above the reward, finally burning. The generic sanctum fill was
    dialled down (16 -> 6) so this reads as the true source of the room's warmth. */
 sanctumLight.intensity = 6;
 const hangL = new THREE.Group(); hangL.position.set(AX, 2.75, -28.5); sanctumG.add(hangL);
 const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.62, 6), M.iron);
 chain.position.y = -0.31; hangL.add(chain);
-const lanternBody = new THREE.Group(); lanternBody.position.y = -0.78; hangL.add(lanternBody);
-box(0.19, 0.03, 0.19, M.iron, 0, 0.13, 0, 0, lanternBody);          // cap
-box(0.17, 0.03, 0.17, M.iron, 0, -0.15, 0, 0, lanternBody);         // base
+const unlitBody = new THREE.Group(); unlitBody.position.y = -0.78; hangL.add(unlitBody);
+box(0.19, 0.03, 0.19, M.iron, 0, 0.13, 0, 0, unlitBody);          // cap
+box(0.17, 0.03, 0.17, M.iron, 0, -0.15, 0, 0, unlitBody);         // base
 [[-0.075, -0.075], [0.075, -0.075], [-0.075, 0.075], [0.075, 0.075]].forEach(([x, z]) =>
-  box(0.016, 0.28, 0.016, M.iron, x, -0.01, z, 0, lanternBody));    // corner posts
+  box(0.016, 0.28, 0.016, M.iron, x, -0.01, z, 0, unlitBody));    // corner posts
 const lantGlass = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.24, 0.14),
   new THREE.MeshStandardMaterial({ color: 0xffcf82, emissive: 0xffb347, emissiveIntensity: 1.6, transparent: true, opacity: 0.82 }));
-lantGlass.position.y = -0.01; lanternBody.add(lantGlass);
+lantGlass.position.y = -0.01; unlitBody.add(lantGlass);
 const lantFlame = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 8), M.flame);
-lantFlame.position.y = -0.03; lanternBody.add(lantFlame);
-sprite(0.95, 0, -0.01, 0, lanternBody, 0.5);                        // soft halo
+lantFlame.position.y = -0.03; unlitBody.add(lantFlame);
+sprite(0.95, 0, -0.01, 0, unlitBody, 0.5);                        // soft halo
 const lantLight = new THREE.PointLight(0xffc266, 22, 6.5, 2);
-lantLight.position.y = -0.02; lanternBody.add(lantLight);
+lantLight.position.y = -0.02; unlitBody.add(lantLight);
 const ringM = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 6, 14), M.iron);
-ringM.position.y = 0.16; ringM.rotation.x = Math.PI / 2; lanternBody.add(ringM);
+ringM.position.y = 0.16; ringM.rotation.x = Math.PI / 2; unlitBody.add(ringM);
 
 /* ---- THE KEEPER'S THREE LETTERS, with the gilded acrostic ----
    Post-solve reveal on the right wall: three framed letters, one gilded capital at the
    start of seven thoughts. Read down, they are the acrostic the P.S. promised. The
    capitals are stored as SEPARATE characters and drawn one at a time -- the answer word
    never exists as a string in this bundle. */
-const ACROSTIC = [
-  { cap: 'L', rest: 'ong before this vault was ever sealed,' },
-  { cap: 'A', rest: ' puzzle, I always believed, should not end.' },
-  { cap: 'N', rest: 'ever did I make an easy thing look hard.' },
-  { cap: 'T', rest: 'hose who look twice will always find more.' },
-  { cap: 'E', rest: 'very shaded square was a choice, not chance.' },
-  { cap: 'R', rest: 'emember this: the looking was the secret.' },
-  { cap: 'N', rest: 'ow you hold what almost no one ever will.' },
-];
+const LETTERS_KEY = 'ps_letters_v1';
+function heldLetters() { try { const v = JSON.parse(localStorage.getItem(LETTERS_KEY) || 'null'); return Array.isArray(v) && v.length ? v : null; } catch (e) { return null; } }
 const lettersCanvas = document.createElement('canvas');
 lettersCanvas.width = 1024; lettersCanvas.height = 460;
 const lettersTex = new THREE.CanvasTexture(lettersCanvas);
@@ -1428,16 +1422,27 @@ function drawLetters() {
   g.textAlign = 'center';
   g.fillText("From the Keeper's three letters", W / 2, 52);
   g.textAlign = 'left';
-  const x0 = 70, top = 92, lh = (H - top - 46) / ACROSTIC.length;
-  ACROSTIC.forEach((row, i) => {
-    const y = top + i * lh + lh * 0.5;
+  const lines = heldLetters();
+  if (!lines) {                                               // dark until the word has been spoken in this browser
+    g.textAlign = 'center';
+    g.font = 'italic 27px "Cormorant Garamond", serif';
+    g.fillStyle = 'rgba(60,44,20,0.55)';
+    g.fillText('The letters are dark.', W / 2, H / 2 - 10);
+    g.font = 'italic 21px "Cormorant Garamond", serif';
+    g.fillText('Speak the word, and they will show.', W / 2, H / 2 + 26);
+    lettersTex.needsUpdate = true;
+    return;
+  }
+  const x0 = 70, top = 92, lh = (H - top - 46) / lines.length;
+  lines.forEach((line, i) => {
+    const y = top + i * lh + lh * 0.5, cap = line.charAt(0), rest = line.slice(1);
     g.font = '700 40px Cinzel, serif';
     g.fillStyle = '#b8860b';                                  // the gilded capital
-    g.fillText(row.cap, x0, y + 6);
-    const capW = g.measureText(row.cap).width;
+    g.fillText(cap, x0, y + 6);
+    const capW = g.measureText(cap).width;
     g.font = 'italic 27px "Cormorant Garamond", serif';
     g.fillStyle = 'rgba(60,44,20,0.78)';                      // the faded rest
-    g.fillText(row.rest, x0 + capW + 2, y);
+    g.fillText(rest, x0 + capW + 2, y);
   });
   g.textAlign = 'center';
   g.font = 'italic 20px "Cormorant Garamond", serif';
@@ -1908,7 +1913,7 @@ function stepForward(dist) {
 /* ---- pointer: drag = look, tap = interact/walk ---- */
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
-const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, lantern,
+const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, unlitObj,
   hoodStand, pbChest, ...roundHits,
   candle, ink, quill, board, sconce, chair, notebook, easelS, ...rejects, ...wallCases,
   ...storyPages,
@@ -2046,22 +2051,7 @@ let sealFlareT = -99;
    Progress lives in localStorage so a reload never costs you the hunt. Pages are
    pure lore: they gate nothing, and finding all nine earns the final letter. */
 const STORY_KEY = 'ps_story_v1';
-const PAGE_WORDS = {
-  1: 'I was not always a keeper of vaults. I was a maker of puzzles — and a poor one — in a room exactly this size.',
-  2: 'My first hundred were rubbish. I burned them. My second hundred were worse, so I kept those — a man should remember what bad work looks like.',
-  3: 'The trouble with a good puzzle is that it ends. You solve it, you set it down, and the solving is gone forever. I wanted one that kept going.',
-  4: 'So I began hiding a second puzzle inside the first. A number here. A shaded square there. Nothing a solver would notice — until they noticed everything.',
-  5: 'They told me no one would look. They were right, mostly. But “mostly” is a wonderful word. It leaves a door open.',
-  6: 'I built this vault for the ones who look twice. Everything in it was locked by a puzzle, and every lock was made to be opened — eventually, by somebody stubborn.',
-  7: 'A confession: I hid one more thing than I ever announced. Not in the grids. In the letters. In the way a sentence begins.',
-  8: 'Read the openings. That is all the help I will give — and it is more than I gave anyone else.',
-  9: 'If you are reading this, you did not simply solve my book. You searched it. That is the rarer thing, and this vault knows the difference.',
-};
-const FINAL_LETTER =
-  'Nine pages, and you found every one. Most never look up from the grid. So here is the truth of it: ' +
-  'the puzzles were never the secret — the looking was. Keep the habit. I have hidden another chart, ' +
-  'another seam, another door. The Corsair’s Chart is already being drawn, and it will not be kinder than this one. — The Keeper';
-const NUM_WORD = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+/* PAGE_WORDS, FINAL_LETTER and NUM_WORD come from ../lib/lore.js (shared with /the-keeper). */
 
 function loadStory() {
   try { const v = JSON.parse(localStorage.getItem(STORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
@@ -2164,7 +2154,7 @@ const DOORS = {
            kicker: 'THE SECOND DOOR', vo: 'door2', isOpen: () => door2Open, setOpen: () => { door2Open = true; }, obj: door2 },
   door3: { act: 'III', stand: { x: AX, z: -18.55 }, inside: { x: AX, z: -21.0 },
            kicker: 'THE THIRD DOOR', vo: 'door3', isOpen: () => door3Open, setOpen: () => { door3Open = true; }, obj: door3 },
-  // The fourth secret has no door object any more -- lanternSuccess() opens the FLOOR.
+  // The fourth secret has no door object any more -- unlitSuccess() opens the FLOOR.
   fourth: { act: 'IV', stand: { x: V3.minX + 1.2, z: -24.8 }, inside: { x: AX, z: -28.5 },
            kicker: 'THE FOURTH SECRET', vo: 'fourth', isOpen: () => door4Open, setOpen: () => { door4Open = true; }, obj: null },
   // the first word, asked for at the desk when a visitor arrived without speaking it at the door
@@ -2264,10 +2254,11 @@ async function submitWord() {
     if (key === 'first') { closeWordbox(); openReward('I'); return; }
     if (key === 'fourth') {
       fourthWord = wbWord;                              // in-memory proof for this session
+      try { if (Array.isArray(j.lines) && j.lines.length) { localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); drawLetters(); } } catch (e) {}
       try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); } catch (e) {}
     }
     closeWordbox();
-    if (key === 'fourth') lanternSuccess();
+    if (key === 'fourth') unlitSuccess();
     else openVaultDoor(key);
   } else if (j.ok) {
     playThud();
@@ -2367,8 +2358,8 @@ cbSubmit.addEventListener('click', async () => {
 });
 
 let slabAnim = null;                  // {start, dur} -- the slab grinding aside
-function lanternSuccess() {
-  lanternGlim.material.opacity = 1.0;
+function unlitSuccess() {
+  unlitGlim.material.opacity = 1.0;
   door4Open = true;
   stairG.visible = true; tunG.visible = true;
   slabAnim = { start: performance.now(), dur: 2600 };
@@ -2498,7 +2489,7 @@ function activate(kind, hitObj) {
       goThen(STAIR.cx, STAIR.zTop + 0.9,
         () => showCaption('The stair is open. Walk down \u2014 and back up whenever you like.', 5200));
     } else {
-      lanternGlim.material.opacity = 0.5;
+      unlitGlim.material.opacity = 0.5;
       goThen(V3.minX + 1.3, -24.8, () => openWordbox('fourth'));
     }
   }
@@ -2615,14 +2606,7 @@ document.getElementById('draftB').addEventListener('click', () => { draftShow = 
 function markDraftBtns() { document.getElementById('draftA').setAttribute('aria-pressed', String(draftShow === 'a')); document.getElementById('draftB').setAttribute('aria-pressed', String(draftShow === 'b')); }
 document.getElementById('draftClose').addEventListener('click', () => { draftEl.hidden = true; });
 /* --- the Keeper's Notebook: six pages --- */
-const NOTEBOOK = [
-  '<h4>THE KEEPER’S NOTEBOOK</h4><p>Notes I kept while setting two hundred grids. Take what is useful; leave the rest for the next reader.</p><p>Turn the page.</p>',
-  '<h4>I · SPOTTING A KEY</h4><p>Twenty of my grids carry one shaded square. It is never a given — it sits empty and waits for you to solve it honestly. The digit that lands in the shade is the key.</p><p>Copy it to the Vault Door Tally (page 210) before you forget. The plates that turn digits into letters are in the back of the book, pages 211 to 213.</p>',
-  '<h4>II · SCANNING</h4><p>Pick a digit that already appears often. Run its rows and columns across the grid like beams of light. Where the beams leave exactly one dark cell in a box, that digit lives there.</p><p>It is the fastest way through my easy grids, and it still works on the hard ones.</p>',
-  '<h4>III · THE LONELY CANDIDATE</h4><p>When a cell has only one digit left that could fit, write it and move on. When a digit has only one cell left in a row, a column or a box, it goes there — even if that cell could take others.</p><p>The first rule looks at a cell. The second looks at a digit. Learn to switch between them.</p>',
-  '<h4>IV · PAIRS</h4><p>Two cells in the same unit that share the same two candidates own those two digits between them. Strike both digits from every other cell in that unit.</p><p>Pencil marks are not cheating. They are how I set the grids in the first place.</p>',
-  '<h4>V · WHAT COMES NEXT</h4><img class="sketch" src="/teasers/v2.webp" alt="A pencil sketch of a sea chart" /><p>The Corsair’s Chart. Volume II. Still being drawn, and it will not be kinder than this one.</p><p>When it is finished, it will be where the first one was.</p>',
-];
+/* NOTEBOOK comes from ../lib/lore.js. */
 const nbEl = document.getElementById('notebook'), nbBody = document.getElementById('nbBody'), nbPrev = document.getElementById('nbPrev'), nbNext = document.getElementById('nbNext');
 let nbPage = 0;
 function drawNotebook() {

@@ -1,18 +1,84 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { PAGE_WORDS, FINAL_LETTER, NOTEBOOK, OVERHEARD, NUM_WORD } from '../lib/lore.js';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
+const PAGE_NOS = [2, 3, 4, 5, 6, 7, 8, 9];
 ---
 
-<Layout title="The Keeper & Series Lore · PuzzleSecret" description="Discover the story behind Sudoku with a Secret, author Dan Herlehy, and the 5-volume roadmap.">
+<Layout title="The Keeper's Story · Sudoku with a Secret series · PuzzleSecret" description="Who set two hundred grids and hid a second puzzle inside them? The Keeper's own pages, notebook and words, as you find them in the vault, and the five-volume series.">
   <main class="page-keeper">
     <div class="keeper-hero">
-      <p class="eyebrow">The Author &amp; Lore</p>
-      <h1>Behind the Vaults</h1>
-      <p class="lede">A book that hides a password. A web vault that opens when you find it. Here is the story of how Sudoku with a Secret was born.</p>
+      <p class="eyebrow">The Keeper</p>
+      <h1>The Keeper's Story</h1>
+      <p class="lede">A man set two hundred grids and hid a second puzzle inside them. He does not give his name. What he gives, he gives in pages, and only to the ones who look.</p>
+      <p class="hero-buy">The pages begin in a paperback: <em>Sudoku with a Secret, Volume 1</em>, $14.99. <a href={AMAZON_URL} target="_blank" rel="noopener">Get the book on Amazon <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a> <span class="dot" aria-hidden="true">·</span> Already have it? <a href="/">Speak your first word at the door <span aria-hidden="true">→</span></a></p>
+      <p class="hero-held" id="heroHeld" hidden><a href="#pages">You hold <b id="heroCount">0</b> of his nine pages <span aria-hidden="true">↓</span></a></p>
     </div>
 
     <section class="wrap keeper-body">
-      <!-- Bio Split -->
+
+      <!-- The page he did not hide: page one, for everyone -->
+      <section class="k-sec" aria-labelledby="firstTitle">
+        <h2 class="k-title" id="firstTitle">The page he did not hide</h2>
+        <article class="k-page found">
+          <p class="k-page-no">PAGE ONE</p>
+          <p class="k-page-body">{PAGE_WORDS[1]}</p>
+        </article>
+      </section>
+
+      <!-- Pages in his hand: as found -->
+      <section class="k-sec" id="pages" aria-labelledby="pagesTitle">
+        <h2 class="k-title" id="pagesTitle">Pages in his hand</h2>
+        <p class="k-keeper-line">“Nine pages. Three rooms. Three in each. I will say no more than that.”</p>
+        <p class="k-progress" id="pagesProgress" aria-live="polite">You hold none of his pages yet.</p>
+
+        <!-- a stranger sees one card, not eight locked slips -->
+        <div class="k-stranger" id="strangerCard">
+          <p>Eight more pages lie about his vault, on the floor, where nobody looks. They are found, not bought, and the first room is open to anyone who knocks.</p>
+          <p class="k-links"><a class="k-go" href="/vault">Go and look <span aria-hidden="true">→</span></a></p>
+        </div>
+
+        <ol class="k-pages" id="pagesList" hidden>
+          {PAGE_NOS.map((no) => (
+            <li class="k-page slip" id={`kpage-${no}`} data-no={no}>
+              <p class="k-page-no">PAGE {NUM_WORD[no]}</p>
+              <p class="k-page-body slip-text">Not yet found.<span class="sr-only"> Page {NUM_WORD[no].toLowerCase()} is still in the vault.</span></p>
+            </li>
+          ))}
+          <li class="k-page slip last" id="kpage-final">
+            <p class="k-page-no">THE LAST PAGE</p>
+            <p class="k-page-body slip-text">Written for whoever finds all nine.</p>
+          </li>
+        </ol>
+        <p class="k-links" id="pagesGo" hidden><a class="k-go" href="/vault">Back to the vault <span aria-hidden="true">→</span></a></p>
+
+        <!-- What he said in his study: only for the things you have touched -->
+        <div class="k-overheard" id="overheard" hidden>
+          <h3 class="k-sub">What he said in his study</h3>
+          <ul class="k-quotes" id="overheardList"></ul>
+        </div>
+      </section>
+
+      <!-- From his notebook: left open on the desk, for anyone -->
+      <section class="k-sec" aria-labelledby="nbTitle">
+        <h2 class="k-title" id="nbTitle">From his notebook</h2>
+        <p class="k-sub-lede">Left open on his desk. Six leaves: how he set the grids, and what comes next.</p>
+        <p class="k-swipe" aria-hidden="true">swipe <span>→</span></p>
+        <div class="k-notebook" role="region" aria-label="The Keeper's notebook, six leaves" tabindex="0">
+          {NOTEBOOK.map((leaf, i) => (
+            <article class="k-leaf" aria-label={i === 0 ? 'Cover' : `Leaf ${i} of 5`} set:html={leaf} />
+          ))}
+        </div>
+      </section>
+
+      <!-- The closer -->
+      <section class="k-sec k-closer" aria-label="A last word from the Keeper">
+        <p class="k-keeper-line big">“Some of it I will tell you when the next chart is drawn. Some of it I will not.”</p>
+        <p class="k-newsletter">He tells his list first, on the day the next chart is drawn. <a href="/newsletter">Join the Keeper's list <span aria-hidden="true">→</span></a> Optional, always, and never a condition of anything in the vault.</p>
+      </section>
+
+      <!-- Out of character: the author -->
+      <p class="eyebrow ooc">Out of character</p>
       <div class="bio-card">
         <div class="bio-text">
           <h2>About Dan Herlehy</h2>
@@ -20,7 +86,7 @@ const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
           <p>Dan Herlehy created <em>PuzzleSecret</em> to combine the timeless joy of classic paper-and-pencil Sudoku with the thrilling discovery of an escape room or treasure hunt.</p>
           <p>Instead of superficial gimmicks or low-quality AI grids, every puzzle in <em>Sudoku with a Secret</em> is an honest, hand-graded Sudoku puzzle. The secret cipher mechanics are built seamlessly into the book's structure—meaning solving the book unlocks a living digital vault of bonus puzzles and rewards.</p>
           <div class="bio-actions">
-            <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get Vol. 1 on Amazon ↗</a>
+            <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get the book on Amazon <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
           </div>
         </div>
       </div>
@@ -53,7 +119,7 @@ const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
             <div class="t-rn" style="color:var(--v3)">VOL. III</div>
             <div class="t-content">
               <h3>The Lost Love Letters</h3>
-              <p>Victorian wax-sealed cipher correspondence and hidden acrostics.</p>
+              <p>Victorian wax-sealed cipher correspondence and hidden messages.</p>
               <span class="t-tag">Concept</span>
             </div>
           </div>
@@ -80,33 +146,140 @@ const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
     </section>
   </main>
 
-  <style>
+  <!-- Runs synchronously during parse, so the page never flashes a wrong state. Reads only this
+       browser's own record of the vault (localStorage); nothing is sent anywhere. -->
+  <script is:inline define:vars={{ PAGE_WORDS, FINAL_LETTER, OVERHEARD }}>
+    (function () {
+      var read = function (k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+      var story = read('ps_story_v1', []) || [];
+      var vaults = read('ps_vaults_v1', {}) || {};
+      var study = read('ps_study_v1', {}) || {};
+      if (!Array.isArray(story)) story = [];
+      var found = story.filter(function (n) { return typeof n === 'number' && n >= 1 && n <= 9; });
+      var n = found.length;
+      var hasFinal = story.indexOf('final') !== -1;
+      var stranger = n === 0 && !vaults.I && !vaults.II && !vaults.III;
+
+      var list = document.getElementById('pagesList'), card = document.getElementById('strangerCard'), go = document.getElementById('pagesGo');
+      var prog = document.getElementById('pagesProgress');
+      if (!stranger) {
+        card.hidden = true; list.hidden = false; go.hidden = false;
+        found.forEach(function (no) {
+          if (no === 1) return;
+          var li = document.getElementById('kpage-' + no); if (!li) return;
+          li.classList.remove('slip'); li.classList.add('found');
+          var body = li.querySelector('.k-page-body'); body.className = 'k-page-body'; body.textContent = PAGE_WORDS[no] || '';
+        });
+        if (hasFinal) {
+          var fl = document.getElementById('kpage-final');
+          fl.classList.remove('slip'); fl.classList.add('found');
+          var fb = fl.querySelector('.k-page-body'); fb.className = 'k-page-body'; fb.textContent = FINAL_LETTER;
+        }
+        prog.textContent = n >= 9
+          ? (hasFinal ? 'All nine pages, and the last one. The story is complete.' : 'All nine pages. Set the ninth down in the vault, and he will hand you the last.')
+          : 'You hold ' + n + ' of his nine pages.';
+        if (n > 0) { document.getElementById('heroCount').textContent = String(n); document.getElementById('heroHeld').hidden = false; }
+      } else {
+        prog.textContent = 'You hold one of his pages: the one he left where anyone would see it.';
+      }
+
+      // what he said, for the things you touched
+      var touched = Array.isArray(study.found) ? study.found : [];
+      var items = [];
+      Object.keys(OVERHEARD).forEach(function (k) { if (touched.indexOf(k) !== -1) items.push(OVERHEARD[k]); });
+      if (items.length) {
+        var ul = document.getElementById('overheardList');
+        items.forEach(function (it) {
+          var li = document.createElement('li');
+          var q = document.createElement('p'); q.className = 'k-q'; q.textContent = '“' + it.line + '”';
+          var t = document.createElement('p'); t.className = 'k-thing'; t.textContent = 'on ' + it.thing;
+          li.appendChild(q); li.appendChild(t); ul.appendChild(li);
+        });
+        document.getElementById('overheard').hidden = false;
+      }
+    })();
+  </script>
+
+  <style is:global>
     .page-keeper { padding-top: 90px; padding-bottom: 80px; }
-    .keeper-hero { text-align: center; max-width: 660px; margin: 0 auto 48px; padding: 0 20px; }
-    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
-    .keeper-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
-    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+    .page-keeper [hidden] { display: none !important; }   /* flex/grid children would otherwise beat the UA rule */
+    .page-keeper .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .page-keeper a:focus-visible, .page-keeper [tabindex]:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
 
-    .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+    .page-keeper .keeper-hero { text-align: center; max-width: 680px; margin: 0 auto 52px; padding: 0 20px; }
+    .page-keeper .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .36em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .page-keeper .keeper-hero h1 { font-family: var(--display); font-size: clamp(32px, 5.5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.1; margin-bottom: 14px; }
+    .page-keeper .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+    .page-keeper .hero-buy { margin-top: 22px; font-size: 15.5px; line-height: 1.6; color: var(--ivory); }
+    .page-keeper .hero-buy a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+    .page-keeper .hero-buy .dot { color: var(--ash); margin: 0 6px; }
+    .page-keeper .hero-held { margin-top: 14px; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    .page-keeper .hero-held a { color: var(--gold-hi); text-decoration: none; }
+    .page-keeper .hero-held b { color: var(--gold-hi); }
 
-    .bio-card { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px; margin-bottom: 56px; }
-    .bio-text h2 { font-family: var(--display); font-size: 28px; color: var(--gold-hi); margin-bottom: 4px; }
-    .bio-text .tag-line { font-style: italic; color: var(--gold); font-size: 15px; margin-bottom: 18px; }
-    .bio-text p { font-size: 16.5px; line-height: 1.6; color: var(--ivory); margin-bottom: 14px; }
-    .bio-actions { margin-top: 24px; }
-    .btn-amz { display: inline-block; padding: 12px 28px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; }
+    .page-keeper .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+    .page-keeper .k-sec { margin-bottom: 60px; }
+    .page-keeper .k-title { font-family: var(--display); font-size: 26px; color: var(--gold); text-align: center; margin-bottom: 18px; }
+    .page-keeper .k-sub { font-family: var(--display); font-size: 18px; color: var(--gold-hi); margin: 34px 0 12px; }
+    .page-keeper .k-sub-lede { text-align: center; font-style: italic; color: var(--ash); margin: -8px 0 18px; }
+    .page-keeper .k-keeper-line { text-align: center; font-style: italic; font-size: 18px; color: var(--ivory); margin-bottom: 10px; }
+    .page-keeper .k-keeper-line.big { font-size: clamp(19px, 2.4vw, 24px); }
+    .page-keeper .k-progress { text-align: center; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ash); margin-bottom: 22px; }
 
-    .timeline-section h2 { font-family: var(--display); font-size: 26px; color: var(--gold); text-align: center; margin-bottom: 6px; }
-    .timeline-section .t-sub { font-style: italic; color: var(--ash); text-align: center; margin-bottom: 36px; }
+    /* pages: cream cards when found, quiet slips when not */
+    .page-keeper .k-pages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .page-keeper .k-page { border-radius: 10px; padding: 18px 22px; }
+    .page-keeper .k-page.found { background: linear-gradient(180deg, #efe2c4, #dcc79c); color: #2a1d0c; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+    .page-keeper .k-page.found .k-page-no { color: #7a5a22; }
+    .page-keeper .k-page.found .k-page-body { font-size: 18px; line-height: 1.55; font-style: italic; color: #2a1d0c; }
+    .page-keeper .k-page.slip { background: #110f15; border: 1px dashed rgba(185,143,82,.35); }
+    .page-keeper .k-page.slip .k-page-no { color: var(--ash); }
+    .page-keeper .k-page.slip .k-page-body { font-style: italic; color: var(--ash); font-size: 15px; }
+    .page-keeper .k-page-no { font-family: var(--display); font-size: 11px; letter-spacing: .3em; margin-bottom: 8px; }
+    .page-keeper .k-page-body { margin: 0; }
+    .page-keeper .k-stranger { background: #110f15; border: 1px solid rgba(185,143,82,.28); border-radius: 12px; padding: 22px 24px; text-align: center; }
+    .page-keeper .k-stranger p { font-size: 16.5px; line-height: 1.6; color: var(--ivory); margin: 0 0 10px; }
+    .page-keeper .k-links { text-align: center; margin: 16px 0 0; }
+    .page-keeper .k-go { display: inline-block; font-family: var(--display); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); padding: 10px 18px; border: 1px solid rgba(246,178,60,.4); border-radius: 6px; text-decoration: none; }
+    .page-keeper .k-go:hover { color: var(--gold-hi); border-color: var(--gold); }
 
-    .timeline { display: flex; flex-direction: column; gap: 20px; position: relative; }
-    .timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 32px; width: 2px; background: rgba(185,143,82,.2); }
-    .t-item { display: flex; gap: 24px; align-items: flex-start; background: #110f15; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 20px; position: relative; z-index: 2; }
-    .t-item.active { border-color: rgba(246,178,60,.4); background: rgba(246,178,60,.04); }
-    .t-rn { font-family: var(--display); font-size: 18px; font-weight: 700; min-width: 50px; }
-    .t-content h3 { font-family: var(--display); font-size: 18px; color: var(--ivory); margin-bottom: 4px; }
-    .t-content p { font-style: italic; font-size: 14px; color: var(--ash); margin-bottom: 10px; }
-    .t-link { font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
-    .t-tag { font-family: var(--display); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash-dim); background: rgba(255,255,255,.05); padding: 2px 8px; border-radius: 4px; }
+    .page-keeper .k-quotes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .page-keeper .k-quotes li { background: #121016; border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0; padding: 12px 16px; }
+    .page-keeper .k-q { margin: 0 0 4px; font-style: italic; font-size: 16.5px; color: var(--ivory); line-height: 1.5; }
+    .page-keeper .k-thing { margin: 0; font-family: var(--display); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ash); }
+
+    /* the notebook: a strip of leaves, scrolled on phones, a grid on wide screens */
+    .page-keeper .k-swipe { display: none; text-align: right; font-family: var(--display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ash); margin: 0 0 8px; }
+    .page-keeper .k-notebook { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 4px 14px; -webkit-overflow-scrolling: touch; }
+    .page-keeper .k-leaf { flex: 0 0 82vw; max-width: 380px; scroll-snap-align: start; background: linear-gradient(180deg, #efe2c4, #dcc79c); color: #2a1d0c; border-radius: 10px; padding: 20px 22px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+    .page-keeper .k-leaf h4 { font-family: var(--display); font-size: 13px; letter-spacing: .22em; color: #7a5a22; margin: 0 0 12px; }
+    .page-keeper .k-leaf p { font-size: 15.5px; line-height: 1.55; margin: 0 0 10px; color: #2a1d0c; }
+    .page-keeper .k-leaf img.sketch { display: block; width: 100%; height: auto; border-radius: 6px; margin: 0 0 12px; border: 1px solid rgba(120,86,32,.4); }
+    @media (max-width: 767px) { .page-keeper .k-swipe { display: block; } }
+    @media (min-width: 900px) { .page-keeper .k-notebook { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; } .page-keeper .k-leaf { flex: none; max-width: none; } }
+
+    .page-keeper .k-closer { text-align: center; padding: 28px 20px 0; border-top: 1px solid rgba(185,143,82,.22); }
+    .page-keeper .k-newsletter { margin-top: 14px; font-size: 15.5px; line-height: 1.6; color: var(--ash); }
+    .page-keeper .k-newsletter a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+
+    .page-keeper .eyebrow.ooc { text-align: center; margin-top: 12px; }
+    .page-keeper .bio-card { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px; margin-bottom: 56px; }
+    .page-keeper .bio-text h2 { font-family: var(--display); font-size: 28px; color: var(--gold-hi); margin-bottom: 4px; }
+    .page-keeper .bio-text .tag-line { font-style: italic; color: var(--gold); font-size: 15px; margin-bottom: 18px; }
+    .page-keeper .bio-text p { font-size: 16.5px; line-height: 1.6; color: var(--ivory); margin-bottom: 14px; }
+    .page-keeper .bio-actions { margin-top: 24px; }
+    .page-keeper .btn-amz { display: inline-block; padding: 12px 28px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
+
+    .page-keeper .timeline-section h2 { font-family: var(--display); font-size: 26px; color: var(--gold); text-align: center; margin-bottom: 6px; }
+    .page-keeper .timeline-section .t-sub { font-style: italic; color: var(--ash); text-align: center; margin-bottom: 36px; }
+    .page-keeper .timeline { display: flex; flex-direction: column; gap: 20px; position: relative; }
+    .page-keeper .timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 32px; width: 2px; background: rgba(185,143,82,.2); }
+    .page-keeper .t-item { display: flex; gap: 24px; align-items: flex-start; background: #110f15; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 20px; position: relative; z-index: 2; }
+    .page-keeper .t-item.active { border-color: rgba(246,178,60,.4); background: rgba(246,178,60,.04); }
+    .page-keeper .t-rn { font-family: var(--display); font-size: 18px; font-weight: 700; min-width: 50px; }
+    .page-keeper .t-content h3 { font-family: var(--display); font-size: 18px; color: var(--ivory); margin-bottom: 4px; }
+    .page-keeper .t-content p { font-style: italic; font-size: 14px; color: var(--ash); margin-bottom: 10px; }
+    .page-keeper .t-link { font-family: var(--display); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+    .page-keeper .t-tag { font-family: var(--display); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ash); background: rgba(255,255,255,.05); padding: 2px 8px; border-radius: 4px; }
   </style>
 </Layout>

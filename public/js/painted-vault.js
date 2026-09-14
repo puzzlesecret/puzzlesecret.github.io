@@ -173,13 +173,11 @@
     III: { kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON', text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.', btn: 'Download the 200 puzzles (PDF)', vo: 'finale', ask: true },
     IV:  { kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES', text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.", btn: 'Download the 20 Master Puzzles (PDF)', vo: 'sanctum', ask: true },
   };
-  // The acrostic, as SEPARATE capitals — the answer never exists as a string in this file.
-  const ACROSTIC = [
-    ['L', 'ong before this vault was ever sealed,'], ['A', ' puzzle, I always believed, should not end.'],
-    ['N', 'ever did I make an easy thing look hard.'], ['T', 'hose who look twice will always find more.'],
-    ['E', 'very shaded square was a choice, not chance.'], ['R', 'emember this: the looking was the secret.'],
-    ['N', 'ow you hold what almost no one ever will.'],
-  ];
+  // The seven framed lines arrive from the server on a true fourth word and are kept in this
+  // browser only; nothing in this file carries the gilded capitals in order.
+  const LETTERS_KEY = 'ps_letters_v1';
+  function heldLetters() { try { const v = JSON.parse(localStorage.getItem(LETTERS_KEY) || 'null'); return Array.isArray(v) && v.length ? v : null; } catch (e) { return null; } }
+  function lettersHTML() { const L = heldLetters(); return L ? L.map((t) => `<p><b>${t.charAt(0)}</b>${t.slice(1)}</p>`).join('') : '<p class="dark">The letters are dark. Speak the word again, and they will show.</p>'; }
 
   /* ================= state ================= */
   let room = null, opened = store.get(VAULT_KEY, {}) || {};
@@ -619,7 +617,7 @@
     if (j.ok) {
       const act = j.act;
       holdReward(act, j.rewardUrl);
-      if (act === 'IV') { fourthWord = wbWord; try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); } catch (e) {} }
+      if (act === 'IV') { fourthWord = wbWord; try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); if (Array.isArray(j.lines) && j.lines.length) localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); } catch (e) {} }
       if (act !== DOORS[wbTarget].act) wbMsg.textContent = 'A true word — but for another door. I will open that one.';
       closeWordbox(); markDoor(act); stampVault(act); renderStrip();
       playBoom(); burstConfetti();
@@ -671,7 +669,7 @@
     const G = els.pvGame;
     G.innerHTML = `
       <div class="pv-card" role="dialog" aria-label="The Keeper's three letters">
-        <div class="parch"><p class="from">From the Keeper’s three letters</p>${ACROSTIC.map(([c, r]) => `<p><b>${c}</b>${r}</p>`).join('')}<p class="foot">one letter, hidden at the start of every thought</p></div>
+        <div class="parch"><p class="from">From the Keeper’s three letters</p>${lettersHTML()}<p class="foot">one letter, hidden at the start of every thought</p></div>
         <button type="button" class="ghost-btn" id="letClose">Set it back</button>
       </div>`;
     G.hidden = false; say('letters', 8000);
@@ -686,7 +684,7 @@
       <div class="sc-floor" aria-hidden="true"></div>
       <button type="button" class="sc-hot sc-tome" aria-label="The Secret Sanctum — the master reward"><i class="book"></i><span>The master reward</span></button>
       <button type="button" class="sc-hot sc-wall" aria-label="The Keeper's register"><div class="plaque"><h3>THE KEEPER’S REGISTER</h3><p class="sub">those who found what was never lit</p><div class="marks" id="scMarks"></div><p class="count" id="scCount"></p></div></button>
-      <button type="button" class="sc-hot sc-letters" aria-label="The Keeper's three letters"><div class="parch"><p class="from">From the Keeper’s three letters</p>${ACROSTIC.map(([c, r]) => `<p><b>${c}</b>${r}</p>`).join('')}<p class="foot">one letter, hidden at the start of every thought</p></div></button>
+      <button type="button" class="sc-hot sc-letters" aria-label="The Keeper's three letters"><div class="parch"><p class="from">From the Keeper’s three letters</p>${lettersHTML()}<p class="foot">one letter, hidden at the start of every thought</p></div></button>
       <button type="button" class="sc-hot sc-chart" aria-label="Something half-covered on an easel"><i class="easel"></i><i class="cloth"></i><span>Something half-covered</span></button>
       <button type="button" class="sc-hot sc-stair" aria-label="The stair back up"><i></i><span>The stair, back up</span></button>`;
     S.querySelector('.sc-tome').addEventListener('click', () => openReward('IV'));

@@ -46,7 +46,7 @@ import Layout from '../layouts/Layout.astro';
           <p class="howto-foot">Every stamp starts with the book. Nothing here can be bought, only cracked.</p>
         </div>
 
-        <h2 class="stamps-kicker" id="stampsKicker">Your stamps · <span id="stampsInline">0 of 4</span></h2>
+        <h2 class="stamps-kicker" id="stampsKicker">Your stamps · <span id="stampsInline">0 of 3</span></h2>
         <div class="stamps-grid">
           <!-- Stamp 1 -->
           <div class="stamp-slot" id="slot-v1">
@@ -91,17 +91,18 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- Stamp 4 (Secret) -->
-          <div class="stamp-slot secret-slot" id="slot-v4">
+          <!-- A fourth space. Absent until the third door is open; blank until it is earned. -->
+          <div class="stamp-slot secret-slot" id="slot-v4" hidden aria-label="A fourth space, left blank">
             <div class="stamp-inner">
-              <div class="stamp-num">IV</div>
-              <div class="stamp-icon" aria-hidden="true">🕯</div>
-              <div class="stamp-name">The Secret Sanctum</div>
-              <div class="stamp-act">A door the book never mentions</div>
-              <div class="stamp-status"><span aria-hidden="true">🔒</span> Hidden</div>
+              <div class="stamp-num" aria-hidden="true">?</div>
+              <div class="stamp-icon" aria-hidden="true">·</div>
+              <div class="stamp-name" aria-hidden="true">—</div>
+              <div class="stamp-act"></div>
+              <div class="stamp-status">Unwritten</div>
               <span class="stamp-date"></span>
             </div>
             <a href="#" download class="stamp-dl" data-act="IV" hidden>Download 20 master puzzles (PDF) <span aria-hidden="true">⬇</span></a>
-            <span class="stamp-locked" data-act="IV">Something was never announced. Find it, and a fourth stamp appears.</span>
+            <span class="stamp-locked" data-act="IV">A keeper always keeps one secret more.</span>
           </div>
         </div>
 
@@ -173,6 +174,7 @@ import Layout from '../layouts/Layout.astro';
   </script>
 
   <style is:global>
+    .stamp-slot[hidden] { display: none; }
     /* the certificate panel (shared with /vault; markup is built by /js/keeper-certificate.js) */
     #certPanel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.72); backdrop-filter: blur(3px); padding: 16px; overflow-y: auto; }
     #certPanel[hidden] { display: none; }
@@ -335,6 +337,18 @@ import Layout from '../layouts/Layout.astro';
       var PUZZLES = { I: 50, II: 100, III: 200, IV: 20 };
       var ACTS = ['I', 'II', 'III', 'IV'];
       var earned = 0, puzzles = 0, fresh = [];
+      // the fourth space appears once the third door is open, and is written only when earned
+      var hasIV = !!vaults.IV, slot4 = document.getElementById('slot-v4');
+      if (slot4 && (vaults.III || hasIV)) {
+        slot4.hidden = false;
+        if (hasIV) {
+          slot4.removeAttribute('aria-label');
+          var n4 = slot4.querySelector('.stamp-num'); n4.textContent = 'IV'; n4.removeAttribute('aria-hidden');
+          slot4.querySelector('.stamp-icon').textContent = '🕯';
+          var nm4 = slot4.querySelector('.stamp-name'); nm4.textContent = 'The Secret Sanctum'; nm4.removeAttribute('aria-hidden');
+          slot4.querySelector('.stamp-act').textContent = 'The door the book never named';
+        }
+      }
       // the gifts' addresses, handed out only for a true word — a download shows only when held
       var held = read('ps_rewards_v1', {}) || {};
       ACTS.forEach(function (act) {
@@ -347,7 +361,7 @@ import Layout from '../layouts/Layout.astro';
         if (!slot) return;
         var when = vaults[act];
         if (!when) return;
-        earned++; puzzles += PUZZLES[act];
+        if (act !== 'IV') earned++; puzzles += PUZZLES[act];
         slot.classList.add('unlocked');
         var st = slot.querySelector('.stamp-status'); st.textContent = '';
         var tick = document.createElement('span'); tick.setAttribute('aria-hidden', 'true'); tick.textContent = '✔ ';
@@ -358,7 +372,7 @@ import Layout from '../layouts/Layout.astro';
 
       var pages = story.filter(function (n) { return typeof n === 'number'; }).length;
       document.getElementById('unlockedPuzzles').textContent = String(puzzles);
-      document.getElementById('stampsInline').textContent = earned + ' of 4';
+      document.getElementById('stampsInline').textContent = hasIV ? ((earned + 1) + ' of 4') : (earned + ' of 3');
       document.getElementById('storyPages').textContent = pages + ' / 9';
       // the counters only appear once there is something to count
       var stats = document.getElementById('stats'), pagesStat = document.getElementById('pagesStat');
@@ -382,7 +396,7 @@ import Layout from '../layouts/Layout.astro';
         ['Solver', 'Two doors. You read the letter, and it read you.', 'Type the third word →', '/'],
         ['Vault Cracker', 'Three words, three doors. The vault is yours.', 'Back to the vaults →', '/vault'],
         ['The Keeper’s Equal', 'You found what was never lit.', 'Back to the vaults →', '/vault'],
-      ][Math.min(earned, 4)];
+      ][hasIV ? 4 : Math.min(earned, 3)];
       document.getElementById('rankName').textContent = RANK[0];
       document.getElementById('rankSub').textContent = RANK[1];
       var nx = document.getElementById('rankNext');
