@@ -2186,8 +2186,7 @@ const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };
 let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
 function renderTiles() {
   tilesEl.innerHTML = '';
-  const base = DOOR_LEN[wbTarget] || 6;
-  const shown = Math.min(WORD_LEN, Math.max(base, wbWord.length));       // the door's length; one more only if someone types past it
+  const shown = DOOR_LEN[wbTarget] || 6;                                  // exactly the door's length, always
   for (let i = 0; i < shown; i++) {
     const t = document.createElement('div');
     t.className = 'tile' + (wbWord[i] ? ' filled' : '');
@@ -2218,10 +2217,10 @@ function dismissWordbox() {
 }
 document.getElementById('wbCancel').addEventListener('click', dismissWordbox);
 function wbSet(w) {
-  wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, WORD_LEN);
+  wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, DOOR_LEN[wbTarget] || WORD_LEN);   // exactly the door's length; extra typing is dropped
   renderTiles();
 }
-wbInput.addEventListener('input', () => wbSet(wbInput.value));
+wbInput.addEventListener('input', () => { wbSet(wbInput.value); if (wbInput.value !== wbWord) wbInput.value = wbWord; });
 addEventListener('keydown', (e) => {
   if (wordboxEl.hidden) return;
   if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
