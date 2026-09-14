@@ -483,7 +483,7 @@
       travelling = false;
       if (!opts.quiet) setTimeout(() => keeper(R.entry), first ? 900 : 500);
       startLights();
-      if (key === 'IV') fetchWall();
+      if (key === 'IV') { fetchWall(); try { window.psEventOnce && window.psEventOnce('vault4.entered'); } catch (e) {} }
     }, first ? 60 : 650);
   }
   function renderStrip() {
@@ -538,6 +538,9 @@
     const RW = REWARDS[act];
     $('rwKicker').textContent = RW.kicker; $('rwTitle').textContent = RW.title; $('rwText').textContent = RW.text;
     const btn = $('rwBtn'); btn.href = held; btn.textContent = RW.btn;
+    // Rebind on every open — the previous act's click handler is replaced, keeping the pipe tidy.
+    btn.onclick = function () { try { window.psEvent && window.psEvent('reward.click.' + act); } catch (e) {} };
+    try { window.psEvent && window.psEvent('reward.open.' + act); } catch (e) {}
     const ask = $('rwAsk'); if (ask) ask.hidden = !RW.ask;
     $('reward').hidden = false;
     burstConfetti(); playUnlock();
@@ -552,6 +555,7 @@
 
   /* ---- the Keeper's story pages (shared #pageview) ---- */
   function openPage(no, b) {
+    try { window.psEventOnce && window.psEventOnce('page.notebook'); } catch (e) {}
     if (!pagesFound.includes(no)) { pagesFound.push(no); store.set(STORY_KEY, pagesFound); }
     const n = pagesFound.filter((x) => typeof x === 'number').length;
     $('pgNo').textContent = 'PAGE ' + (NUM_WORD[no] || no); $('pgBody').textContent = PAGE_WORDS[no];
@@ -578,6 +582,7 @@
     $('wbKicker').textContent = DOORS[key].kicker; $('wbLine').textContent = VO[DOORS[key].vo].text;
     wbMsg.textContent = ''; renderTiles(); wordboxEl.hidden = false;
     wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; try { wbInput.focus({ preventScroll: true }); } catch (err) {}
+    try { window.psEvent && window.psEvent('wordbox.open', key); } catch (e) {}
     keeper(DOORS[key].vo);
   }
   function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
@@ -610,6 +615,11 @@
       if (act !== DOORS[wbTarget].act) wbMsg.textContent = 'A true word — but for another door. I will open that one.';
       closeWordbox(); markDoor(act); stampVault(act); renderStrip();
       playBoom(); burstConfetti();
+      // Successful unlock: which door just swung. Fourth is the floor, not a door.
+      try {
+        if (act === 'II' || act === 'III') window.psEvent && window.psEvent('door.open.' + act);
+        else if (act === 'IV') window.psEvent && window.psEvent('vault4.floor_open');
+      } catch (e) {}
       if (act === 'I') { setTimeout(() => openReward('I'), 500); }
       else if (act === 'IV') { caption('The floor answers. A stair, cut long before this vault was sealed — go down.', 6000); setTimeout(() => enterRoom('IV'), 1400); }
       else { playCreak(1.6); setTimeout(() => enterRoom(act), 900); }
@@ -692,7 +702,7 @@
     fetch('/api/carve').then((r) => r.json()).then((d) => { if (d && d.ok) { wallMarks = d.marks || []; wallCount = d.count || 0; drawRegister(); } }).catch(() => {});
   }
   const carveboxEl = $('carvebox'), cbInput = $('cbInput'), cbMsg = $('cbMsg'), cbSubmit = $('cbSubmit'); let cbBusy = false;
-  function openCarvebox() { cbMsg.textContent = ''; cbInput.value = ''; carveboxEl.hidden = false; setTimeout(() => { try { cbInput.focus(); } catch (e) {} }, 60); }
+  function openCarvebox() { cbMsg.textContent = ''; cbInput.value = ''; carveboxEl.hidden = false; try { window.psEvent && window.psEvent('carve.open'); } catch (e) {} setTimeout(() => { try { cbInput.focus(); } catch (e) {} }, 60); }
   cbInput.addEventListener('input', () => { cbInput.value = cbInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); });
   $('cbCancel').addEventListener('click', () => { carveboxEl.hidden = true; });
   cbInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') cbSubmit.click(); });
@@ -723,6 +733,7 @@
   const round = { on: false, list: [], i: 0, t0: 0, timer: null, best: store.get('ps_round_best', null) };
   function startRound() {
     if (round.on) return;
+    try { window.psEvent && window.psEvent('round.start'); } catch (e) {}
     const pool = ROOMS.II.hots.filter((h) => !h.page && h.act !== 'game' && h.act !== 'door');
     round.list = pool.sort(() => Math.random() - 0.5).slice(0, 5); round.i = 0; round.on = true; round.t0 = performance.now();
     els.pv.classList.add('lights-out'); els.pvDark.hidden = false;
@@ -754,6 +765,8 @@
     if (won) {
       const secs = Math.round((performance.now() - round.t0) / 10) / 100;
       if (!round.best || secs < round.best) { round.best = secs; store.set('ps_round_best', secs); }
+      const note = 'Five in ' + secs + 's' + (round.best === secs ? ' — best' : '');
+      try { window.psEvent && window.psEvent('round.solved', note); } catch (e) {}
       awardTile('II', 'Five in ' + secs + ' seconds' + (round.best === secs ? ' — your best.' : ' (best ' + round.best + 's).'));
     } else caption('The dark kept them that time. Rest your eyes, then try again.', 5000);
   }
@@ -761,6 +774,7 @@
   /* ================= MINI-GAME 2 — THE LISTENING LOCK (treasure, the locked chest) ================= */
   const lock = { on: false, targets: [], i: 0, pos: 0, holdT: null, dragging: false, lastAngle: 0 };
   function openLock() {
+    try { window.psEvent && window.psEvent('lock.start'); } catch (e) {}
     if (tiles.III) { say('smallchest'); }
     const G = els.pvGame;
     G.innerHTML = `
@@ -800,6 +814,7 @@
       $('lockMsg').textContent = ['One.', 'Two.', ''][lock.i - 1] || '';
       if (lock.i >= 3) {
         lock.on = false; $('lockMsg').textContent = 'The last tumbler falls.';
+        try { window.psEvent && window.psEvent('lock.solved'); } catch (e) {}
         setTimeout(() => { G.hidden = true; burstConfetti(); playUnlock(); awardTile('III', 'The chest gives up its secret.'); }, 900);
       }
     };
@@ -823,7 +838,10 @@
   /* ---- key-tiles: the Keeper's own shaded squares ---- */
   function awardTile(act, note) {
     const had = !!tiles[act];
-    if (!had) { tiles[act] = new Date().toISOString().slice(0, 10); store.set(TILE_KEY, tiles); }
+    if (!had) {
+      tiles[act] = new Date().toISOString().slice(0, 10); store.set(TILE_KEY, tiles);
+      try { window.psEvent && window.psEvent(act === 'II' ? 'tile.5' : 'tile.7'); } catch (e) {}
+    }
     const both = tiles.II && tiles.III;
     const G = els.pvGame;
     G.innerHTML = `
@@ -869,6 +887,7 @@
   function openDraft(idx) {
     if (!DRAFTS.length) { loadDrafts().then(() => { if (DRAFTS.length) openDraft(idx); else caption('The page is stuck to itself. Try again in a moment.', 3000); }); return; }
     draftCur = idx % DRAFTS.length; draftShow = null; drawDraft(); $('draft').hidden = false;
+    try { window.psEventOnce && window.psEventOnce('page.rejects'); } catch (e) {}
     caption('A page I threw away. Look at it and tell me why.', 4800); playThud(70, 45, 0.12, 0.2);
   }
   $('draftA').addEventListener('click', () => { draftShow = 'a'; drawDraft(); });
@@ -936,6 +955,15 @@
     if (!REDUCED) (function idle() { if (panMax > 8 && !drag) { autoPan = Math.sin(performance.now() / 9000) * panMax * 0.7; setPan(autoPan); } requestAnimationFrame(idle); })();
     window.__painted = { enterRoom, openReward, openWordbox, startRound, openLock, awardTile, get room() { return room; }, ROOMS,
       get lock() { return lock; }, get round() { return round; }, endRound };   // QA hooks + the page guard's hook
+    // A tiny session-depth summary — sent once on tab hide via sendBeacon so it survives
+    // Safari's aggressive lifecycle. Counts the distinct rooms the visitor actually saw.
+    const roomsTouched = new Set();
+    (function watchRooms() {
+      let last = room; setInterval(() => { if (room && room !== last) { roomsTouched.add(room); last = room; } }, 800);
+      if (room) roomsTouched.add(room);
+    })();
+    addEventListener('pagehide', () => { try { window.psSessionDepth && window.psSessionDepth(roomsTouched.size + ' rooms'); } catch (e) {} }, { once: true });
+    // Amazon click-through delegation lives in Layout.astro so every page picks it up.
   }
   window.PSPaintedBoot = boot;
   if (window.__flatMode) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => boot(window.__flatReason)); else boot(window.__flatReason); }

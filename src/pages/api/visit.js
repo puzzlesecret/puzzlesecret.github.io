@@ -2,7 +2,7 @@
 // the client sends its self-assigned random id and which mode it is in (3D/flat).
 export const prerender = false;
 
-import { notify, solverTag, country } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place } from '../../lib/keeper-telegram.js';
 
 const buckets = new Map();
 function rateLimited(ip) {
@@ -22,7 +22,7 @@ export async function POST({ request, clientAddress }) {
   let body = {};
   try { body = await request.json(); } catch { /* ignore */ }
   const mode = body.mode === 'flat' ? 'the flat vault' : 'the 3D vault';
-  await notify(`\u{1F441} ${solverTag(body.vid)} · ${country(request)} · at ${mode} door`);
+  await notify(`\u{1F441} ${solverTag(body.vid)} · ${place(request)} · at ${mode} door`);
   return json({ ok: true });
 }
 

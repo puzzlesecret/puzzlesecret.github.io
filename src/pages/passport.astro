@@ -165,6 +165,13 @@ import Layout from '../layouts/Layout.astro';
     </section>
   </main>
 
+  <!-- passport.view (once per session) — events.js + Amazon click delegation come from Layout.astro -->
+  <script is:inline defer>
+    document.addEventListener('DOMContentLoaded', function () {
+      try { window.psEventOnce && window.psEventOnce('passport.view'); } catch (e) {}
+    });
+  </script>
+
   <style is:global>
     /* the certificate panel (shared with /vault; markup is built by /js/keeper-certificate.js) */
     #certPanel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.72); backdrop-filter: blur(3px); padding: 16px; overflow-y: auto; }

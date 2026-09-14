@@ -3,6 +3,54 @@
 // on 2026-09-02 so the painted path never downloads three.js. Nothing inside changed.
 import * as THREE from 'three';
 
+/* Small event helpers — the same shape as public/js/events.js so a call reads the same in
+   both vault modules. Non-blocking, silent on failure. Every string here must match the
+   allowlist in src/lib/events.js; scripts/verify-events.js diffs the two files. */
+const PS_EV = Object.freeze({
+  BOOKCASE_OPEN: 'bookcase.open',
+  WORDBOX_OPEN: 'wordbox.open',
+  DOOR_OPEN_I: 'door.open.I', DOOR_OPEN_II: 'door.open.II', DOOR_OPEN_III: 'door.open.III',
+  STAIR_DESCEND: 'stair.descend', STAIR_ASCEND: 'stair.ascend',
+  PAGE_NOTEBOOK: 'page.notebook', PAGE_REJECTS: 'page.rejects', STUDY_COMPLETE: 'study.complete',
+  ROUND_START: 'round.start', ROUND_SOLVED: 'round.solved',
+  LOCK_START: 'lock.start', LOCK_SOLVED: 'lock.solved',
+  TILE_5: 'tile.5', TILE_7: 'tile.7',
+  REWARD_OPEN_I: 'reward.open.I', REWARD_OPEN_II: 'reward.open.II', REWARD_OPEN_III: 'reward.open.III', REWARD_OPEN_IV: 'reward.open.IV',
+  REWARD_CLICK_I: 'reward.click.I', REWARD_CLICK_II: 'reward.click.II', REWARD_CLICK_III: 'reward.click.III', REWARD_CLICK_IV: 'reward.click.IV',
+  VAULT4_FLOOR_OPEN: 'vault4.floor_open', VAULT4_ENTERED: 'vault4.entered',
+  CARVE_OPEN: 'carve.open',
+  PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
+  SESSION_DEPTH: 'session.depth',
+});
+function psEvent(ev, extra) {
+  try {
+    const body = { vid: (typeof psVid === 'function' ? psVid() : ''), ev: ev };
+    if (extra != null) body.extra = String(extra).slice(0, 40);
+    fetch('/api/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(function () {});
+  } catch (e) { /* best-effort */ }
+}
+function psEventOnce(ev, extra) {
+  try { const k = 'ps_ev_once_' + ev; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) {}
+  psEvent(ev, extra);
+}
+function psSessionDepth(extra) {
+  try {
+    const body = JSON.stringify({ vid: (typeof psVid === 'function' ? psVid() : ''), ev: PS_EV.SESSION_DEPTH, extra: String(extra || '').slice(0, 40) });
+    const blob = new Blob([body], { type: 'application/json' });
+    if (navigator.sendBeacon) navigator.sendBeacon('/api/event', blob);
+    else fetch('/api/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(function () {});
+  } catch (e) { /* best-effort */ }
+}
+/* A tiny session-depth counter — records how many rooms/actions the tab touched. Emitted
+   once on tab hide via sendBeacon so we can see how deep an average session goes. */
+const psTouched = new Set();
+function psTouch(name) { psTouched.add(String(name).slice(0, 24)); }
+/* Once-per-session flags for stair crossings (see the render loop). */
+const stairSeen = { down: false, up: false };
+addEventListener('pagehide', () => {
+  try { psSessionDepth(psTouched.size + ' rooms'); } catch (e) {}
+}, { once: true });
+
 /* ================= setup / params ================= */
 const qs = new URLSearchParams(location.search);
 const DEBUG_CAM = qs.get('cam');            // "x,z,yaw,pitch" — skip gate, no audio
@@ -1987,6 +2035,8 @@ let pagesFound = loadStory();
 
 const pageviewEl = document.getElementById('pageview');
 function openPage(no) {
+  // Keeper story pages (p1/p4/p7 etc.) — same "read the notebook" signal Dan wants.
+  psEventOnce(PS_EV.PAGE_NOTEBOOK);
   if (!pagesFound.includes(no)) { pagesFound.push(no); saveStory(pagesFound); }
   const n = pagesFound.length;
   document.getElementById('pgNo').textContent = 'PAGE ' + (NUM_WORD[no] || no);
@@ -2038,6 +2088,12 @@ function openReward(act) {
   document.getElementById('rwTitle').textContent = RW.title;
   document.getElementById('rwText').textContent = RW.text;
   const b = document.getElementById('rwBtn'); b.href = held; b.textContent = RW.btn;
+  // Instrument the button so a click on the actual gift is a distinct signal from
+  // "opened the card." Bind exactly once — repeated openReward calls are cheap because
+  // the previous listener is a no-op on the new act.
+  b.onclick = () => psEvent(PS_EV['REWARD_CLICK_' + act]);
+  psEvent(PS_EV['REWARD_OPEN_' + act]);
+  psTouch('reward-' + act);
   document.getElementById('rwAsk').hidden = !RW.ask;
   rewardEl.hidden = false;
   burstConfetti();
@@ -2083,6 +2139,9 @@ function openVaultDoor(key) {
   playBoom();
   doorAnims.push({ hg: D.obj, from: D.obj.rotation.y, to: 2.05, start: simT, dur: 2.3 }); // swings away, into the next room
   D.obj.userData.kind = null; // no longer interactable
+  // Which door swung. First/fourth have no visual door object; here we care about door2/door3.
+  const evName = D.act === 'II' ? PS_EV.DOOR_OPEN_II : D.act === 'III' ? PS_EV.DOOR_OPEN_III : null;
+  if (evName) { psEvent(evName); psTouch('door-' + D.act); }
   setTimeout(() => moveTo(D.inside.x, D.inside.z), 900); // walk through as it swings
 }
 
@@ -2110,6 +2169,10 @@ function openWordbox(key) {
   wbMsg.textContent = ''; renderTiles();
   wordboxEl.hidden = false;
   wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; wbInput.focus();
+  // Which door's word box this is (first/door2/door3/fourth) is high-signal — Dan wants
+  // to see which doors people even try. Extra is the target key; server sanitizes.
+  psEvent(PS_EV.WORDBOX_OPEN, key);
+  psTouch('wordbox-' + key);
   keeper(DOORS[key].vo);
 }
 function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
@@ -2210,6 +2273,8 @@ function openCarvebox() {
   cbMsg.textContent = '';
   cbInput.value = '';
   carveboxEl.hidden = false;
+  psEvent(PS_EV.CARVE_OPEN);
+  psTouch('carve');
   setTimeout(() => { try { cbInput.focus(); } catch (e) {} }, 60);
 }
 cbInput.addEventListener('input', () => {
@@ -2260,6 +2325,9 @@ function lanternSuccess() {
   playBoom && playBoom();
   burstConfetti();
   fetchWall();
+  // The moment the floor grinds aside \u2014 distinct from actually walking down. Both fire.
+  psEvent(PS_EV.VAULT4_FLOOR_OPEN);
+  psTouch('vault4-floor');
   showCaption('The floor answers. A stair, cut long before this vault was sealed \u2014 go down, and come back up when you please.', 9000);
 }
 function tickSlab() {
@@ -2394,6 +2462,8 @@ function openBookcase() {
   hinge.userData.label = 'The way lies open · tap the shelves to close them';
   oddHit.userData.label = 'The odd book · tap to close the shelves';
   doorOpened = true;
+  psEventOnce(PS_EV.BOOKCASE_OPEN);
+  psTouch('bookcase');
 }
 function closeBookcase() {
   if (doorAnim || doorAmt <= 0) return;
@@ -2487,6 +2557,8 @@ function openDraft(idx) {
   draftCur = idx % DRAFTS.length; draftShow = null; drawDraft(); draftEl.hidden = false;
   showCaption('A page I threw away. Look at it and tell me why.', 4800);
   markFound('reject' + idx);
+  psEventOnce(PS_EV.PAGE_REJECTS);
+  psTouch('rejects');
 }
 document.getElementById('draftA').addEventListener('click', () => { draftShow = 'a'; drawDraft(); });
 document.getElementById('draftB').addEventListener('click', () => { draftShow = 'b'; drawDraft(); });
@@ -2509,7 +2581,7 @@ function drawNotebook() {
   nbPrev.disabled = nbPage === 0; nbNext.disabled = nbPage === NOTEBOOK.length - 1;
   nbPrev.style.opacity = nbPage === 0 ? '.35' : ''; nbNext.style.opacity = nbPage === NOTEBOOK.length - 1 ? '.35' : '';
 }
-function openNotebook() { nbPage = 0; drawNotebook(); nbEl.hidden = false; markFound('notebook'); showCaption('My notebook. Read it, and the rest of my book will go easier.', 5200); }
+function openNotebook() { nbPage = 0; drawNotebook(); nbEl.hidden = false; markFound('notebook'); psEventOnce(PS_EV.PAGE_NOTEBOOK); psTouch('notebook'); showCaption('My notebook. Read it, and the rest of my book will go easier.', 5200); }
 nbPrev.addEventListener('click', () => { if (nbPage > 0) { nbPage--; drawNotebook(); } });
 nbNext.addEventListener('click', () => { if (nbPage < NOTEBOOK.length - 1) { nbPage++; drawNotebook(); } });
 document.getElementById('nbClose').addEventListener('click', () => { nbEl.hidden = true; });
@@ -2732,7 +2804,14 @@ function tickPickups() {
 /* ---- the card ---- */
 function awardTile(act, note) {
   const held = tilesHeld(); const had = !!held[act];
-  if (!had) { held[act] = new Date().toISOString().slice(0, 10); try { localStorage.setItem(TILE_KEY, JSON.stringify(held)); } catch (e) {} }
+  if (!had) {
+    held[act] = new Date().toISOString().slice(0, 10);
+    try { localStorage.setItem(TILE_KEY, JSON.stringify(held)); } catch (e) {}
+    // First time this browser earns this tile → tell the Keeper. Once-per-tile-per-session
+    // is enforced client-side; server has the real 5-min cooldown.
+    psEvent(act === 'II' ? PS_EV.TILE_5 : PS_EV.TILE_7);
+    psTouch('tile-' + act);
+  }
   const both = !!(held.II && held.III);
   if (act === 'III') heldIII = true;
   document.getElementById('tcKicker').textContent = had ? 'THE KEEPER NODS' : 'A KEY-TILE';
@@ -2788,6 +2867,8 @@ function pickOrder() {
 }
 function startRound(calm = false) {
   if (round.on) return;
+  psEvent(PS_EV.ROUND_START);
+  psTouch('round');
   Object.assign(round, { on: true, list: pickOrder(), i: 0, calm, helped: false, wrongs: 0, plainSaid: false, tenSaid: false, gutterT: -9 });
   round.limit = 75; round.t0 = simT + 3.2; round.stuckT = round.t0;
   helpLampAmt = 0;
@@ -2859,6 +2940,7 @@ function finishRound() {
     if (isBest) { try { localStorage.setItem('ps_round3d_best', String(secs)); } catch (e) {} }
     note = 'Five in ' + secs.toFixed(1) + ' seconds' + (isBest ? ', your best.' : ' (best ' + best.toFixed(1) + 's).');
   }
+  psEvent(PS_EV.ROUND_SOLVED, note.slice(0, 32));
   showCaption(secs < 35 && !round.helped && !round.calm ? 'Five, in the dark. You have a keeper’s eyes.' : 'Five. Steady hands.', 4200);
   leaveRoundHud();
   darkTarget = 0; playCreak(); setTimeout(playUnlock, 900);
@@ -2992,6 +3074,8 @@ function openLock() {
   document.querySelectorAll('#lockTumblers i').forEach((i) => i.classList.remove('fell'));
   lockMsg.textContent = ''; lockRender();
   openCard(lockboxEl, lockDial);
+  psEvent(PS_EV.LOCK_START);
+  psTouch('lock');
   showCaption('Three tumblers. Turn the dial and listen.', 4200);
 }
 function closeLock() { lock.on = false; closeCard(lockboxEl); }
@@ -3000,6 +3084,7 @@ function lockWon() {
   lidAnim = { from: pbLid.rotation.x, to: -1.6, t0: simT, dur: 0.7 };
   pbInner.visible = true; pbGlow.material.opacity = 0.6; pbLight.intensity = 6;
   playCreak(); setTimeout(playUnlock, 500);
+  psEvent(PS_EV.LOCK_SOLVED);
   const had = !!tilesHeld().III;
   const from = new THREE.Vector3(); pbChest.getWorldPosition(from); from.y += 0.25;
   setTimeout(() => pickupTile(7, from, () => awardTile('III', 'The chest gives up its secret.')), 900);
@@ -3247,6 +3332,10 @@ function tick(dt) {
   }
   if (!seenLib && zp < -8.0) { seenLib = true; keeper('libentry'); }
   if (!seenV3 && zp < -20.2) { seenV3 = true; keeper('v3entry'); }
+  // Stair-crossing detector: fires on the FIRST descent and the FIRST ascent per session.
+  // player.pos.y is < 0 in the sanctum, ≥ 0 up top. Once-shot: subsequent trips are silent.
+  if (!stairSeen.down && player.pos.y < -0.4) { stairSeen.down = true; psEvent(PS_EV.STAIR_DESCEND); psEventOnce(PS_EV.VAULT4_ENTERED); psTouch('sanctum'); }
+  if (stairSeen.down && !stairSeen.up && player.pos.y > -0.05) { stairSeen.up = true; psEvent(PS_EV.STAIR_ASCEND); }
   // the soundscape follows you room to room
   ambT += dt;
   if (ambient && ambT > 0.4) {

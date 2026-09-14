@@ -4,7 +4,7 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
-import { notify, solverTag, country } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place } from '../../lib/keeper-telegram.js';
 import { rewardUrl } from './reward.js';
 
 // Salt lives ONLY in the VAULT_SALT env var (site/.env locally — gitignored;
@@ -65,7 +65,7 @@ export async function POST({ request, clientAddress }) {
 
   const hit = HASHES[hash(w)];
   const tag = solverTag(body && body.vid);
-  const geo = country(request);
+  const geo = place(request);
   if (hit) {
     const line = hit.guest
       ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY \u2014 came in from ${hit.guest}`
@@ -73,7 +73,7 @@ export async function POST({ request, clientAddress }) {
         ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens`
         : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}`;
     await notify(line);
-    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
+    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined });
   }
   await notify(`\u274C ${tag} \u00b7 ${geo} \u00b7 guessed \u201c${w}\u201d`);
   return json({ ok: false });

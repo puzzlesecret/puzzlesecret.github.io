@@ -280,5 +280,24 @@ const SITE_LD = {
       .global-foot .fine.disclosure { font-size: 11.5px; color: var(--ash); opacity: .6; border-top: 0; padding-top: 0; margin-top: -18px; }
     </style>
     <Analytics />
+    <!-- Site-wide "Amazon click-through" telemetry — one Keeper line per visitor, per link
+         host, every 5 minutes on the server side. The events.js helper is idempotent, safe
+         to load on every page even when the vault script is not present. -->
+    <script is:inline src="/js/events.js" defer></script>
+    <script is:inline defer>
+      (function () {
+        function wire() {
+          document.addEventListener('click', function (e) {
+            var a = e.target && e.target.closest && e.target.closest('a[href]');
+            if (!a) return;
+            var href = a.getAttribute('href') || '';
+            if (/amazon\./i.test(href) || /amzn\.to/i.test(href)) {
+              try { window.psEvent && window.psEvent('outbound.amazon', location.pathname.slice(0, 24) || '/'); } catch (err) {}
+            }
+          }, true);
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+      })();
+    </script>
   </body>
 </html>

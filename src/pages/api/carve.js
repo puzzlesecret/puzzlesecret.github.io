@@ -10,7 +10,7 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
-import { notify, solverTag, country } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place } from '../../lib/keeper-telegram.js';
 
 const SALT = import.meta.env.VAULT_SALT ?? process.env.VAULT_SALT;
 const HOOK = import.meta.env.SANCTUM_WEBHOOK ?? process.env.SANCTUM_WEBHOOK;
@@ -92,7 +92,7 @@ export async function POST({ request, clientAddress }) {
     });
     const d = await r.json();
     if (d && d.ok) {
-      await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${country(request)} \u00b7 carved \u201c${initials}\u201d \u2014 mark #${d.count}`);
+      await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${place(request)} \u00b7 carved \u201c${initials}\u201d \u2014 mark #${d.count}`);
       return json({ ok: true, count: d.count });
     }
     return json({ ok: false, reason: d && d.reason ? d.reason : 'refused' });
@@ -101,7 +101,7 @@ export async function POST({ request, clientAddress }) {
     // optimistic success (count unknown) so the mark reads as cut. A pre-flight failure
     // (never reached Google) is the only true failure.
     if (e && e.name === 'TimeoutError') {
-      await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${country(request)} \u00b7 carved \u201c${initials}\u201d (relay slow)`);
+      await notify(`\u{1FAA8} ${solverTag(body.vid)} \u00b7 ${place(request)} \u00b7 carved \u201c${initials}\u201d (relay slow)`);
       return json({ ok: true, count: null, pending: true });
     }
     return json({ ok: false, reason: 'wall_unreachable' }, 502);

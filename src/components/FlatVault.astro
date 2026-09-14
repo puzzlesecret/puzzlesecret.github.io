@@ -272,4 +272,6 @@
     }
   })();
 </script>
+<!-- events.js must load before painted-vault.js so window.psEvent / PS_EV are defined -->
+<script is:inline src="/js/events.js" defer></script>
 <script is:inline src="/js/painted-vault.js" defer></script>
