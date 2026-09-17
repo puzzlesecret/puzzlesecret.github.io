@@ -14,3 +14,7 @@ Thumbs.db
 
 # internal QA artifacts (VO candidate takes, audit page) — dev only
 _qa/
+
+# Internal working docs: stay on disk, never published.
+# They name the answer words; the repo and GitHub Pages are public.
+_content/
