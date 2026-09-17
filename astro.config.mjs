@@ -16,7 +16,8 @@ export default defineConfig({
     sitemap({
       // /vault is the surprise — keep it out of search results so the reveal
       // isn't spoiled by a cold Google visit. API routes aren't pages.
-      filter: (page) => !page.includes('/vault'),
+      // /daily/<serial>/ pages are noindex (near-identical puzzles); only the /daily/ hub is listed.
+      filter: (page) => !page.includes('/vault') && !/\/daily\/[a-z]-\d{3}\/?$/.test(page),
     }),
   ],
 });

@@ -1,0 +1,57 @@
+---
+// One page per daily Pinterest puzzle: /daily/e-012/. Static; each page carries only its own puzzle.
+// noindex (364 near-identical pages would be thin content) and left out of the sitemap — the
+// indexable page is /daily/. Pins link here directly, with the trailing slash.
+import Layout from '../../layouts/Layout.astro';
+import DailyBoard from '../../components/DailyBoard.astro';
+import daily from '../../data/daily_puzzles.json';
+
+export function getStaticPaths() {
+  const list = daily.puzzles;
+  return list.map((p, i) => ({
+    params: { slug: p.slug },
+    props: {
+      p,
+      prev: i > 0 ? list[i - 1].slug : null,
+      next: i < list.length - 1 ? list[i + 1].slug : null,
+      nextDate: i < list.length - 1 ? list[i + 1].date : null,
+    },
+  }));
+}
+const { p, prev, next, nextDate } = Astro.props;
+const TIER = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[p.tier];
+const title = `Free ${TIER} Sudoku No. ${p.serial} — Play Online or Print, With Answers · PuzzleSecret`;
+const description = `A free ${TIER.toLowerCase()} sudoku puzzle (No. ${p.serial}) with a unique solution. Play it online with pencil notes and error checking, print it, or reveal the answer.`;
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: `${TIER} Sudoku No. ${p.serial}`,
+  description,
+  isPartOf: { '@id': 'https://puzzlesecret.com/#website' },
+  publisher: { '@id': 'https://puzzlesecret.com/#org' },
+};
+---
+<Layout title={title} description={description} ogImage={`/og/daily-${p.tier}.jpg`} noindex={true}>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <DailyBoard serial={p.serial} tier={p.tier} givens={p.givens} solution={p.solution} theme={p.theme} />
+  <nav class="d-nav" aria-label="More daily puzzles">
+    {prev ? <a href={`/daily/${prev}/`}>← Previous puzzle</a> : <span></span>}
+    <a href="/daily/">All daily puzzles</a>
+    {next ? <a href={`/daily/${next}/`} class="d-next" data-date={nextDate}>Next puzzle →</a> : <span></span>}
+  </nav>
+  <script>
+    // Future puzzles exist as pages (URLs are guessable; nothing is spoiled) but aren't advertised
+    // before their date, counted in America/New_York.
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+      const n = document.querySelector('.d-next');
+      if (n && n.dataset.date && n.dataset.date > today) n.replaceWith(document.createElement('span'));
+    } catch (e) {}
+  </script>
+  <style>
+    .d-nav { max-width: 1000px; margin: 0 auto 60px; padding: 0 20px; display: flex; justify-content: space-between; gap: 12px; font-family: var(--display); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+    .d-nav a { color: var(--gold); text-decoration: none; }
+    .d-nav a:hover { color: var(--gold-hi); }
+    @media print { .d-nav { display: none; } }
+  </style>
+</Layout>

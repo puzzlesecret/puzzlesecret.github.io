@@ -1,0 +1,83 @@
+---
+// The indexable hub for the daily Pinterest puzzles. Today's puzzle is chosen IN THE BROWSER
+// (America/New_York) — a build-time pick would freeze on the day of the deploy. The list carries
+// serials and dates only, never solutions.
+import Layout from '../../layouts/Layout.astro';
+import daily from '../../data/daily_puzzles.json';
+const list = daily.puzzles.map((p) => ({ s: p.serial, u: p.slug, d: p.date, t: p.tier }));
+const counts = { easy: 0, medium: 0, hard: 0 };
+daily.puzzles.forEach((p) => counts[p.tier]++);
+---
+<Layout
+  title="Free Printable Sudoku With Answers — Easy, Medium & Hard · PuzzleSecret"
+  description="A new free sudoku every day: easy Monday to Wednesday, medium Thursday and Friday, hard at the weekend. Play online with pencil notes, print it, or check the answer."
+  ogImage="/og/daily-easy.jpg"
+>
+  <main class="dh">
+    <p class="dh-kicker">From the makers of <em>Sudoku with a Secret</em></p>
+    <h1>Free Printable Sudoku With Answers</h1>
+    <p class="dh-lede">A new puzzle every day, each with exactly one solution. <strong>Easy</strong> Monday to Wednesday,
+      <strong>medium</strong> Thursday and Friday, <strong>hard</strong> on Saturday and Sunday. Play in your browser
+      with pencil notes and error checking, print a clean black-and-white copy, or reveal the answer when you are done.</p>
+    <p class="dh-today"><a id="todayLink" class="dh-btn" href="/daily/">Play today's puzzle →</a></p>
+
+    <section class="dh-how">
+      <h2>How the puzzles are made</h2>
+      <p>Every puzzle is freshly generated and then checked by three independently written checking programs. A puzzle is only
+        published when all three agree it has exactly one solution and agree on its difficulty: <strong>easy</strong>
+        puzzles need only singles, <strong>medium</strong> puzzles need pairs, triples or locked candidates, and
+        <strong>hard</strong> puzzles need an X-Wing, Swordfish, XY-Wing or colouring — but never guessing.</p>
+    </section>
+
+    <section class="dh-list">
+      <h2>Recent puzzles</h2>
+      <ul id="dhList"></ul>
+      <noscript><p>Turn on JavaScript to see the list of recent puzzles.</p></noscript>
+    </section>
+
+    <aside class="dh-book">
+      <p>Want 200 more, with a hidden escape room inside? <em>Sudoku with a Secret</em>, Volume 1.</p>
+      <a href="https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20" target="_blank" rel="noopener">See the book on Amazon ↗</a>
+    </aside>
+  </main>
+
+  <script define:vars={{ list }}>
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+      const past = list.filter((p) => p.d <= today);
+      const t = past[past.length - 1] || list[0];
+      const a = document.getElementById('todayLink');
+      a.href = '/daily/' + t.u + '/';
+      const ul = document.getElementById('dhList');
+      past.slice(-21).reverse().forEach((p) => {
+        const li = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = '/daily/' + p.u + '/';
+        link.textContent = p.t.charAt(0).toUpperCase() + p.t.slice(1) + ' Sudoku No. ' + p.s;
+        const tag = document.createElement('span');
+        tag.className = 'dh-tier ' + p.t; tag.textContent = p.t;
+        li.append(link, tag); ul.appendChild(li);
+      });
+      if (!past.length) { const li = document.createElement('li'); li.textContent = 'The first puzzle arrives soon.'; ul.appendChild(li); }
+    } catch (e) {}
+  </script>
+
+  <style>
+    .dh { max-width: 780px; margin: 0 auto; padding: 100px 20px 70px; }
+    .dh-kicker { font-family: var(--display); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--ash); margin: 0 0 8px; }
+    .dh-kicker em { color: var(--gold); font-style: normal; }
+    h1 { font-family: var(--display); font-size: clamp(30px, 6vw, 46px); color: var(--ivory); margin: 0 0 16px; }
+    h2 { font-family: var(--display); font-size: 20px; color: var(--gold); margin: 36px 0 10px; letter-spacing: .06em; }
+    .dh-lede, .dh-how p { line-height: 1.65; color: var(--ivory); font-size: 18px; }
+    .dh-btn { display: inline-block; margin-top: 10px; padding: 14px 22px; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
+    #dhList { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    #dhList li { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid rgba(185,143,82,.25); border-radius: 8px; }
+    #dhList a { color: var(--ivory); text-decoration: none; font-size: 17px; }
+    #dhList a:hover { color: var(--gold-hi); }
+    :global(.dh-tier) { font-family: var(--display); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ash); }
+    .dh-book { margin-top: 40px; padding: 18px; border: 1px solid rgba(246,178,60,.4); border-radius: 10px; }
+    .dh-book p { margin: 0 0 10px; }
+    .dh-book em { color: var(--gold-hi); }
+    .dh-book a { color: var(--gold); }
+  </style>
+</Layout>

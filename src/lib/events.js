@@ -206,7 +206,7 @@ export function keeperLine(ev, extra, tag, place) {
 // narrative ("GUEST KEY came in from…"). So every extra must match the exact shape our
 // own clients produce — fixed vocabularies and digits — or it is dropped (the event still
 // goes through, just without its extra). Nothing here can spell a hostname.
-const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|unsubscribed|404)';
+const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|daily|unsubscribed|404)';
 const SOURCES = '(pinterest|youtube|tiktok|instagram|facebook|threads|reddit|x|linkedin|google|bing|duckduckgo|yahoo|brave|ecosia|chatgpt|perplexity|claude|gemini|amazon|mensa|another site)';
 const ROOMS = '(the study|the library|the treasure room|the sanctum)';
 const DOORS = '(first|door2|door3|fourth)';

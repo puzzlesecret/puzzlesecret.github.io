@@ -1,0 +1,282 @@
+---
+// One daily Pinterest puzzle, playable. A deliberate COPY of the /play board, not a refactor of it:
+// /play is embedded by the homepage five-a-day and the vault desk, and its saved progress is keyed
+// by bare id. This board keeps its own storage (ps_daily_*), has no key cells, no passport, and fires
+// NO play.* events (their Keeper lines say "on /play") — page.view from events.js is all it logs.
+export interface Props {
+  serial: string;
+  tier: 'easy' | 'medium' | 'hard';
+  givens: string;
+  solution: string;
+  theme: string;
+}
+const { serial, tier, givens, solution, theme } = Astro.props;
+const TIER_WORD = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[tier];
+const KEYS = { easy: 1, medium: 2, hard: 3 }[tier];
+const SEAM = { v1: '#f0b040', v2: '#3cdc82', v3: '#ec7896', v4: '#46d2eb', v5: '#f59628' }[theme] || '#f0b040';
+const AMAZON_URL = 'https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20';
+const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).split(''));
+---
+<section class="daily" style={`--seam:${SEAM}`} data-serial={serial}>
+  <div class="d-head">
+    <p class="d-kicker">Free printable sudoku with answers</p>
+    <h1 class="d-title">{TIER_WORD} Sudoku <span class="d-no">No. {serial}</span></h1>
+    <p class="d-keys" aria-label={`Difficulty ${KEYS} of 3`}>{'🗝'.repeat(KEYS)}<span class="d-keys-off">{'🗝'.repeat(3 - KEYS)}</span></p>
+  </div>
+
+  <div class="d-layout">
+    <div class="d-board-col">
+      <div class="d-grid" id="dGrid" tabindex="0" role="grid" aria-label={`${TIER_WORD} sudoku number ${serial}. Use arrow keys to move and digits to fill.`}>
+        {rows.flatMap((row, r) => row.map((ch, c) => (
+          <div
+            class:list={['d-cell', { given: ch !== '0', br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8 }]}
+            role="gridcell"
+            data-i={r * 9 + c}
+            aria-label={`Row ${r + 1} column ${c + 1}${ch !== '0' ? ', given ' + ch : ', empty'}`}
+          >{ch !== '0' ? ch : ''}</div>
+        )))}
+      </div>
+      <p class="d-status" id="dStatus" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="d-panel">
+      <div class="d-pad" role="group" aria-label="Numbers">
+        {Array.from({ length: 9 }, (_, i) => i + 1).map((n) => (
+          <button type="button" class="d-num" data-n={n}>{n}</button>
+        ))}
+      </div>
+      <div class="d-actions">
+        <button type="button" class="d-btn" id="dUndo">Undo</button>
+        <button type="button" class="d-btn" id="dErase">Erase</button>
+        <button type="button" class="d-btn" id="dPencil" aria-pressed="false">Pencil: Off</button>
+        <button type="button" class="d-btn" id="dCheck">Check my grid</button>
+      </div>
+      <div class="d-actions">
+        <button type="button" class="d-btn d-strong" id="dPrint">Print this puzzle</button>
+        <button type="button" class="d-btn d-strong" id="dSave">Save as image</button>
+      </div>
+      <div class="d-actions">
+        <button type="button" class="d-btn" id="dReveal">Reveal solution</button>
+        <button type="button" class="d-btn" id="dReset">Start over</button>
+      </div>
+
+      <aside class="d-book" id="dBook">
+        <p class="d-book-line">Liked this one? <em>Sudoku with a Secret</em>, Volume 1, has 200 more — easy to hard — and a hidden escape room inside the book.</p>
+        <a class="d-buy" href={AMAZON_URL} target="_blank" rel="noopener">See the book on Amazon ↗</a>
+        <p class="d-fine">Or <a href="/newsletter">get free puzzles by email</a> — always optional. <a href="/daily/">More daily puzzles</a>.</p>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Print-only page: givens on a clean black-on-white grid, hairline frame, URL line -->
+  <div class="d-print" aria-hidden="true">
+    <p class="p-title">{TIER_WORD.toUpperCase()} SUDOKU · No. {serial}</p>
+    <table class="p-grid">
+      {rows.map((row, r) => (
+        <tr>{row.map((ch, c) => <td class:list={{ br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8 }}>{ch !== '0' ? ch : ''}</td>)}</tr>
+      ))}
+    </table>
+    <p class="p-url">Play it free and check your answer at puzzlesecret.com/daily/{serial.toLowerCase()}/</p>
+    <p class="p-brand">SUDOKU with a SECRET</p>
+  </div>
+</section>
+
+<script define:vars={{ serial, givens, solution, tierWord: TIER_WORD }}>
+  (function () {
+    const KEY = 'ps_daily_' + serial;
+    const grid = document.getElementById('dGrid');
+    const cells = Array.from(grid.querySelectorAll('.d-cell'));
+    const status = document.getElementById('dStatus');
+    const given = givens.split('').map((c) => c !== '0');
+    let vals = givens.split('').map(Number);
+    let notes = Array.from({ length: 81 }, () => new Set());
+    let sel = -1, pencil = false, revealed = false, solvedShown = false;
+    const hist = [];
+
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (s && s.v && s.v.length === 81) {
+        s.v.split('').forEach((d, i) => { if (!given[i]) vals[i] = Number(d); });
+        (s.n || []).forEach((str, i) => { if (!given[i] && str) notes[i] = new Set(str.split('').map(Number)); });
+        revealed = !!s.r;
+      }
+    } catch (e) {}
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify({ v: vals.join(''), n: notes.map((s) => Array.from(s).join('')), r: revealed })); } catch (e) {}
+    }
+    function say(t) { status.textContent = t; }
+
+    function render() {
+      const sv = sel >= 0 ? vals[sel] : 0;
+      cells.forEach((el, i) => {
+        const r = Math.floor(i / 9), c = i % 9;
+        el.classList.toggle('sel', i === sel);
+        el.classList.toggle('line', sel >= 0 && i !== sel && (r === Math.floor(sel / 9) || c === sel % 9));
+        el.classList.toggle('same', sv > 0 && vals[i] === sv);
+        el.classList.toggle('revealed', revealed && !given[i]);
+        if (given[i]) return;
+        el.classList.remove('err');
+        if (vals[i]) { el.textContent = vals[i]; el.classList.add('filled'); }
+        else {
+          el.classList.remove('filled');
+          if (notes[i].size) {
+            el.innerHTML = '<span class="nts">' + [1,2,3,4,5,6,7,8,9].map((n) => '<i>' + (notes[i].has(n) ? n : '') + '</i>').join('') + '</span>';
+          } else el.textContent = '';
+        }
+      });
+    }
+    function push() { hist.push({ v: vals.slice(), n: notes.map((s) => new Set(s)) }); if (hist.length > 200) hist.shift(); }
+    function put(n) {
+      if (sel < 0 || given[sel] || revealed) return;
+      push();
+      if (pencil) { vals[sel] = 0; notes[sel].has(n) ? notes[sel].delete(n) : notes[sel].add(n); }
+      else { notes[sel].clear(); vals[sel] = vals[sel] === n ? 0 : n; }
+      save(); render(); victory();
+    }
+    function victory() {
+      if (vals.join('') === solution && !revealed && !solvedShown) {
+        solvedShown = true;
+        say('Solved! Nicely done.');
+        document.getElementById('dBook').classList.add('peak');
+        document.getElementById('dBook').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (!vals.includes(0) && vals.join('') !== solution) {
+        say('Every square is filled, but something is not right yet.');
+      }
+    }
+
+    cells.forEach((el, i) => el.addEventListener('click', () => { sel = i; render(); }));
+    grid.addEventListener('focus', () => { if (sel < 0) { sel = given.indexOf(false); render(); } });
+    document.querySelectorAll('.d-num').forEach((b) => b.addEventListener('click', () => put(Number(b.dataset.n))));
+    document.getElementById('dUndo').addEventListener('click', () => { const h = hist.pop(); if (!h) return; vals = h.v; notes = h.n; save(); render(); });
+    document.getElementById('dErase').addEventListener('click', () => { if (sel < 0 || given[sel] || revealed) return; push(); vals[sel] = 0; notes[sel].clear(); save(); render(); });
+    const pb = document.getElementById('dPencil');
+    pb.addEventListener('click', () => { pencil = !pencil; pb.setAttribute('aria-pressed', String(pencil)); pb.textContent = 'Pencil: ' + (pencil ? 'On' : 'Off'); });
+    document.getElementById('dCheck').addEventListener('click', () => {
+      let wrong = 0;
+      cells.forEach((el, i) => { if (!given[i] && vals[i] && vals[i] !== Number(solution[i])) { el.classList.add('err'); wrong++; } });
+      say(wrong ? wrong + (wrong === 1 ? ' square does' : ' squares do') + ' not match the answer.' : 'No mistakes so far.');
+    });
+    document.getElementById('dReveal').addEventListener('click', () => {
+      if (!confirm('Show the full solution? You can start over afterwards.')) return;
+      push(); revealed = true; vals = solution.split('').map(Number); notes = notes.map(() => new Set());
+      save(); render(); say('Here is the solution. Solved squares are shown in blue.');
+      document.getElementById('dBook').classList.add('peak');
+    });
+    document.getElementById('dReset').addEventListener('click', () => {
+      if (!confirm('Clear your entries and start this puzzle again?')) return;
+      vals = givens.split('').map(Number); notes = notes.map(() => new Set()); revealed = false; solvedShown = false; hist.length = 0;
+      save(); render(); say('');
+    });
+    document.getElementById('dPrint').addEventListener('click', () => window.print());
+    document.getElementById('dSave').addEventListener('click', () => {
+      const S = 1080, pad = 60, top = 150, g = S - pad * 2, cw = g / 9;
+      const cv = document.createElement('canvas'); cv.width = S; cv.height = S + 230;
+      const x = cv.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
+      x.fillStyle = '#111'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.font = 'bold 54px Georgia, serif'; x.fillText(tierWord.toUpperCase() + ' SUDOKU · No. ' + serial, S / 2, 80);
+      for (let i = 0; i <= 9; i++) {
+        x.lineWidth = i % 3 ? 2 : 6; x.strokeStyle = i % 3 ? '#777' : '#111';
+        x.beginPath(); x.moveTo(pad + i * cw, top); x.lineTo(pad + i * cw, top + g); x.stroke();
+        x.beginPath(); x.moveTo(pad, top + i * cw); x.lineTo(pad + g, top + i * cw); x.stroke();
+      }
+      x.font = 'bold 64px "Palatino Linotype", Palatino, Arial, sans-serif';
+      for (let i = 0; i < 81; i++) if (given[i]) x.fillText(givens[i], pad + (i % 9) * cw + cw / 2, top + Math.floor(i / 9) * cw + cw / 2 + 4);
+      x.font = '34px Georgia, serif'; x.fillText('Play free + answers: puzzlesecret.com/daily/' + serial.toLowerCase() + '/', S / 2, top + g + 70);
+      x.font = 'italic 30px Georgia, serif'; x.fillText('Sudoku with a Secret', S / 2, top + g + 125);
+      cv.toBlob((b) => {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = 'puzzlesecret-sudoku-' + serial.toLowerCase() + '.png'; document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      }, 'image/png');
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key >= '1' && e.key <= '9') { put(Number(e.key)); e.preventDefault(); return; }
+      if ((e.key === 'Backspace' || e.key === 'Delete') && sel >= 0) { document.getElementById('dErase').click(); e.preventDefault(); return; }
+      if (e.key === 'n' || e.key === 'N') { pb.click(); return; }
+      if (sel < 0 || !e.key.startsWith('Arrow')) return;
+      let r = Math.floor(sel / 9), c = sel % 9;
+      if (e.key === 'ArrowUp') r = Math.max(0, r - 1);
+      if (e.key === 'ArrowDown') r = Math.min(8, r + 1);
+      if (e.key === 'ArrowLeft') c = Math.max(0, c - 1);
+      if (e.key === 'ArrowRight') c = Math.min(8, c + 1);
+      sel = r * 9 + c; render(); e.preventDefault();
+    });
+    render();
+    if (revealed) say('Solution shown. Tap “Start over” to play it yourself.');
+  })();
+</script>
+
+<style>
+  .daily { max-width: 1000px; margin: 0 auto; padding: 96px 20px 60px; }
+  .d-head { text-align: center; margin-bottom: 22px; position: relative; }
+  .d-kicker { font-family: var(--display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--ash); margin: 0 0 6px; }
+  .d-title { font-family: var(--display); font-size: clamp(30px, 6vw, 48px); color: var(--ivory); margin: 0; letter-spacing: .04em; }
+  .d-title::after { content: ''; display: block; width: 140px; height: 2px; margin: 12px auto 0; background: linear-gradient(90deg, transparent, var(--seam), transparent); box-shadow: 0 0 12px var(--seam); }
+  .d-no { display: block; font-size: .42em; color: var(--gold); letter-spacing: .14em; margin-top: 6px; }
+  .d-keys { margin: 10px 0 0; font-size: 18px; letter-spacing: 6px; }
+  .d-keys-off { opacity: .22; }
+
+  .d-layout { display: grid; grid-template-columns: minmax(300px, 520px) 1fr; gap: 32px; align-items: start; }
+  .d-grid { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: #f3ead6; border: 4px solid #241a10; border-radius: 4px; box-shadow: 0 0 0 2px #c9973f, 0 14px 48px rgba(0,0,0,.8); outline: none; touch-action: manipulation; }
+  .d-grid:focus-visible { box-shadow: 0 0 0 3px var(--gold-hi), 0 14px 48px rgba(0,0,0,.8); }
+  .d-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; font-weight: 700; font-size: clamp(18px, 5.2vw, 30px); color: #1f4e8c; border-right: 1px solid #b5a58c; border-bottom: 1px solid #b5a58c; cursor: pointer; user-select: none; min-height: 0; -webkit-tap-highlight-color: transparent; }
+  .d-cell:nth-child(9n) { border-right: none; }
+  .d-cell:nth-last-child(-n+9) { border-bottom: none; }
+  .d-cell.br { border-right: 3px solid #241a10; }
+  .d-cell.bb { border-bottom: 3px solid #241a10; }
+  .d-cell.given { color: #17110b; }
+  .d-cell.line { background: rgba(246,178,60,.16); }
+  .d-cell.same { background: rgba(246,178,60,.34); }
+  .d-cell.sel { background: rgba(246,178,60,.62); }
+  .d-cell.err { color: #a4183a; background: rgba(231,120,140,.45); }
+  .d-cell.revealed { color: #2a64b0; }
+  .d-cell :global(.nts) { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; height: 100%; }
+  .d-cell :global(.nts i) { font-style: normal; font-size: clamp(8px, 2.3vw, 12px); color: #5a4830; display: flex; align-items: center; justify-content: center; font-family: sans-serif; }
+  .d-status { min-height: 22px; margin: 10px 0 0; text-align: center; color: var(--gold-hi); font-style: italic; }
+
+  .d-panel { display: flex; flex-direction: column; gap: 12px; }
+  .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .d-num { font-family: var(--display); font-size: 26px; font-weight: 700; padding: 12px 0; color: var(--gold-hi); background: linear-gradient(180deg, #18151f, #0e0d14); border: 1px solid rgba(185,143,82,.35); border-radius: 10px; cursor: pointer; touch-action: manipulation; }
+  .d-num:hover { border-color: var(--gold); }
+  .d-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .d-btn { flex: 1 1 40%; min-height: 44px; padding: 10px; font-family: var(--display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ivory); background: rgba(255,255,255,.04); border: 1px solid rgba(185,143,82,.3); border-radius: 6px; cursor: pointer; }
+  .d-btn:hover { border-color: var(--gold); color: var(--gold-hi); }
+  .d-btn[aria-pressed="true"] { background: rgba(246,178,60,.2); border-color: var(--gold); }
+  .d-strong { border-color: rgba(246,178,60,.55); color: var(--gold-hi); }
+
+  .d-book { margin-top: 6px; padding: 16px 18px; border: 1px solid rgba(185,143,82,.3); border-radius: 10px; background: rgba(14,12,18,.8); transition: border-color .3s, box-shadow .3s; }
+  .d-book.peak { border-color: var(--gold); box-shadow: 0 0 24px rgba(246,178,60,.25); }
+  .d-book-line { margin: 0 0 12px; color: var(--ivory); line-height: 1.5; }
+  .d-book-line em { color: var(--gold-hi); }
+  .d-buy { display: inline-block; padding: 11px 18px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
+  .d-fine { margin: 12px 0 0; font-size: 14px; color: var(--ash); }
+  .d-fine a { color: var(--gold); }
+
+  .d-print { display: none; }
+
+  @media (max-width: 760px) {
+    .daily { padding-top: 80px; }
+    .d-layout { grid-template-columns: 1fr; gap: 14px; }
+    .d-pad { grid-template-columns: repeat(9, 1fr); gap: 4px; }
+    .d-num { font-size: 20px; padding: 10px 0; border-radius: 7px; }
+  }
+
+  @media print {
+    @page { size: letter; margin: .5in; }
+    :global(body) { background: #fff !important; }
+    :global(.chrome), :global(.global-foot), :global(.menu-drawer) { display: none !important; }
+    .d-head, .d-layout { display: none !important; }
+    .daily { padding: 0; max-width: none; }
+    .d-print { display: block; color: #000; text-align: center; border: 1px solid #000; padding: .3in; }
+    .p-title { font: 700 22pt Georgia, serif; margin: 0 0 .2in; letter-spacing: .06em; }
+    .p-grid { border-collapse: collapse; margin: 0 auto; border: 3px solid #000; }
+    .p-grid td { width: .72in; height: .72in; border: 1px solid #555; text-align: center; vertical-align: middle; font: 700 26pt 'Palatino Linotype', Palatino, 'Book Antiqua', Arial, sans-serif; font-variant-numeric: lining-nums; color: #000; }
+    .p-grid td.br { border-right: 3px solid #000; }
+    .p-grid td.bb { border-bottom: 3px solid #000; }
+    .p-url { font: 12pt Georgia, serif; margin: .25in 0 .05in; }
+    .p-brand { font: italic 11pt Georgia, serif; margin: 0; }
+  }
+</style>

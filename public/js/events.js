@@ -144,6 +144,7 @@
   function sourceOf(host) {
     if (/(^|\.)(x\.com|twitter\.com|t\.co)$/.test(host)) return 'x';
     if (/(^|\.)fb\.com$/.test(host) || /^lm?\.facebook\.com$/.test(host)) return 'facebook';
+    if (/(^|\.)pin\.it$/.test(host)) return 'pinterest';
     for (var i = 0; i < SOURCES.length; i++) if (host.indexOf(SOURCES[i]) !== -1) return SOURCES[i];
     return 'another site';
   }
