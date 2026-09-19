@@ -5,6 +5,7 @@
 import Layout from '../../layouts/Layout.astro';
 import DailyBoard from '../../components/DailyBoard.astro';
 import SeriesStrip from '../../components/SeriesStrip.astro';
+import PuzzleLookup from '../../components/PuzzleLookup.astro';
 import daily from '../../data/daily_puzzles.json';
 
 export function getStaticPaths() {
@@ -40,6 +41,7 @@ const ld = {
     <a href="/daily/">All daily puzzles</a>
     {next ? <a href={`/daily/${next}/`} class="d-next" data-date={nextDate}>Next puzzle →</a> : <span></span>}
   </nav>
+  <div class="d-find"><PuzzleLookup compact={true} /></div>
   <SeriesStrip />
   <script>
     // Future puzzles exist as pages (URLs are guessable; nothing is spoiled) but aren't advertised
@@ -54,6 +56,7 @@ const ld = {
     .d-nav { max-width: 1000px; margin: 0 auto 60px; padding: 0 20px; display: flex; justify-content: space-between; gap: 12px; font-family: var(--display); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
     .d-nav a { color: var(--gold); text-decoration: none; }
     .d-nav a:hover { color: var(--gold-hi); }
-    @media print { .d-nav { display: none; } }
+    .d-find { max-width: 640px; margin: -30px auto 30px; padding: 0 20px; }
+    @media print { .d-nav, .d-find { display: none; } }
   </style>
 </Layout>

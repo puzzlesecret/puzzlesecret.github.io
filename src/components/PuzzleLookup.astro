@@ -1,0 +1,60 @@
+---
+// "Found a puzzle on Pinterest? Type its number." Takes E-012 / m001 / "No. H-5" / "medium 7" and goes
+// straight to /daily/<serial>/. A puzzle that isn't out yet says when it will be (dates only, never
+// givens or solutions). No events of its own; the page it lands on logs page.view as usual.
+import daily from '../data/daily_puzzles.json';
+export interface Props { compact?: boolean }
+const { compact = false } = Astro.props;
+const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
+---
+<form class={`lookup${compact ? ' compact' : ''}`} data-lookup autocomplete="off">
+  <label class="lk-label">Found one of our puzzles on Pinterest? <span>Type its number.</span></label>
+  <div class="lk-row">
+    <input class="lk-in" name="n" type="text" inputmode="text" placeholder="e.g. M-001" maxlength="20"
+           aria-label="Puzzle number, for example M-001" spellcheck="false" />
+    <button class="lk-go" type="submit">Play it →</button>
+  </div>
+  <p class="lk-msg" role="status" aria-live="polite"></p>
+</form>
+<script define:vars={{ dates }}>
+  document.querySelectorAll('form[data-lookup]').forEach((f) => {
+    if (f.dataset.ready) return;
+    f.dataset.ready = '1';
+    const msg = f.querySelector('.lk-msg');
+    f.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const raw = (f.querySelector('.lk-in').value || '').trim();
+      const words = { easy: 'E', medium: 'M', hard: 'H' };
+      let m = raw.match(/\b(easy|medium|hard)\b\D*(\d{1,3})/i);
+      let t = m ? words[m[1].toLowerCase()] : null, n = m ? m[2] : null;
+      if (!m) { m = raw.match(/([emh])\s*[-#.:]?\s*(\d{1,3})\b/i); if (m) { t = m[1].toUpperCase(); n = m[2]; } }
+      if (!t) { msg.textContent = 'Puzzle numbers look like E-012, M-001 or H-005 — it is printed under the word EASY, MEDIUM or HARD.'; return; }
+      const serial = t + '-' + String(parseInt(n, 10)).padStart(3, '0');
+      const d = dates[serial];
+      if (!d) { msg.textContent = 'There is no puzzle ' + serial + ' yet. Check the number on the pin and try again.'; return; }
+      let today = '';
+      try { today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()); } catch (e) {}
+      if (today && d > today) {
+        const nice = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        msg.textContent = 'Puzzle ' + serial + ' comes out on ' + nice + '. Come back then!';
+        return;
+      }
+      msg.textContent = 'Opening ' + serial + '…';
+      location.href = '/daily/' + serial.toLowerCase() + '/';
+    });
+  });
+</script>
+<style>
+  .lookup { margin: 22px 0; padding: 16px 18px; border: 1px solid rgba(185,143,82,.35); border-radius: 10px; background: rgba(14,12,18,.6); }
+  .lk-label { display: block; font-size: 16px; color: var(--ivory, #f4ebd8); margin: 0 0 10px; }
+  .lk-label span { color: var(--gold, #c9973f); }
+  .lk-row { display: flex; gap: 10px; }
+  .lk-in { flex: 1; min-width: 0; padding: 12px 14px; font-size: 18px; letter-spacing: .08em; text-transform: uppercase;
+           color: var(--ivory, #f4ebd8); background: #0b0907; border: 1px solid rgba(185,143,82,.5); border-radius: 6px; }
+  .lk-in:focus { outline: 2px solid var(--gold, #c9973f); outline-offset: 1px; }
+  .lk-go { padding: 12px 18px; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase;
+           color: #1a1206; background: linear-gradient(180deg, var(--gold-hi, #e8c478), var(--gold, #c9973f)); border: 0; border-radius: 6px; cursor: pointer; }
+  .lk-msg { margin: 8px 0 0; min-height: 1.2em; font-size: 14px; color: #cfc2a8; }
+  .lookup.compact { margin: 0 0 18px; }
+  @media print { .lookup { display: none; } }
+</style>

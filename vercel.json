@@ -10,6 +10,21 @@
       "source": "/(escape-room-sudoku-book|faq|hints|how-to-play-sudoku|newsletter|passport|play|privacy|shop|terms|the-keeper|unsubscribed)",
       "destination": "/$1/",
       "permanent": true
+    },
+    {
+      "source": "/([eE])-(\\d{3})",
+      "destination": "/daily/e-$2/",
+      "permanent": false
+    },
+    {
+      "source": "/([mM])-(\\d{3})",
+      "destination": "/daily/m-$2/",
+      "permanent": false
+    },
+    {
+      "source": "/([hH])-(\\d{3})",
+      "destination": "/daily/h-$2/",
+      "permanent": false
     }
   ]
 }

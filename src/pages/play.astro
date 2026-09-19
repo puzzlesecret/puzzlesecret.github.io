@@ -52,6 +52,15 @@ import webPuzzles from '../data/web_puzzles.json';
 
   </style>
   <main class="page-play">
+    <!-- Pinterest daily puzzles live at /daily/, not in these 200: point people there by number -->
+    <p class="pin-find"><a href="/daily/#find">Found a puzzle on Pinterest, like <b>M-001</b>? Look it up by its number →</a></p>
+    <style>
+      .pin-find { max-width: 1000px; margin: 0 auto; padding: 8px 20px 0; text-align: center; font-size: 14px; }
+      .pin-find a { color: var(--gold, #c9973f); text-decoration: none; }
+      .pin-find a:hover { color: var(--gold-hi, #e8c478); text-decoration: underline; }
+      .pin-find b { letter-spacing: .06em; }
+      :global(html.embed) .pin-find { display: none; }
+    </style>
     <!-- Top Arcade Toolbar -->
     <div class="wrap arcade-top">
       <div class="top-row">

@@ -5,6 +5,7 @@
 import Layout from '../../layouts/Layout.astro';
 import daily from '../../data/daily_puzzles.json';
 import SeriesStrip from '../../components/SeriesStrip.astro';
+import PuzzleLookup from '../../components/PuzzleLookup.astro';
 const list = daily.puzzles.map((p) => ({ s: p.serial, u: p.slug, d: p.date, t: p.tier }));
 const counts = { easy: 0, medium: 0, hard: 0 };
 daily.puzzles.forEach((p) => counts[p.tier]++);
@@ -21,6 +22,7 @@ daily.puzzles.forEach((p) => counts[p.tier]++);
       <strong>medium</strong> Thursday and Friday, <strong>hard</strong> on Saturday and Sunday. Play in your browser
       with pencil notes and error checking, print a clean black-and-white copy, or reveal the answer when you are done.</p>
     <p class="dh-today"><a id="todayLink" class="dh-btn" href="/daily/">Play today's puzzle →</a></p>
+    <div id="find"><PuzzleLookup /></div>
 
     <section class="dh-how">
       <h2>How the puzzles are made</h2>
