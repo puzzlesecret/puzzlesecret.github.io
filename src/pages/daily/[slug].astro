@@ -4,6 +4,7 @@
 // indexable page is /daily/. Pins link here directly, with the trailing slash.
 import Layout from '../../layouts/Layout.astro';
 import DailyBoard from '../../components/DailyBoard.astro';
+import SeriesStrip from '../../components/SeriesStrip.astro';
 import daily from '../../data/daily_puzzles.json';
 
 export function getStaticPaths() {
@@ -39,6 +40,7 @@ const ld = {
     <a href="/daily/">All daily puzzles</a>
     {next ? <a href={`/daily/${next}/`} class="d-next" data-date={nextDate}>Next puzzle →</a> : <span></span>}
   </nav>
+  <SeriesStrip />
   <script>
     // Future puzzles exist as pages (URLs are guessable; nothing is spoiled) but aren't advertised
     // before their date, counted in America/New_York.

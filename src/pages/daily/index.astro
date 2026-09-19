@@ -4,6 +4,7 @@
 // serials and dates only, never solutions.
 import Layout from '../../layouts/Layout.astro';
 import daily from '../../data/daily_puzzles.json';
+import SeriesStrip from '../../components/SeriesStrip.astro';
 const list = daily.puzzles.map((p) => ({ s: p.serial, u: p.slug, d: p.date, t: p.tier }));
 const counts = { easy: 0, medium: 0, hard: 0 };
 daily.puzzles.forEach((p) => counts[p.tier]++);
@@ -40,6 +41,7 @@ daily.puzzles.forEach((p) => counts[p.tier]++);
       <a href="https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20" target="_blank" rel="noopener">See the book on Amazon ↗</a>
     </aside>
   </main>
+  <SeriesStrip />
 
   <script define:vars={{ list }}>
     try {

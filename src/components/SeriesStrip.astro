@@ -1,0 +1,54 @@
+---
+// The series under every daily puzzle (Dan 2026-09-18): Volume 1 lit and buyable, Volumes II-V "in the works".
+// Only existing images; no new events (events.js already logs Amazon click-throughs from any page).
+const AMAZON_URL = 'https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20';
+const SOON = [
+  { v: 'v2', rn: 'II', name: "The Corsair's Chart" },
+  { v: 'v3', rn: 'III', name: 'The Lost Love Letters' },
+  { v: 'v4', rn: 'IV', name: 'The Silent Signal' },
+  { v: 'v5', rn: 'V', name: 'The Hollow Oak' },
+];
+---
+<section class="series" aria-label="The Sudoku with a Secret series">
+  <p class="s-kicker">The series</p>
+  <h2 class="s-title">Sudoku <em>with a</em> Secret</h2>
+  <div class="s-row">
+    <a class="s-book s-now" href={AMAZON_URL} target="_blank" rel="noopener">
+      <img src="/art/cover-v1-360.webp" width="360" height="466" loading="lazy"
+           alt="Sudoku with a Secret, Volume 1: Crack the Keeper's Vault — book cover" />
+      <span class="s-cap"><b>Volume 1</b> · Crack the Keeper's Vault<br /><span class="s-out">Out now ↗</span></span>
+    </a>
+    {SOON.map((s) => (
+      <figure class="s-book s-soon">
+        <img src={`/teasers/${s.v}.webp`} width="420" height="543" loading="lazy" alt={`Volume ${s.rn} — ${s.name}`} />
+        <figcaption class="s-cap"><b>Volume {s.rn}</b> · {s.name}<br /><span class="s-wip">In the works</span></figcaption>
+      </figure>
+    ))}
+  </div>
+  <p class="s-foot">Volume 1 has 200 puzzles, easy to hard, and a hidden escape room inside the book.
+    <a href="/newsletter">Hear when Volume II opens</a> — email is always optional.</p>
+</section>
+<style>
+  .series { max-width: 1000px; margin: 8px auto 40px; padding: 26px 20px 8px; border-top: 1px solid rgba(185,143,82,.25); text-align: center; }
+  .s-kicker { font-family: var(--display); font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--gold); margin: 0 0 6px; }
+  .s-title { font-family: var(--serif, Georgia, serif); font-size: clamp(22px, 4vw, 30px); color: var(--gold-hi, #e8c478); margin: 0 0 18px; font-weight: 600; }
+  .s-title em { color: #f4ebd8; font-weight: 400; }
+  .s-row { display: grid; grid-template-columns: 1.35fr repeat(4, 1fr); gap: 14px; align-items: end; }
+  .s-book { margin: 0; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: inherit; }
+  .s-book img { width: 100%; height: auto; border-radius: 4px; display: block; }
+  .s-now img { border: 1px solid rgba(201,151,63,.8); box-shadow: 0 0 28px rgba(240,176,64,.35); transition: transform .2s, box-shadow .2s; }
+  .s-now:hover img { transform: translateY(-2px); box-shadow: 0 0 36px rgba(240,176,64,.55); }
+  .s-soon img { filter: saturate(.8) brightness(.8); border: 1px solid rgba(90,76,56,.8); }
+  .s-cap { margin-top: 8px; font-size: 12px; line-height: 1.35; color: #cfc2a8; }
+  .s-cap b { color: #f4ebd8; font-weight: 600; }
+  .s-out { color: var(--gold); letter-spacing: .08em; text-transform: uppercase; font-size: 11px; }
+  .s-wip { color: #9a8c74; letter-spacing: .08em; text-transform: uppercase; font-size: 10.5px; }
+  .s-foot { margin: 18px auto 0; max-width: 640px; font-size: 14px; color: #cfc2a8; }
+  .s-foot a { color: var(--gold); }
+  @media (max-width: 640px) {
+    .s-row { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .s-now { grid-column: 1 / -1; width: 46%; justify-self: center; }
+    .s-cap { font-size: 11px; }
+  }
+  @media print { .series { display: none; } }
+</style>
