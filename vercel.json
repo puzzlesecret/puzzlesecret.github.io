@@ -25,6 +25,21 @@
       "source": "/([hH])-(\\d{3})",
       "destination": "/daily/h-$2/",
       "permanent": false
+    },
+    {
+      "source": "/([eE])-(\\d{3})/",
+      "destination": "/daily/e-$2/",
+      "permanent": false
+    },
+    {
+      "source": "/([mM])-(\\d{3})/",
+      "destination": "/daily/m-$2/",
+      "permanent": false
+    },
+    {
+      "source": "/([hH])-(\\d{3})/",
+      "destination": "/daily/h-$2/",
+      "permanent": false
     }
   ]
 }
