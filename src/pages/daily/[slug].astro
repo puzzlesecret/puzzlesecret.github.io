@@ -41,6 +41,7 @@ const ld = {
     <a href="/daily/">All daily puzzles</a>
     {next ? <a href={`/daily/${next}/`} class="d-next" data-date={nextDate}>Next puzzle →</a> : <span></span>}
   </nav>
+  <p class="d-new">New to sudoku? <a href="/how-to-play-sudoku">How to play, in one rule →</a></p>
   <div class="d-find"><PuzzleLookup compact={true} /></div>
   <SeriesStrip />
   <script>
@@ -57,6 +58,8 @@ const ld = {
     .d-nav a { color: var(--gold); text-decoration: none; }
     .d-nav a:hover { color: var(--gold-hi); }
     .d-find { max-width: 640px; margin: -30px auto 30px; padding: 0 20px; }
-    @media print { .d-nav, .d-find { display: none; } }
+    .d-new { max-width: 1000px; margin: -44px auto 44px; padding: 0 20px; text-align: center; font-size: 14px; color: var(--ash); }
+    .d-new a { color: var(--gold); }
+    @media print { .d-nav, .d-find, .d-new { display: none; } }
   </style>
 </Layout>

@@ -22,6 +22,7 @@ daily.puzzles.forEach((p) => counts[p.tier]++);
       <strong>medium</strong> Thursday and Friday, <strong>hard</strong> on Saturday and Sunday. Play in your browser
       with pencil notes and error checking, print a clean black-and-white copy, or reveal the answer when you are done.</p>
     <p class="dh-today"><a id="todayLink" class="dh-btn" href="/daily/">Play today's puzzle →</a></p>
+    <p class="dh-new">Never done a sudoku? <a href="/how-to-play-sudoku">Learn how to play sudoku</a> first — it takes two minutes.</p>
     <div id="find"><PuzzleLookup /></div>
 
     <section class="dh-how">
@@ -73,6 +74,8 @@ daily.puzzles.forEach((p) => counts[p.tier]++);
     h1 { font-family: var(--display); font-size: clamp(30px, 6vw, 46px); color: var(--ivory); margin: 0 0 16px; }
     h2 { font-family: var(--display); font-size: 20px; color: var(--gold); margin: 36px 0 10px; letter-spacing: .06em; }
     .dh-lede, .dh-how p { line-height: 1.65; color: var(--ivory); font-size: 18px; }
+    .dh-new { font-size: 15px; color: var(--ash); margin-top: 10px; }
+    .dh-new a { color: var(--gold); }
     .dh-btn { display: inline-block; margin-top: 10px; padding: 14px 22px; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
     #dhList { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
     #dhList li { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid rgba(185,143,82,.25); border-radius: 8px; }

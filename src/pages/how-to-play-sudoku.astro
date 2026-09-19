@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import SeriesStrip from '../components/SeriesStrip.astro';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
 
 // The beginner page. Every other page assumes the reader can already solve a sudoku;
@@ -49,6 +50,8 @@ const HOWTO_LD = {
       <p class="eyebrow">Beginners · The one rule · Your first number</p>
       <h1>How to Play Sudoku</h1>
       <p class="lede">Taught the way a first-timer actually learned it: one rule, one certain number at a time, and a pencil.</p>
+      <a class="btn-try" href="/play">Try Puzzle 1 free &mdash; the one from the video &rarr;</a>
+      <p class="from-book">Written for <a href="/escape-room-sudoku-book"><em>Sudoku with a Secret</em>, a puzzle book with a vault hidden inside</a>.</p>
     </div>
 
     <section class="wrap">
@@ -84,6 +87,11 @@ const HOWTO_LD = {
         <div class="step"><div class="s-num">06</div><h3>Check with the last number</h3><p>&ldquo;That&rsquo;s how you know you got it right &mdash; the last number works.&rdquo; If the final digit in a box clashes with its row or column, something earlier was a guess.</p></div>
       </div>
 
+      <div class="now-try">
+        <p>That&rsquo;s all six. The fastest way to make them stick is to use them once.</p>
+        <a class="btn-try" href="/play">Now try it: Puzzle 1, free in your browser &rarr;</a>
+      </div>
+
       <h2 class="sec-h">What a first puzzle feels like</h2>
       <p class="body">The first two or three numbers are slow. Then the grid starts giving them back to you:
       &ldquo;it gets a little easier as you go along towards the end.&rdquo; On an easy puzzle a complete beginner,
@@ -91,11 +99,20 @@ const HOWTO_LD = {
       about a third of the way in, &ldquo;Oh good. Now I can do it.&rdquo; That sentence is the whole point of the
       first act of <em>Sudoku with a Secret</em>: seventy easy puzzles, so the click happens early and often.</p>
 
+      <div class="book-card">
+        <a href={AMAZON_URL} target="_blank" rel="sponsored noopener" class="bc-cover"><img src="/art/cover-v1-360.webp" width="360" height="466" loading="lazy" alt="Sudoku with a Secret, Volume 1: Crack the Keeper's Vault — book cover" /></a>
+        <div class="bc-body">
+          <h3>Rather learn on paper?</h3>
+          <p>Volume 1 opens with a &ldquo;New to Sudoku? Start Here&rdquo; page that teaches this exact method, then 70 easy puzzles before anything gets hard. One big grid per 8.5&nbsp;&times;&nbsp;11 page, answers in the back.</p>
+          <a href={AMAZON_URL} target="_blank" rel="sponsored noopener" class="btn-amz">Get Volume 1 &middot; $14.99 on Amazon ↗</a>
+        </div>
+      </div>
+
       <h2 class="sec-h">Practice on a real page</h2>
       <div class="fors">
         <div class="for"><h3>Free, in your browser</h3><p><a href="/play">Play the puzzles online</a> &mdash; no account, no app, and the easy ones come first.</p></div>
-        <div class="for"><h3>On paper, with a pencil</h3><p>The book prints one 9&times;9 grid per 8.5 &times; 11 inch page with room to pencil candidates, and it opens with a &ldquo;New to Sudoku? Start Here&rdquo; page that teaches exactly this method.</p></div>
-        <div class="for"><h3>Then the secret</h3><p>Twenty of the 200 puzzles hide a shaded key. <a href="/escape-room-sudoku-book">Here is how the escape-room layer works</a> once you can solve.</p></div>
+        <div class="for"><h3>On paper, with a pencil</h3><p><a href="/daily/">Print today&rsquo;s free puzzle</a> &mdash; a clean black-and-white page with the answer, a new one every day and easy Monday to Wednesday.</p></div>
+        <div class="for"><h3>Then the secret</h3><p>Hidden among the 200 puzzles are shaded keys, and they open a vault on this site. <a href="/escape-room-sudoku-book">Here is how the escape-room layer works</a> once you can solve.</p></div>
       </div>
 
       <h2 class="sec-h">Questions beginners ask</h2>
@@ -103,17 +120,18 @@ const HOWTO_LD = {
         <details><summary>What is the one rule of Sudoku?</summary><p>Fill the grid so every row, every column and every 3&times;3 box holds the digits 1 to 9 exactly once. No arithmetic, no adding up. It is a placement puzzle.</p></details>
         <details><summary>Where do I start?</summary><p>The 3&times;3 box with the fewest gaps. Take one missing digit at a time and ask where in that box it could legally go. Place only the digits with exactly one possible cell.</p></details>
         <details><summary>Should I ever guess?</summary><p>No. Every properly made sudoku has exactly one solution reachable by logic. If a digit could go in two cells, try another digit and come back. Use a pencil; &ldquo;it always helps to have an eraser.&rdquo;</p></details>
-        <details><summary>How long does a first Sudoku take?</summary><p>On an easy puzzle, about nine minutes with a little coaching; fifteen to thirty alone is normal. It gets faster quickly.</p></details>
+        <details><summary>How long does a first Sudoku take?</summary><p>On an easy puzzle, about nine minutes with a little coaching; fifteen to thirty alone is normal. It gets faster quickly &mdash; <a href="/play">time yourself on an easy one</a>.</p></details>
         <details><summary>Do I need to be good at maths?</summary><p>No. The digits could be letters or colours. Nothing is added, subtracted or counted beyond &ldquo;which of 1 to 9 is missing here?&rdquo;</p></details>
       </div>
 
       <div class="cta">
         <h2>Start on page five</h2>
         <p>Volume 1 opens with a Start Here page, then 70 easy puzzles before anything gets hard. $14.99 in paperback.</p>
-        <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get Volume 1 on Amazon ↗</a>
-        <p class="alt">Or <a href="/play">try the puzzles free</a> first.</p>
+        <a href={AMAZON_URL} target="_blank" rel="sponsored noopener" class="btn-amz">Get Volume 1 on Amazon ↗</a>
+        <p class="alt">Or <a href="/play">try the puzzles free</a> first &middot; or <a href="/">see the vault door</a> the book unlocks.</p>
       </div>
     </section>
+    <SeriesStrip />
   </main>
 
   <style>
@@ -150,6 +168,17 @@ const HOWTO_LD = {
     .faqs summary::-webkit-details-marker { display: none; }
     .faqs summary::before { content: '+'; color: var(--gold); margin-right: 10px; }
     .faqs details[open] summary::before { content: '−'; }
+    .faqs details p a { color: var(--gold); text-decoration: underline; }
+    .btn-try { display: inline-block; margin-top: 18px; padding: 12px 22px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
+    .from-book { margin-top: 14px; font-size: 14px; color: var(--ash); }
+    .from-book a { color: var(--gold); text-decoration: none; border-bottom: 1px dotted rgba(246,178,60,.5); }
+    .now-try { text-align: center; margin: -26px 0 56px; }
+    .now-try p { color: var(--ash); font-style: italic; font-size: 15px; }
+    .book-card { display: flex; gap: 24px; align-items: center; background: #110f15; border: 1px solid rgba(246,178,60,.3); border-radius: 12px; padding: 22px; margin: -26px 0 56px; }
+    .bc-cover img { width: 130px; height: auto; border-radius: 4px; display: block; box-shadow: 0 0 22px rgba(240,176,64,.3); }
+    .bc-body h3 { font-family: var(--display); font-size: 19px; color: var(--gold-hi); margin-bottom: 8px; }
+    .bc-body p { font-size: 15px; line-height: 1.6; color: var(--ash); margin-bottom: 14px; }
+    @media (max-width: 560px) { .book-card { flex-direction: column; text-align: center; } .btn-try { font-size: 11px; padding: 12px 16px; } }
     .faqs details p { font-size: 15.5px; line-height: 1.6; color: var(--ash); padding: 10px 0 4px 22px; }
     .cta { text-align: center; background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px 28px; }
     .cta h2 { font-family: var(--display); font-size: 26px; color: var(--gold-hi); margin-bottom: 8px; }
