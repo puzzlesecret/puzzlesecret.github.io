@@ -23,6 +23,7 @@ const PS_EV = Object.freeze({
   CARVE_OPEN: 'carve.open',
   HINT_VIEW: 'hint.view', HINT_REVEAL: 'hint.reveal', IDLE: 'idle', PERF_SLOW: 'perf.slow',
   PLAY_START: 'play.start', PLAY_SOLVED: 'play.solved', PLAY_OFFER: 'play.offer',
+  LEARN_START: 'learn.start', LEARN_MID: 'learn.mid', LEARN_DONE: 'learn.done',
   PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
   SESSION_DEPTH: 'session.depth',
 });

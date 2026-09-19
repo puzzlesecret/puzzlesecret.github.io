@@ -1,19 +1,142 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import SeriesStrip from '../components/SeriesStrip.astro';
+import webPuzzles from '../data/web_puzzles.json';
+import { buildMoves } from '../lib/guided-solve.js';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
 
-// The beginner page. Every other page assumes the reader can already solve a sudoku;
-// this one is for the person who has never done one. It is also the destination for the
-// "how to play" Pinterest pins and the home of the long lesson video (real footage, Sept 2026,
-// Dan teaching his uncle on Puzzle 1). Set YOUTUBE_ID once the PuzzleSecret channel has the upload.
+// The beginner page, rebuilt 2026-09-19 (plan + ten critiques:
+// _content/HOW-TO-PLAY-REBUILD-PLAN-2026-09-19.md). One path, in this order: the rule, a
+// picture, the GUIDED FIRST PUZZLE (Puzzle 1, the one in the video, every move with its
+// reason), the real-footage video, the written guide, the printable sheet. Everything the
+// widget says is also in the HTML as plain text, so crawlers and AI engines that run no
+// JS still get all 42 moves.
 const YOUTUBE_ID = "wptFDC3qa2Y";
-const PAGE_TITLE = "How to Play Sudoku for Beginners — The One Rule, Your First Number, Then Puzzle 1";
-const PAGE_DESC = "Sudoku in one rule: 1 to 9 in every row, column and 3×3 box, no repeats. Learn how to find your first certain number, why you never write a guess, and when to switch from boxes to rows — taught the way a first-timer actually learned it.";
+const PAGE_TITLE = "How to Play Sudoku for Beginners: Rules + a Guided First Puzzle";
+const PAGE_DESC = "Sudoku in one rule: 1 to 9 in every row, column and 3×3 box, no repeats. No maths, no guessing. Learn it by doing: a guided first puzzle that explains every move, a real lesson on video, and a printable cheat sheet.";
+const UPDATED = "2026-09-19";
 
-const HOWTO_LD = {
+const P1 = webPuzzles[0];
+const MOVES = buildMoves(P1.givens, P1.solution);
+const GIVENS = P1.givens.split('').map(Number);
+const N_ONLY = MOVES.filter((m) => m.kind === 'only').length;
+const N_LAST = MOVES.length - N_ONLY;
+const TEACH = 8;      // moves shown with the reason before the learner takes over
+const MID = 12;       // where the book card appears ("Oh good. Now I can do it.")
+
+// A static grid for the pictures. hl: {cell: 'unit'|'block'|'target'|'out'}; show: extra digits.
+function gridCells(state, hl = {}, placed = {}) {
+  return state.map((d, i) => ({ i, d: placed[i] || d, given: !!d, placed: !!placed[i], cls: hl[i] || '' }));
+}
+const M0 = MOVES[0];
+const stateAt = (n) => { const g = [...GIVENS]; MOVES.slice(0, n).forEach((m) => { g[m.cell] = m.digit; }); return g; };
+const hlUnit = Object.fromEntries(M0.unit.map((c) => [c, 'unit']));
+const M0_OUT = M0.unit.filter((c) => GIVENS[c] === 0 && c !== M0.cell);
+const FRAMES = [
+  { cap: `1. Pick a box and a missing number. Here: the ${M0.digit} in the tinted box.`, cells: gridCells(GIVENS, hlUnit) },
+  { cap: `2. Find every ${M0.digit} that looks into that box along a row or column. Each one rules squares out.`, cells: gridCells(GIVENS, { ...hlUnit, ...Object.fromEntries(M0_OUT.map((c) => [c, 'out'])), ...Object.fromEntries(M0.blockers.map((c) => [c, 'block'])) }) },
+  { cap: `3. One empty square is left. It is certain, so write the ${M0.digit} in.`, cells: gridCells(GIVENS, { ...hlUnit, [M0.cell]: 'target' }, { [M0.cell]: M0.digit }) },
+];
+const LASTI = MOVES.findIndex((m) => m.kind === 'last');
+const ML = MOVES[LASTI];
+const FRAME_LAST = { cells: gridCells(stateAt(LASTI), { ...Object.fromEntries(ML.unit.map((c) => [c, 'unit'])), [ML.cell]: 'target' }) };
+const RULE_HL = {};
+for (let i = 0; i < 81; i++) {
+  const r = Math.floor(i / 9), c = i % 9;
+  if (r === 1) RULE_HL[i] = 'rowhl';
+  if (c === 7) RULE_HL[i] = RULE_HL[i] ? 'bothhl' : 'colhl';
+  if (r >= 6 && c <= 2) RULE_HL[i] = 'boxhl';
+}
+const RULE_CELLS = gridCells(GIVENS, RULE_HL);
+
+const CHAPTERS = [
+  { t: 0, label: "The one rule, at the kitchen table" },
+  { t: 95, label: "Picking the fullest box" },
+  { t: 170, label: "The first certain number" },
+  { t: 330, label: "Why you never write a guess" },
+  { t: 520, label: "Stuck: switching from boxes to rows" },
+  { t: 800, label: "The last numbers, and checking the work" },
+];
+const SHOW_CHAPTERS = false; // flip on once the offsets are checked against the upload
+
+const MYTHS = [
+  ["Sudoku is a maths puzzle.", "Sudoku uses no arithmetic. The digits are nine different symbols; letters, colours or fruit would work the same way."],
+  ["Sooner or later you have to guess.", "A properly made Sudoku never needs a guess. Every number can be placed for a reason. Harder puzzles need more reasons than this page teaches, but never a coin flip."],
+  ["The diagonals matter.", "In classic Sudoku only rows, columns and 3×3 boxes count. Diagonals are ignored."],
+  ["A Sudoku can have several right answers.", "A valid Sudoku has exactly one solution. If two answers fit, the puzzle was badly made."],
+  ["Writing small notes is cheating.", "Small pencilled notes are a normal part of Sudoku. Experts use them on every hard puzzle."],
+  ["If I am stuck, the puzzle is broken.", "Being stuck in Sudoku almost always means there is a certain number you have not spotted yet, usually in a row or column you have not checked."],
+];
+
+const STUCK = [
+  "Look for any row, column or box with only one or two gaps. Those are the cheapest numbers on the grid.",
+  "Pick the digit that appears most often on the grid (count the 1s, the 2s...). The more copies there are, the fewer places the rest can go.",
+  "Go round every box asking question one for that digit: where can it go in this box?",
+  "Switch shape. If you have been working in boxes, ask the same question of a row or a column.",
+  "Recheck the last number you placed: its row, its column and its box. New numbers open new moves right next to them.",
+  "Still stuck on a harder puzzle? Pencil tiny notes into squares that have only two possible numbers, then go round again.",
+];
+
+const GLOSSARY = [
+  ["square", "Square (or cell)", "One of the 81 small spaces in a Sudoku grid. Each square holds one digit."],
+  ["row", "Row", "A line of nine squares running left to right. A Sudoku has nine rows."],
+  ["column", "Column", "A line of nine squares running top to bottom. A Sudoku has nine columns."],
+  ["box", "Box", "One of the nine 3×3 blocks marked by thicker lines. Also called a block or region."],
+  ["given", "Given", "A digit printed in the grid at the start. Givens never change."],
+  ["only-place", "Only place (hidden single)", "A digit that has just one square it can use inside a row, column or box. Experts call it a hidden single."],
+  ["last-gap", "Last gap (full house)", "The final empty square in a row, column or box. It takes whichever digit is missing."],
+  ["notes", "Notes (pencil marks)", "Small digits written in a square to record which numbers are still possible there."],
+];
+
+const FAQS = [
+  ["What are the rules of Sudoku?", "Sudoku has one rule: fill the 9×9 grid so that every row, every column and every 3×3 box contains the digits 1 to 9 exactly once. Some digits are printed to start you off. There is no arithmetic; Sudoku is solved by logic alone."],
+  ["Is Sudoku maths? Do I need to be good with numbers?", "No. Sudoku uses the digits 1 to 9 only as nine different symbols. Nothing is added, subtracted or multiplied. If you can tell whether a 7 is already in a row, you can solve a Sudoku."],
+  ["Where do I start on a Sudoku?", "Start a Sudoku in the 3×3 box, row or column that already has the most numbers, because it has the fewest possibilities. Take one missing digit and ask where in that box it can go. Write it in only when exactly one square is left."],
+  ["Do you ever have to guess in Sudoku?", "No. A properly made Sudoku has exactly one solution and every digit can be placed for a reason. If a digit could go in two squares, leave it and look elsewhere. Harder Sudoku puzzles need more advanced reasons than a beginner knows, but they never need a guess."],
+  ["Do diagonals count in Sudoku?", "No. In classic Sudoku only the rows, the columns and the nine 3×3 boxes must each contain 1 to 9. The diagonals can repeat digits freely."],
+  ["What should I do when I am stuck on a Sudoku?", "When a Sudoku stalls, look for a row, column or box with only one or two gaps, then take the most common digit on the grid and ask where it can go in each box. Change from boxes to rows or columns. A stuck Sudoku nearly always hides one certain number you have not checked yet."],
+  ["I made a mistake in my Sudoku. Do I have to start again?", "Usually not. Find the row, column or box that shows the same digit twice, then erase back to the last number you were completely sure of. On paper, check that one box against the answer key rather than the whole grid. This is why Sudoku is played in pencil."],
+  ["How long should an easy Sudoku take a beginner?", "A first easy Sudoku commonly takes a beginner fifteen to thirty minutes alone. With a little coaching, a complete first-timer finished Puzzle 1 of Sudoku with a Secret in about nine minutes. Times drop quickly with practice."],
+  ["Which Sudoku book is good for a complete beginner?", "Look for a Sudoku book with one large grid per page, a real run of easy puzzles at the start, and answers in the back. Sudoku with a Secret, Volume 1 opens with a Start Here page on page 5 and seventy easy puzzles before anything gets hard."],
+];
+
+const LD = {
   "@context": "https://schema.org",
   "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://puzzlesecret.com/how-to-play-sudoku/#article",
+      "headline": "How to Play Sudoku for Beginners",
+      "description": PAGE_DESC,
+      "datePublished": "2026-09-11",
+      "dateModified": UPDATED,
+      "inLanguage": "en-US",
+      "author": { "@id": "https://puzzlesecret.com/#dan" },
+      "publisher": { "@id": "https://puzzlesecret.com/#org" },
+      "mainEntityOfPage": "https://puzzlesecret.com/how-to-play-sudoku/",
+      "image": "https://puzzlesecret.com/art/htp-video-poster.webp",
+      "about": { "@type": "Thing", "name": "Sudoku", "sameAs": ["https://www.wikidata.org/wiki/Q101583", "https://en.wikipedia.org/wiki/Sudoku"] },
+      "mentions": { "@id": "https://puzzlesecret.com/#book-v1" }
+    },
+    { "@type": "Person", "@id": "https://puzzlesecret.com/#dan", "name": "Dan Herlehy", "url": "https://puzzlesecret.com/the-keeper/", "description": "Author of Sudoku with a Secret, a 200-puzzle Sudoku book." },
+    {
+      "@type": "Book", "@id": "https://puzzlesecret.com/#book-v1",
+      "name": "Sudoku with a Secret, Volume 1: Crack the Keeper's Vault",
+      "author": { "@id": "https://puzzlesecret.com/#dan" },
+      "isbn": "9798188603960", "numberOfPages": 252, "bookFormat": "https://schema.org/Paperback",
+      "sameAs": "https://www.amazon.com/dp/B0HB9K8PXC",
+      "offers": { "@type": "Offer", "price": "14.99", "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": "https://www.amazon.com/dp/B0HB9K8PXC" }
+    },
+    {
+      "@type": "VideoObject",
+      "name": "How to Solve Sudoku for Beginners (Teaching a First-Timer, Uncut)",
+      "description": "Fifteen unscripted minutes: the author teaching his uncle his first Sudoku, on Puzzle 1 of Sudoku with a Secret.",
+      "thumbnailUrl": ["https://puzzlesecret.com/art/htp-video-poster.webp", `https://i.ytimg.com/vi/${YOUTUBE_ID}/maxresdefault.jpg`],
+      "uploadDate": "2026-09-12T23:48:33-07:00",
+      "duration": "PT15M32S",
+      "embedUrl": `https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}`,
+      "contentUrl": `https://www.youtube.com/watch?v=${YOUTUBE_ID}`
+    },
     {
       "@type": "HowTo",
       "name": "How to play Sudoku for beginners",
@@ -23,105 +146,203 @@ const HOWTO_LD = {
       "step": [
         { "@type": "HowToStep", "name": "Learn the one rule", "text": "Every row, every column and every 3×3 box must contain the digits 1 to 9 exactly once. Nothing else." },
         { "@type": "HowToStep", "name": "Pick the fullest box", "text": "Start with a 3×3 box that already has six or seven numbers in it. Fewer gaps means fewer possibilities." },
-        { "@type": "HowToStep", "name": "Find the number with only one place to go", "text": "Take a missing digit. Look along each empty cell's row and column; if that digit already appears there, the cell is out. When only one cell is left, that is where the digit goes." },
-        { "@type": "HowToStep", "name": "Do not write it until it is certain", "text": "If a digit could go in two cells, leave it and try another digit. A pencilled guess turns into an error three moves later." },
+        { "@type": "HowToStep", "name": "Find the number with only one place to go", "text": "Take a missing digit. Look along each empty square's row and column; if that digit already appears there, the square is out. When only one square is left, that is where the digit goes." },
+        { "@type": "HowToStep", "name": "Do not write it until it is certain", "text": "If a digit could go in two squares, leave it and try another digit. A pencilled guess turns into an error three moves later." },
         { "@type": "HowToStep", "name": "Switch from boxes to rows", "text": "When a box stalls, look at a row or column with only one or two gaps instead. Every number you place removes possibilities somewhere else." },
-        { "@type": "HowToStep", "name": "Check the last number", "text": "When a box, row or column has one gap left, the missing digit must fit in every direction. If it does not, something earlier was wrong." }
+        { "@type": "HowToStep", "name": "Fill the last gaps and check", "text": "When a box, row or column has one gap left, the missing digit goes there. If it clashes in any direction, erase back to the last number you were sure of." }
       ]
     },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        { "@type": "Question", "name": "What is the one rule of Sudoku?", "acceptedAnswer": { "@type": "Answer", "text": "Fill the grid so that every row, every column and every 3×3 box contains the digits 1 to 9 exactly once. There is no arithmetic and no adding up; it is a placement puzzle." } },
-        { "@type": "Question", "name": "Where do I start on a Sudoku?", "acceptedAnswer": { "@type": "Answer", "text": "Start with the 3×3 box that has the fewest empty cells. Then take one missing digit at a time and ask where in that box it could legally go. Place only the digits that have exactly one possible cell." } },
-        { "@type": "Question", "name": "Should I guess in Sudoku?", "acceptedAnswer": { "@type": "Answer", "text": "No. Every properly made sudoku has exactly one solution reachable by logic alone. If a digit could go in two cells, move on to another digit and come back later. Use a pencil so you can erase." } },
-        { "@type": "Question", "name": "How long does a first Sudoku take?", "acceptedAnswer": { "@type": "Answer", "text": "On an easy puzzle, a complete beginner with a little coaching finished Puzzle 1 of Sudoku with a Secret in about nine minutes. Solo first attempts commonly take fifteen to thirty." } }
-      ]
-    }
+    { "@type": "FAQPage", "mainEntity": FAQS.map(([q, a]) => ({ "@type": "Question", "name": q, "acceptedAnswer": { "@type": "Answer", "text": a } })) },
+    { "@type": "BreadcrumbList", "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "PuzzleSecret", "item": "https://puzzlesecret.com/" },
+      { "@type": "ListItem", "position": 2, "name": "How to Play Sudoku", "item": "https://puzzlesecret.com/how-to-play-sudoku/" }
+    ] }
   ]
 };
+const CLIENT = { givens: P1.givens, teach: TEACH, mid: MID, moves: MOVES.map((m) => ({ c: m.cell, d: m.digit, k: m.kind, u: m.unit, b: m.blockers, a: m.ask, r: m.reason })) };
+const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 ---
 
-<Layout title={PAGE_TITLE} description={PAGE_DESC}>
+<Layout title={PAGE_TITLE} description={PAGE_DESC} ogImage="/art/htp-video-poster.webp">
   <main class="page-htp">
-    <script type="application/ld+json" set:html={JSON.stringify(HOWTO_LD)} />
+    <script type="application/ld+json" set:html={JSON.stringify(LD)} />
 
     <div class="htp-hero">
-      <p class="eyebrow">Beginners · The one rule · Your first number</p>
+      <p class="eyebrow">For beginners &middot; the one rule &middot; your first number</p>
       <h1>How to Play Sudoku</h1>
-      <p class="lede">Taught the way a first-timer actually learned it: one rule, one certain number at a time, and a pencil.</p>
-      <a class="btn-try" href="/play">Try Puzzle 1 free &mdash; the one from the video &rarr;</a>
-      <p class="from-book">Written for <a href="/escape-room-sudoku-book"><em>Sudoku with a Secret</em>, a puzzle book with a vault hidden inside</a>.</p>
+      <p class="lede"><strong>Sudoku has one rule: every row, every column and every 3&times;3 box must contain the digits 1 to 9 exactly once.</strong>
+      There is no maths and no guessing. You solve a Sudoku by asking, again and again, &ldquo;where is the only place this number can go?&rdquo;</p>
+      <a class="btn-try" href="#first-puzzle">Show me the first move &darr;</a>
+      <p class="promise">Your first puzzle takes about 10 minutes. Nothing to download, no sign-up.</p>
+      <p class="byline">By <a href="/the-keeper">Dan Herlehy</a>, author of <a href="/escape-room-sudoku-book">Sudoku with a Secret</a> &middot; Updated <time datetime={UPDATED}>September 19, 2026</time></p>
     </div>
 
+    <nav class="mini-nav" aria-label="Ways to learn on this page">
+      <a href="#first-puzzle">Do it</a><a href="#watch">Watch it</a><a href="#read">Read it</a><a href="/sudoku-cheat-sheet">Print it</a>
+    </nav>
+
     <section class="wrap">
-      <div class="answer-card">
-        <h2>The one rule</h2>
-        <p><strong>Every row, every column and every 3&times;3 box must contain the digits 1 to 9 exactly once.</strong>
-        That is the whole game. There is no adding up. A sudoku is solved by asking, over and over,
-        &ldquo;where is the only place this digit can go?&rdquo; &mdash; and writing it in only when the answer is one cell.</p>
-      </div>
-
-      {YOUTUBE_ID && (
-        <div class="video">
-          <div class="frame">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}`}
-              title="How to solve Sudoku for beginners — teaching a first-timer, uncut"
-              loading="lazy"
-              allow="accelerometer; encrypted-media; picture-in-picture"
-              allowfullscreen></iframe>
-          </div>
-          <p class="video-note">Fifteen unscripted minutes: the author teaching his uncle his first sudoku on Puzzle 1 of the book. The pauses are the lesson.</p>
+      <h2 class="sec-h" id="the-rule">The rules of Sudoku, in one picture</h2>
+      <div class="rule-row">
+        <div class="sg sg-rule" role="img" aria-label="A Sudoku grid with one row, one column and one 3 by 3 box highlighted">
+          {RULE_CELLS.map((c) => <span class={`c ${c.cls}`} data-i={c.i}>{c.d || ''}</span>)}
         </div>
-      )}
+        <table class="t rule-t">
+          <caption class="sr">The three parts of the one Sudoku rule</caption>
+          <tbody>
+            <tr><th scope="row"><span class="key rowhl"></span> Every row</th><td>holds 1 to 9 once each. The highlighted row still needs a 1, 3 and 8.</td></tr>
+            <tr><th scope="row"><span class="key colhl"></span> Every column</th><td>holds 1 to 9 once each, top to bottom.</td></tr>
+            <tr><th scope="row"><span class="key boxhl"></span> Every 3&times;3 box</th><td>holds 1 to 9 once each. The thick lines mark the nine boxes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="body">The printed numbers are called <a href="#g-given">givens</a>. They are correct and never change. Your job is to fill every empty square so that all three parts of the rule hold at once. The most common beginner slip is checking the row and the column and forgetting the box, so always look three ways.</p>
 
-      <h2 class="sec-h">Six moves, in order</h2>
-      <p class="sec-sub">Everything below was said out loud at a kitchen table in September 2026, to someone who had never done a sudoku. It worked.</p>
-      <div class="steps">
-        <div class="step"><div class="s-num">01</div><h3>Pick the fullest box</h3><p>&ldquo;I usually try to start with ones that are kind of mostly filled in.&rdquo; A box with two or three gaps has two or three possibilities. A box with six gaps has too many.</p></div>
-        <div class="step"><div class="s-num">02</div><h3>Ask where a digit <em>can&rsquo;t</em> go</h3><p>Take one missing digit. Look along each empty cell&rsquo;s row and column. &ldquo;It can&rsquo;t, because there&rsquo;s an eight here.&rdquo; Cross those cells off.</p></div>
-        <div class="step"><div class="s-num">03</div><h3>One cell left? Write it</h3><p>&ldquo;So we know a hundred percent &mdash; that&rsquo;s an eight.&rdquo; When exactly one cell survives, the digit goes there. That is the only kind of move you ever make.</p></div>
-        <div class="step"><div class="s-num">04</div><h3>Two cells left? Leave it</h3><p>&ldquo;If you write the nine in, it still might be able to go there. So you don&rsquo;t want to write it in yet.&rdquo; Try a different digit. Come back later; it will have narrowed.</p></div>
-        <div class="step"><div class="s-num">05</div><h3>Stuck? Switch to a row</h3><p>&ldquo;Instead of thinking of it in a square, change your brain to try to finish that row.&rdquo; A row with one gap is a free number, and every number you place removes a possibility somewhere else.</p></div>
-        <div class="step"><div class="s-num">06</div><h3>Check with the last number</h3><p>&ldquo;That&rsquo;s how you know you got it right &mdash; the last number works.&rdquo; If the final digit in a box clashes with its row or column, something earlier was a guess.</p></div>
+      <h2 class="sec-h" id="first-puzzle">Your first Sudoku, one certain number at a time</h2>
+      <p class="sec-sub">This is Puzzle 1 of the book, the same grid as in the video below. The first {TEACH} moves are shown to you with the reason. After that the square is ringed and you choose the number.</p>
+
+      <div class="gs" id="gs" data-state="idle">
+        <div class="gs-top"><span id="gsCount">Move 0 of {MOVES.length}</span><span class="gs-bar"><i id="gsBar"></i></span></div>
+        <div class="sg sg-main" id="gsGrid" role="img" aria-label="Puzzle 1, a Sudoku grid. The explanation of each move is read out below the grid.">
+          {GIVENS.map((d, i) => <span class={`c ${d ? 'gv' : ''}`} data-i={i}>{d || ''}</span>)}
+        </div>
+        <div class="gs-say" id="gsSay" aria-live="polite"><p>Press the gold button. The page will ring one square, mark the numbers that matter, and tell you why the answer is certain.</p></div>
+        <div class="gs-pad" id="gsPad" hidden>
+          {[1,2,3,4,5,6,7,8,9].map((n) => <button type="button" data-n={n} aria-label={`Answer ${n}`}>{n}</button>)}
+        </div>
+        <div class="gs-ctl">
+          <button type="button" class="btn-try gs-next" id="gsNext">Show me the first move</button>
+          <button type="button" class="gs-sub" id="gsHint" hidden>Give me a hint</button>
+          <button type="button" class="gs-sub" id="gsGaps" hidden>Fill the easy last gaps for me</button>
+          <button type="button" class="gs-sub" id="gsBack" hidden>&larr; Back one move</button>
+          <button type="button" class="gs-sub" id="gsReset" hidden>Start again</button>
+        </div>
+        <div class="gs-mid" id="gsMid" hidden>
+          <p><strong>&ldquo;Oh good. Now I can do it.&rdquo;</strong> That is what a first-timer said at about this point. This is Puzzle 1 of 200. Rather do the rest in pencil? <a href={AMAZON_URL} target="_blank" rel="sponsored noopener">Volume 1 is $14.99 on Amazon ↗</a></p>
+        </div>
+        <div class="gs-done" id="gsDone" hidden>
+          <h3>You just finished Puzzle 1 of the book.</h3>
+          <p>Every number went in for a reason, and you never guessed once. That is all Sudoku is. In the book, some squares are shaded, and the numbers that land in them open a vault on this website. <a href="/escape-room-sudoku-book">Here is how that works</a>.</p>
+          <p class="done-links"><a class="btn-try" href="/play">Now solve Puzzle 2 yourself &rarr;</a> <a class="btn-amz" href={AMAZON_URL} target="_blank" rel="sponsored noopener">Get the book &middot; $14.99 ↗</a></p>
+          <p class="small">Come back tomorrow: <a href="/daily/">a new free puzzle is posted every day</a>, easy ones Monday to Wednesday.</p>
+        </div>
       </div>
 
-      <div class="now-try">
-        <p>That&rsquo;s all six. The fastest way to make them stick is to use them once.</p>
-        <a class="btn-try" href="/play">Now try it: Puzzle 1, free in your browser &rarr;</a>
-      </div>
-
-      <h2 class="sec-h">What a first puzzle feels like</h2>
-      <p class="body">The first two or three numbers are slow. Then the grid starts giving them back to you:
-      &ldquo;it gets a little easier as you go along towards the end.&rdquo; On an easy puzzle a complete beginner,
-      with someone pointing now and then, finished the first grid in the book in about nine minutes and said,
-      about a third of the way in, &ldquo;Oh good. Now I can do it.&rdquo; That sentence is the whole point of the
-      first act of <em>Sudoku with a Secret</em>: seventy easy puzzles, so the click happens early and often.</p>
+      <details class="all-moves">
+        <summary>Every move of Puzzle 1, with the reason ({MOVES.length} moves, in order)</summary>
+        <p>Puzzle 1 can be solved with only two kinds of move: &ldquo;this number has only one place to go&rdquo; ({N_ONLY} moves) and &ldquo;this is the last gap&rdquo; ({N_LAST} moves). Rows are counted from the top, columns from the left.</p>
+        <ol>{MOVES.map((m) => <li>{m.reason}</li>)}</ol>
+      </details>
 
       <div class="book-card">
         <a href={AMAZON_URL} target="_blank" rel="sponsored noopener" class="bc-cover"><img src="/art/cover-v1-360.webp" width="360" height="466" loading="lazy" alt="Sudoku with a Secret, Volume 1: Crack the Keeper's Vault — book cover" /></a>
         <div class="bc-body">
-          <h3>Rather learn on paper?</h3>
-          <p>Volume 1 opens with a &ldquo;New to Sudoku? Start Here&rdquo; page that teaches this exact method, then 70 easy puzzles before anything gets hard. One big grid per 8.5&nbsp;&times;&nbsp;11 page, answers in the back.</p>
+          <h3>Is the book all right for a beginner? Yes.</h3>
+          <ul>
+            <li>A &ldquo;New to Sudoku? Start Here&rdquo; page on page 5 teaches this exact method.</li>
+            <li>Seventy easy puzzles come first, before anything gets hard.</li>
+            <li>One big grid per 8.5&nbsp;&times;&nbsp;11 page, with room to write.</li>
+            <li>All the answers are in the back.</li>
+          </ul>
           <a href={AMAZON_URL} target="_blank" rel="sponsored noopener" class="btn-amz">Get Volume 1 &middot; $14.99 on Amazon ↗</a>
         </div>
       </div>
 
-      <h2 class="sec-h">Practice on a real page</h2>
-      <div class="fors">
-        <div class="for"><h3>Free, in your browser</h3><p><a href="/play">Play the puzzles online</a> &mdash; no account, no app, and the easy ones come first.</p></div>
-        <div class="for"><h3>On paper, with a pencil</h3><p><a href="/daily/">Print today&rsquo;s free puzzle</a> &mdash; a clean black-and-white page with the answer, a new one every day and easy Monday to Wednesday.</p></div>
-        <div class="for"><h3>Then the secret</h3><p>Hidden among the 200 puzzles are shaded keys, and they open a vault on this site. <a href="/escape-room-sudoku-book">Here is how the escape-room layer works</a> once you can solve.</p></div>
+      <h2 class="sec-h" id="watch">Watch a real first-timer learn Sudoku</h2>
+      <div class="video">
+        <div class="frame">
+          <button type="button" class="yt" id="ytBtn" data-id={YOUTUBE_ID} aria-label="Play video: How to solve Sudoku for beginners, teaching a first-timer, uncut (15 minutes)">
+            <img src="/art/htp-video-poster.webp" width="960" height="540" loading="lazy" decoding="async" alt="An older man's hand holding a pencil over Puzzle 1 in the Sudoku with a Secret book, at a kitchen table" />
+            <span class="yt-play" aria-hidden="true"></span>
+          </button>
+        </div>
+        <p class="video-note">Fifteen unscripted minutes: the author teaching his uncle his first Sudoku on Puzzle 1 of the book. The pauses are the lesson. <a href={`https://www.youtube.com/watch?v=${YOUTUBE_ID}`} target="_blank" rel="noopener">Watch on YouTube ↗</a></p>
+        {SHOW_CHAPTERS && <ul class="chapters">{CHAPTERS.map((c) => <li><a href={`https://www.youtube.com/watch?v=${YOUTUBE_ID}&t=${c.t}s`} target="_blank" rel="noopener">{fmt(c.t)}</a> {c.label}</li>)}</ul>}
       </div>
 
-      <h2 class="sec-h">Questions beginners ask</h2>
+      <h2 class="sec-h" id="read">How to solve a Sudoku: the two questions</h2>
+      <p class="body">Every move in beginner Sudoku comes from one of two questions. Question one does most of the work; of the {MOVES.length} moves in Puzzle 1, {N_ONLY} come from it.</p>
+
+      <h3 class="sub-h" id="question-one">Question one: where can this number go?</h3>
+      <p class="body">Pick a box and a digit that box is missing. Every copy of that digit elsewhere on the grid &ldquo;looks&rdquo; along its row and its column, and no second copy can sit anywhere in that line. Cross off the squares it rules out. If exactly one empty square survives, the digit goes there. Sudoku players call this scanning, or cross-hatching.</p>
+      <div class="frames">
+        {FRAMES.map((f) => (
+          <figure>
+            <div class="sg sg-sm" role="img" aria-label={f.cap}>{f.cells.map((c) => <span class={`c ${c.cls} ${c.placed ? 'pl' : ''}`}>{c.d || ''}</span>)}</div>
+            <figcaption>{f.cap}</figcaption>
+          </figure>
+        ))}
+      </div>
+      <p class="body note">{M0.reason}</p>
+
+      <h3 class="sub-h" id="question-two">Question two: what can go in this square?</h3>
+      <p class="body">Now look at one empty square instead of one digit. Tick off every number already in its row, its column and its box. If only one number is left, write it in. The easiest case is the <a href="#g-last-gap">last gap</a>: a row, column or box with eight numbers has room for only the ninth.</p>
+      <div class="frames one">
+        <figure>
+          <div class="sg sg-sm" role="img" aria-label="A Sudoku grid where one tinted line has a single empty square">{FRAME_LAST.cells.map((c) => <span class={`c ${c.cls}`}>{c.d || ''}</span>)}</div>
+          <figcaption>{ML.reason}</figcaption>
+        </figure>
+      </div>
+
+      <h3 class="sub-h" id="six-moves">Six moves, in order (said out loud at a kitchen table)</h3>
+      <p class="body">Everything below was said in September 2026 to someone who had never done a Sudoku. It worked.</p>
+      <div class="steps">
+        <div class="step"><div class="s-num">01</div><h4>Pick the fullest box</h4><p>&ldquo;I usually try to start with ones that are kind of mostly filled in.&rdquo; A box with two or three gaps has two or three possibilities. A box with six gaps has too many.</p></div>
+        <div class="step"><div class="s-num">02</div><h4>Ask where a digit <em>can&rsquo;t</em> go</h4><p>Take one missing digit. Look along each empty square&rsquo;s row and column, and remember the box itself. &ldquo;It can&rsquo;t, because there&rsquo;s an eight here.&rdquo; Cross those squares off.</p></div>
+        <div class="step"><div class="s-num">03</div><h4>One square left? Write it</h4><p>&ldquo;So we know a hundred percent &mdash; that&rsquo;s an eight.&rdquo; When exactly one square survives, the digit goes there. That is the only kind of move you ever make.</p></div>
+        <div class="step"><div class="s-num">04</div><h4>Two squares left? Leave it</h4><p>&ldquo;If you write the nine in, it still might be able to go there. So you don&rsquo;t want to write it in yet.&rdquo; Try a different digit. Come back later; it will have narrowed.</p></div>
+        <div class="step"><div class="s-num">05</div><h4>Stuck? Switch to a row</h4><p>&ldquo;Instead of thinking of it in a square, change your brain to try to finish that row.&rdquo; A row with one gap is a free number, and every number you place removes a possibility somewhere else.</p></div>
+        <div class="step"><div class="s-num">06</div><h4>Fill the last gaps, and check</h4><p>&ldquo;That&rsquo;s how you know you got it right &mdash; the last number works.&rdquo; If a last number clashes with its row or column, something earlier was a guess. See <a href="#mistake">how to recover</a>.</p></div>
+      </div>
+
+      <h2 class="sec-h" id="stuck">What to do when you are stuck on a Sudoku</h2>
+      <p class="body">Being stuck on a Sudoku does not mean the puzzle is broken or that you must guess. It means a certain number is sitting somewhere you have not looked. Try these in order:</p>
+      <ol class="checklist">{STUCK.map((s) => <li>{s}</li>)}</ol>
+
+      <h2 class="sec-h" id="mistake">Made a mistake? How to recover on paper</h2>
+      <p class="body">A Sudoku mistake rarely shows up where it was made. It shows up later, as the same digit twice in one row, column or box. When that happens: find the pair of duplicates, then erase back to the last number you were completely sure of. With a book, check just that one box against the answer key in the back rather than reading the whole solution. This is the whole reason Sudoku is played in pencil.</p>
+      <div class="spot" id="spot">
+        <p><strong>Try it: spot the mistake.</strong> This finished box breaks the rule. Tap a number that is wrong.</p>
+        <div class="spot-box">{[4,9,2,7,1,6,3,7,5].map((n, i) => <button type="button" data-n={n} aria-label={`Square ${i + 1}: ${n}`}>{n}</button>)}</div>
+        <p class="spot-say" id="spotSay" aria-live="polite"></p>
+      </div>
+
+      <h2 class="sec-h" id="notes">When should a beginner use notes?</h2>
+      <p class="body">Later than most apps suggest. On an easy Sudoku the two questions are enough, and a grid full of tiny numbers hides more than it shows. Start using <a href="#g-notes">notes</a> when the two questions stop producing moves, usually on medium puzzles. On paper, write small digits in the corner of a square only when that square has two possible numbers, and rub them out the moment one is ruled out. A stale note causes more mistakes than no note.</p>
+
+      <h2 class="sec-h" id="myths">Sudoku myths and what is true</h2>
+      <table class="t myths">
+        <thead><tr><th scope="col">What beginners often think</th><th scope="col">What is true</th></tr></thead>
+        <tbody>{MYTHS.map(([m, t]) => <tr><td>{m}</td><td>{t}</td></tr>)}</tbody>
+      </table>
+
+      <h2 class="sec-h" id="facts">Key facts from this lesson</h2>
+      <table class="t facts">
+        <tbody>
+          <tr><th scope="row">Grid</th><td>9 rows &times; 9 columns = 81 squares, in nine 3&times;3 boxes</td></tr>
+          <tr><th scope="row">The rule</th><td>1 to 9 exactly once in every row, column and box</td></tr>
+          <tr><th scope="row">Puzzle 1 of <em>Sudoku with a Secret</em></th><td>39 given numbers; solved in {MOVES.length} moves using only the two beginner moves ({N_ONLY} &ldquo;only place&rdquo;, {N_LAST} &ldquo;last gap&rdquo;)</td></tr>
+          <tr><th scope="row">A first-timer&rsquo;s time</th><td>about nine minutes with coaching (filmed, September 2026); 15 to 30 minutes alone is normal</td></tr>
+          <tr><th scope="row">Tools</th><td>a pencil and an eraser</td></tr>
+        </tbody>
+      </table>
+
+      <h2 class="sec-h" id="teach">Teaching Sudoku to a child or a grandparent</h2>
+      <p class="body">Sit beside them, not across. Say the rule once, then point at a nearly full box and ask, &ldquo;which numbers are missing?&rdquo; Let them find where one goes; only point when they stall. Never fill a square for them. Use an easy puzzle with big squares, stop after one grid, and let the pauses happen. The video above is fifteen minutes of exactly that.</p>
+
+      <h2 class="sec-h" id="practice">Practise on a real page</h2>
+      <div class="fors">
+        <div class="for"><h3>Free, in your browser</h3><p><a href="/play">Play the puzzles online</a>. No account, no app, and the easy ones come first.</p></div>
+        <div class="for"><h3>On paper, with a pencil</h3><p><a href="/sudoku-cheat-sheet">Print the one-page cheat sheet with Puzzle 1</a>, or <a href="/daily/">print today&rsquo;s free puzzle</a>.</p></div>
+        <div class="for"><h3>Then the secret</h3><p>Hidden among the 200 puzzles in the book are shaded keys, and they open a vault on this site. <a href="/escape-room-sudoku-book">Here is how the escape-room layer works</a>.</p></div>
+      </div>
+
+      <h2 class="sec-h" id="glossary">Sudoku words, in plain English</h2>
+      <dl class="gloss">{GLOSSARY.map(([id, term, def]) => <><dt id={`g-${id}`}>{term}</dt><dd>{def}</dd></>)}</dl>
+
+      <h2 class="sec-h" id="faq">Questions beginners ask about Sudoku</h2>
       <div class="faqs">
-        <details><summary>What is the one rule of Sudoku?</summary><p>Fill the grid so every row, every column and every 3&times;3 box holds the digits 1 to 9 exactly once. No arithmetic, no adding up. It is a placement puzzle.</p></details>
-        <details><summary>Where do I start?</summary><p>The 3&times;3 box with the fewest gaps. Take one missing digit at a time and ask where in that box it could legally go. Place only the digits with exactly one possible cell.</p></details>
-        <details><summary>Should I ever guess?</summary><p>No. Every properly made sudoku has exactly one solution reachable by logic. If a digit could go in two cells, try another digit and come back. Use a pencil; &ldquo;it always helps to have an eraser.&rdquo;</p></details>
-        <details><summary>How long does a first Sudoku take?</summary><p>On an easy puzzle, about nine minutes with a little coaching; fifteen to thirty alone is normal. It gets faster quickly &mdash; <a href="/play">time yourself on an easy one</a>.</p></details>
-        <details><summary>Do I need to be good at maths?</summary><p>No. The digits could be letters or colours. Nothing is added, subtracted or counted beyond &ldquo;which of 1 to 9 is missing here?&rdquo;</p></details>
+        {FAQS.map(([q, a]) => <details><summary>{q}</summary><p>{a}</p></details>)}
       </div>
 
       <div class="cta">
@@ -132,59 +353,280 @@ const HOWTO_LD = {
       </div>
     </section>
     <SeriesStrip />
+
+    <div class="stick" id="stick" hidden>
+      <img src="/art/cover-v1-360.webp" width="36" height="47" alt="" loading="lazy" />
+      <a href={AMAZON_URL} target="_blank" rel="sponsored noopener">Volume 1 &middot; $14.99 &middot; Amazon ↗</a>
+      <button type="button" id="stickX" aria-label="Hide this bar">&times;</button>
+    </div>
   </main>
+
+  <script type="application/json" id="gsData" set:html={JSON.stringify(CLIENT)} />
+  <script is:inline>
+  (function () {
+    // ---- YouTube facade: no third-party request until the visitor asks for the video
+    var yb = document.getElementById('ytBtn');
+    if (yb) yb.addEventListener('click', function () {
+      var f = document.createElement('iframe');
+      f.src = 'https://www.youtube-nocookie.com/embed/' + yb.dataset.id + '?autoplay=1';
+      f.title = 'How to solve Sudoku for beginners: teaching a first-timer, uncut';
+      f.allow = 'accelerometer; autoplay; encrypted-media; picture-in-picture';
+      f.allowFullscreen = true;
+      yb.replaceWith(f); f.focus();
+    });
+
+    // ---- Spot the mistake
+    var spot = document.getElementById('spot'), spotSay = document.getElementById('spotSay');
+    if (spot) spot.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.n === '7') {
+        spot.querySelectorAll('button[data-n="7"]').forEach(function (x) { x.classList.add('hit'); });
+        spotSay.textContent = 'Yes. There are two 7s in this box, and no 8 at all. One of the 7s was a guess; erase back to the last number you were sure of.';
+      } else { spotSay.textContent = 'That ' + b.dataset.n + ' appears once, so it is fine. Look for a number that appears twice.'; }
+    });
+
+    // ---- Sticky book bar (phones only via CSS), after 30% scroll, dismissible for the session
+    var stick = document.getElementById('stick');
+    try { if (sessionStorage.getItem('htp_stick_x')) stick = null; } catch (e) {}
+    if (stick) {
+      window.addEventListener('scroll', function () {
+        if (!stick) return;
+        var h = document.documentElement;
+        stick.hidden = (h.scrollTop / (h.scrollHeight - h.clientHeight)) < 0.3;
+      }, { passive: true });
+      document.getElementById('stickX').addEventListener('click', function () {
+        stick.hidden = true; stick = null; try { sessionStorage.setItem('htp_stick_x', '1'); } catch (e) {}
+      });
+    }
+
+    // ---- The guided first puzzle
+    var D = JSON.parse(document.getElementById('gsData').textContent);
+    var M = D.moves, N = M.length, KEY = 'htp_guided_v1';
+    var root = document.getElementById('gs'), cells = [].slice.call(document.querySelectorAll('#gsGrid .c'));
+    var say = document.getElementById('gsSay'), pad = document.getElementById('gsPad');
+    var bNext = document.getElementById('gsNext'), bHint = document.getElementById('gsHint'), bGaps = document.getElementById('gsGaps');
+    var bBack = document.getElementById('gsBack'), bReset = document.getElementById('gsReset');
+    var n = 0, asking = false, hinted = 0;
+    var ev = function (name) { try { window.psEventOnce && window.psEventOnce(name); } catch (e) {} };
+    var grid = function () { var g = D.givens.split('').map(Number); for (var i = 0; i < n; i++) g[M[i].c] = M[i].d; return g; };
+    var save = function () { try { localStorage.setItem(KEY, String(n)); } catch (e) {} };
+    function tell(html) { say.innerHTML = '<p>' + html + '</p>'; }
+    function clearMarks() { cells.forEach(function (c) { c.classList.remove('unit', 'block', 'target', 'why'); }); }
+    function paint() {
+      var g = grid();
+      cells.forEach(function (c, i) { if (!c.classList.contains('gv')) { c.textContent = g[i] || ''; c.classList.toggle('pl', !!g[i]); } });
+      document.getElementById('gsCount').textContent = 'Move ' + n + ' of ' + N;
+      document.getElementById('gsBar').style.width = (100 * n / N) + '%';
+      bBack.hidden = bReset.hidden = n === 0;
+      document.getElementById('gsMid').hidden = n < D.mid || n >= N;
+      document.getElementById('gsDone').hidden = n < N;
+      if (n >= D.mid) ev('learn.mid');
+    }
+    function mark(m, withBlockers) {
+      clearMarks();
+      m.u.forEach(function (i) { cells[i].classList.add('unit'); });
+      if (withBlockers) m.b.forEach(function (i) { cells[i].classList.add('block'); });
+      cells[m.c].classList.add('target');
+    }
+    function place(m, prefix) {
+      mark(m, true); n++; asking = false; hinted = 0; save(); paint();
+      cells[m.c].classList.add('target');
+      tell((prefix || '') + m.r);
+      pad.hidden = true; bHint.hidden = true; bGaps.hidden = true;
+      if (n >= N) { bNext.hidden = true; clearMarks(); ev('learn.done'); return; }
+      bNext.hidden = false;
+      bNext.textContent = n < D.teach ? 'Show me the next move' : (n === D.teach ? 'Now let me try one' : 'Next square');
+    }
+    function ask() {
+      var m = M[n]; asking = true; hinted = 0; mark(m, false);
+      tell('<strong>Your turn.</strong> Which number goes in the ringed square (row ' + (Math.floor(m.c / 9) + 1) + ', column ' + (m.c % 9 + 1) + ')? Tap it below.');
+      pad.hidden = false; bNext.hidden = true; bHint.hidden = false; bHint.textContent = 'Give me a hint';
+      bGaps.hidden = m.k !== 'last';
+    }
+    function step() {
+      if (n >= N) return;
+      ev('learn.start');
+      if (n < D.teach) place(M[n]); else ask();
+    }
+    bNext.addEventListener('click', step);
+    bHint.addEventListener('click', function () {
+      var m = M[n]; hinted++;
+      if (hinted === 1) { tell('Hint: ' + m.a); bHint.textContent = 'Show me the answer'; if (m.k === 'only') m.b.forEach(function (i) { cells[i].classList.add('block'); }); }
+      else place(m);
+    });
+    bGaps.addEventListener('click', function () {
+      var k = 0; while (n < N && M[n].k === 'last') { n++; k++; }
+      save(); paint(); clearMarks(); asking = false; pad.hidden = true; bHint.hidden = true; bGaps.hidden = true;
+      if (n >= N) { bNext.hidden = true; tell('Filled the last ' + k + ' gaps. Each was the only number missing from its row, column or box.'); ev('learn.done'); return; }
+      tell('Filled ' + k + ' last ' + (k === 1 ? 'gap' : 'gaps') + ': each was the only number missing from its row, column or box.');
+      bNext.hidden = false; bNext.textContent = 'Next square';
+    });
+    pad.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b || !asking) return;
+      var d = +b.dataset.n, m = M[n];
+      if (d === m.d) { place(m, '<strong>Yes, ' + d + '.</strong> '); return; }
+      var g = grid(), r = Math.floor(m.c / 9), c = m.c % 9, clash = -1;
+      for (var i = 0; i < 81 && clash < 0; i++) {
+        if (g[i] !== d) continue;
+        var ri = Math.floor(i / 9), ci = i % 9;
+        if (ri === r || ci === c || (Math.floor(ri / 3) === Math.floor(r / 3) && Math.floor(ci / 3) === Math.floor(c / 3))) clash = i;
+      }
+      cells.forEach(function (x) { x.classList.remove('why'); });
+      if (clash >= 0) {
+        var cr = Math.floor(clash / 9), cc = clash % 9;
+        cells[clash].classList.add('why');
+        tell('<strong>Not ' + d + '.</strong> There is already ' + (d === 8 ? 'an 8' : 'a ' + d) + ' in the same ' + (cr === r ? 'row' : cc === c ? 'column' : 'box') + ' (marked with a dashed ring). Try another number.');
+      } else {
+        tell('<strong>Not yet.</strong> The rule would allow ' + (d === 8 ? 'an 8' : 'a ' + d) + ' here, but it could also go somewhere else, so it is not certain. Look for the number that has no other place to go. Tap &ldquo;Give me a hint&rdquo; if you like.');
+      }
+    });
+    bBack.addEventListener('click', function () {
+      if (n === 0) return; n--; save(); clearMarks(); paint(); asking = false; pad.hidden = true; bHint.hidden = true; bGaps.hidden = true;
+      bNext.hidden = false; bNext.textContent = n === 0 ? 'Show me the first move' : 'Show me the next move';
+      tell('Went back one move. You are at move ' + n + ' of ' + N + '.');
+    });
+    bReset.addEventListener('click', function () {
+      n = 0; save(); clearMarks(); paint(); asking = false; pad.hidden = true; bHint.hidden = true; bGaps.hidden = true;
+      bNext.hidden = false; bNext.textContent = 'Show me the first move'; tell('Back to the start. Press the gold button for the first move.');
+    });
+    try { var s = parseInt(localStorage.getItem(KEY) || '0', 10); if (s > 0 && s <= N) { n = s; } } catch (e) {}
+    paint();
+    if (n > 0 && n < N) { bNext.textContent = n < D.teach ? 'Show me the next move' : 'Next square'; tell('Welcome back. You are at move ' + n + ' of ' + N + '.'); }
+    if (n >= N) bNext.hidden = true;
+  })();
+  </script>
 
   <style>
     .page-htp { padding-top: 90px; padding-bottom: 80px; }
-    .htp-hero { text-align: center; max-width: 760px; margin: 0 auto 44px; padding: 0 20px; }
-    .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
-    .htp-hero h1 { font-family: var(--display); font-size: clamp(30px, 5vw, 50px); font-weight: 600; color: var(--ivory); line-height: 1.12; margin-bottom: 14px; }
-    .lede { font-size: clamp(16px, 2vw, 19px); font-style: italic; color: var(--ash); line-height: 1.45; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .htp-hero { text-align: center; max-width: 780px; margin: 0 auto 26px; padding: 0 20px; }
+    .eyebrow { font-family: var(--display); font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .htp-hero h1 { font-family: var(--display); font-size: clamp(32px, 5vw, 52px); font-weight: 600; color: var(--ivory); line-height: 1.12; margin-bottom: 16px; }
+    .lede { font-size: clamp(18px, 2.2vw, 21px); color: #cfc6b2; line-height: 1.55; }
+    .lede strong { color: var(--ivory); font-weight: 600; }
+    .promise { margin-top: 12px; font-size: 16px; color: #cfc6b2; }
+    .byline { margin-top: 10px; font-size: 15px; color: var(--ash); }
+    .byline a, .body a, .video-note a, .for a, .faqs a, .gs a:not(.btn-try):not(.btn-amz), .small a, .all-moves a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+    .mini-nav { position: sticky; top: 58px; z-index: 30; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; margin: 0 auto 34px; max-width: 520px; background: rgba(8,8,10,.9); backdrop-filter: blur(10px); border: 1px solid rgba(185,143,82,.22); border-radius: 999px; }
+    .mini-nav a { font-family: var(--display); font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ivory); padding: 9px 14px; border-radius: 999px; }
+    .mini-nav a:hover, .mini-nav a:focus-visible { background: rgba(246,178,60,.14); color: var(--gold-hi); }
+    .page-htp :focus-visible { outline: 3px solid var(--gold-hi); outline-offset: 2px; }
     .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
-    .answer-card { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.35); border-radius: 14px; padding: 30px 32px; margin-bottom: 44px; }
-    .answer-card h2 { font-family: var(--display); font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
-    .answer-card p { font-size: 17px; line-height: 1.65; color: var(--ivory); }
-    .video { margin: 0 0 56px; }
+    .sec-h { font-family: var(--display); font-size: clamp(23px, 3vw, 29px); color: var(--gold-hi); margin: 58px 0 12px; line-height: 1.25; scroll-margin-top: 120px; }
+    .sec-h:first-child { margin-top: 0; }
+    .sub-h { font-family: var(--display); font-size: 20px; color: var(--ivory); margin: 30px 0 10px; scroll-margin-top: 120px; }
+    .sec-sub { color: #cfc6b2; margin-bottom: 20px; font-size: 17px; line-height: 1.6; }
+    .body { font-size: 18px; line-height: 1.7; color: #cfc6b2; margin-bottom: 18px; }
+    .body.note { border-left: 3px solid var(--gold); padding-left: 14px; color: var(--ivory); }
+
+    /* ---- grids (one visual language for every picture on the page) */
+    .sg { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; background: #f4ecd9; color: #15120b; border: 3px solid #15120b; border-radius: 4px; font-family: Georgia, 'Times New Roman', serif; user-select: none; }
+    .sg .c { display: flex; align-items: center; justify-content: center; border-right: 1px solid #a89f8a; border-bottom: 1px solid #a89f8a; font-weight: 700; position: relative; }
+    .sg .c:nth-child(3n) { border-right: 2.5px solid #15120b; } .sg .c:nth-child(9n) { border-right: 0; }
+    .sg .c:nth-child(n+19):nth-child(-n+27), .sg .c:nth-child(n+46):nth-child(-n+54) { border-bottom: 2.5px solid #15120b; }
+    .sg .c:nth-child(n+73) { border-bottom: 0; }
+    .sg .pl { color: #1d4ea8; font-weight: 400; font-style: italic; }
+    .sg .unit { background: #f7dfa3; }
+    .sg .out { background: #f7dfa3; } .sg .out::after { content: '×'; color: #a3271b; font-weight: 400; }
+    .sg .block { background: #15120b; color: #ffd47a; }
+    .sg .target { box-shadow: inset 0 0 0 4px #c2410c; background: #fff; }
+    .sg .why { box-shadow: inset 0 0 0 3px #a3271b; outline: 2px dashed #a3271b; outline-offset: -7px; }
+    .sg .rowhl { background: #f7dfa3; } .sg .colhl { background: #bfe3d0; } .sg .bothhl { background: #d9d78f; } .sg .boxhl { background: #c9d4f2; }
+    .sg-main { width: 100%; max-width: 520px; margin: 0 auto; font-size: clamp(22px, 5.6vw, 32px); }
+    .sg-sm { font-size: clamp(11px, 2.6vw, 15px); border-width: 2px; }
+    .sg-rule { width: 100%; max-width: 330px; font-size: clamp(14px, 3.6vw, 19px); flex: 0 0 auto; }
+    .rule-row { display: flex; gap: 26px; align-items: center; margin: 18px 0 20px; }
+    .key { display: inline-block; width: 16px; height: 16px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid #15120b; }
+    .key.rowhl { background: #f7dfa3; } .key.colhl { background: #bfe3d0; } .key.boxhl { background: #c9d4f2; }
+    .frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 18px 0; }
+    .frames.one { grid-template-columns: minmax(0, 300px); }
+    .frames figcaption { font-size: 16px; line-height: 1.5; color: #cfc6b2; margin-top: 8px; }
+
+    /* ---- tables */
+    .t { width: 100%; border-collapse: collapse; font-size: 17px; line-height: 1.55; color: #cfc6b2; }
+    .t th, .t td { text-align: left; vertical-align: top; padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.09); }
+    .t th { color: var(--ivory); font-weight: 600; } .t thead th { font-family: var(--display); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+    .rule-t th { white-space: nowrap; }
+
+    /* ---- guided puzzle */
+    .gs { background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.35); border-radius: 14px; padding: 18px; }
+    .gs-top { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .gs-bar { flex: 1; height: 6px; background: rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; } .gs-bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .3s; }
+    .gs-say { min-height: 5.2em; margin: 14px auto 6px; max-width: 620px; font-size: 18px; line-height: 1.55; color: var(--ivory); }
+    .gs-pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; max-width: 520px; margin: 8px auto; }
+    .gs-pad button { height: 52px; font: 700 22px Georgia, serif; color: #15120b; background: #f4ecd9; border: 0; border-radius: 8px; cursor: pointer; }
+    .gs-pad button:hover { background: var(--gold-hi); }
+    .gs-ctl { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px; }
+    .gs-sub { padding: 12px 16px; min-height: 46px; font-family: var(--display); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ivory); background: transparent; border: 1px solid rgba(246,178,60,.45); border-radius: 6px; cursor: pointer; }
+    .gs-sub:hover { border-color: var(--gold); color: var(--gold-hi); }
+    .gs-mid, .gs-done { margin-top: 16px; padding: 16px 18px; border-radius: 10px; background: rgba(246,178,60,.09); border: 1px solid rgba(246,178,60,.35); font-size: 17px; line-height: 1.6; color: var(--ivory); }
+    .gs-done h3 { font-family: var(--display); font-size: 21px; color: var(--gold-hi); margin-bottom: 8px; }
+    .done-links { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 10px; } .done-links .btn-try { margin-top: 0; }
+    .small { font-size: 16px; color: #cfc6b2; }
+    [hidden] { display: none !important; }
+    .all-moves { margin: 18px 0 40px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; padding: 14px 18px; }
+    .all-moves summary { cursor: pointer; font-family: var(--display); font-size: 16px; color: var(--ivory); }
+    .all-moves p, .all-moves li { font-size: 16.5px; line-height: 1.6; color: #cfc6b2; margin-top: 10px; } .all-moves ol { padding-left: 26px; }
+
+    .video { margin: 0 0 20px; }
     .frame { position: relative; padding-top: 56.25%; border-radius: 12px; overflow: hidden; border: 1px solid rgba(185,143,82,.25); background: #000; }
-    .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-    .video-note { font-size: 14.5px; font-style: italic; color: var(--ash); margin-top: 10px; }
-    .sec-h { font-family: var(--display); font-size: clamp(22px, 3vw, 28px); color: var(--gold-hi); margin-bottom: 8px; }
-    .sec-sub { font-style: italic; color: var(--ash); margin-bottom: 22px; font-size: 15px; }
-    .body { font-size: 16.5px; line-height: 1.7; color: var(--ash); margin-bottom: 56px; }
-    .body em { color: var(--ivory); }
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 22px 0 56px; }
+    .frame :global(iframe), .yt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; cursor: pointer; background: #000; }
+    .yt img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .yt-play { position: absolute; left: 50%; top: 50%; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; background: rgba(8,8,10,.78); border: 3px solid var(--gold-hi); }
+    .yt-play::after { content: ''; position: absolute; left: 33px; top: 24px; border-left: 26px solid var(--gold-hi); border-top: 16px solid transparent; border-bottom: 16px solid transparent; }
+    .video-note { font-size: 16.5px; color: #cfc6b2; margin-top: 10px; line-height: 1.55; }
+    .chapters { list-style: none; margin-top: 10px; font-size: 16.5px; color: #cfc6b2; line-height: 1.9; } .chapters a { color: var(--gold); text-decoration: underline; margin-right: 8px; }
+
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 18px 0 10px; }
     .step { background: #110f15; border: 1px solid rgba(185,143,82,.18); border-radius: 10px; padding: 22px; }
-    .s-num { font-family: var(--display); font-size: 12px; letter-spacing: .2em; color: var(--gold); opacity: .8; margin-bottom: 8px; }
-    .step h3 { font-family: var(--display); font-size: 19px; color: var(--ivory); margin-bottom: 8px; }
-    .step p { font-size: 15px; line-height: 1.6; color: var(--ash); }
-    .fors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 22px 0 56px; }
-    .for { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: 20px; }
-    .for h3 { font-family: var(--display); font-size: 16px; color: var(--gold-hi); margin-bottom: 8px; }
-    .for p { font-size: 15px; line-height: 1.55; color: var(--ash); }
-    .for a { color: var(--gold); text-decoration: underline; }
+    .s-num { font-family: var(--display); font-size: 13px; letter-spacing: .2em; color: var(--gold); margin-bottom: 8px; }
+    .step h4 { font-family: var(--display); font-size: 19px; color: var(--ivory); margin-bottom: 8px; }
+    .step p { font-size: 16.5px; line-height: 1.6; color: #cfc6b2; }
+    .checklist { padding-left: 28px; } .checklist li { font-size: 18px; line-height: 1.6; color: #cfc6b2; margin-bottom: 10px; } .checklist li::marker { color: var(--gold); font-weight: 700; }
+    .spot { background: #110f15; border: 1px solid rgba(185,143,82,.22); border-radius: 10px; padding: 18px; font-size: 17px; line-height: 1.55; color: #cfc6b2; }
+    .spot-box { display: grid; grid-template-columns: repeat(3, 56px); gap: 0; margin: 14px 0; border: 3px solid #15120b; width: max-content; background: #15120b; }
+    .spot-box button { width: 56px; height: 56px; font: 700 24px Georgia, serif; background: #f4ecd9; color: #15120b; border: 1px solid #a89f8a; cursor: pointer; }
+    .spot-box button.hit { background: #f3b6ae; box-shadow: inset 0 0 0 3px #a3271b; }
+    .spot-say { color: var(--ivory); min-height: 1.6em; }
+    .fors { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 18px 0 10px; }
+    .for { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 20px; }
+    .for h3 { font-family: var(--display); font-size: 17px; color: var(--gold-hi); margin-bottom: 8px; }
+    .for p { font-size: 16.5px; line-height: 1.55; color: #cfc6b2; }
+    .gloss dt { font-family: var(--display); font-size: 17px; color: var(--ivory); margin-top: 14px; scroll-margin-top: 120px; } .gloss dd { font-size: 17px; line-height: 1.55; color: #cfc6b2; }
     .faqs { margin-bottom: 56px; }
-    .faqs details { border-bottom: 1px solid rgba(255,255,255,.07); padding: 14px 0; }
-    .faqs summary { cursor: pointer; font-family: var(--display); font-size: 16px; color: var(--ivory); list-style: none; }
+    .faqs details { border-bottom: 1px solid rgba(255,255,255,.09); padding: 16px 0; }
+    .faqs summary { cursor: pointer; font-family: var(--display); font-size: 17.5px; color: var(--ivory); list-style: none; line-height: 1.4; }
     .faqs summary::-webkit-details-marker { display: none; }
     .faqs summary::before { content: '+'; color: var(--gold); margin-right: 10px; }
     .faqs details[open] summary::before { content: '−'; }
-    .faqs details p a { color: var(--gold); text-decoration: underline; }
-    .btn-try { display: inline-block; margin-top: 18px; padding: 12px 22px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
-    .from-book { margin-top: 14px; font-size: 14px; color: var(--ash); }
-    .from-book a { color: var(--gold); text-decoration: none; border-bottom: 1px dotted rgba(246,178,60,.5); }
-    .now-try { text-align: center; margin: -26px 0 56px; }
-    .now-try p { color: var(--ash); font-style: italic; font-size: 15px; }
-    .book-card { display: flex; gap: 24px; align-items: center; background: #110f15; border: 1px solid rgba(246,178,60,.3); border-radius: 12px; padding: 22px; margin: -26px 0 56px; }
-    .bc-cover img { width: 130px; height: auto; border-radius: 4px; display: block; box-shadow: 0 0 22px rgba(240,176,64,.3); }
-    .bc-body h3 { font-family: var(--display); font-size: 19px; color: var(--gold-hi); margin-bottom: 8px; }
-    .bc-body p { font-size: 15px; line-height: 1.6; color: var(--ash); margin-bottom: 14px; }
-    @media (max-width: 560px) { .book-card { flex-direction: column; text-align: center; } .btn-try { font-size: 11px; padding: 12px 16px; } }
-    .faqs details p { font-size: 15.5px; line-height: 1.6; color: var(--ash); padding: 10px 0 4px 22px; }
+    .faqs details p { font-size: 17.5px; line-height: 1.65; color: #cfc6b2; padding: 10px 0 4px 22px; }
+    .btn-try { display: inline-block; margin-top: 18px; padding: 15px 24px; font-family: var(--display); font-weight: 700; font-size: 13.5px; letter-spacing: .1em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: 0; border-radius: 6px; text-decoration: none; cursor: pointer; }
+    .gs-next { margin-top: 0; }
+    .book-card { display: flex; gap: 24px; align-items: center; background: #110f15; border: 1px solid rgba(246,178,60,.3); border-radius: 12px; padding: 22px; margin: 0 0 10px; }
+    .bc-cover img { width: 140px; height: auto; border-radius: 4px; display: block; box-shadow: 0 0 22px rgba(240,176,64,.3); }
+    .bc-body h3 { font-family: var(--display); font-size: 20px; color: var(--gold-hi); margin-bottom: 8px; }
+    .bc-body ul { padding-left: 20px; margin-bottom: 16px; } .bc-body li { font-size: 17px; line-height: 1.55; color: #cfc6b2; margin-bottom: 4px; }
     .cta { text-align: center; background: linear-gradient(180deg, #141218, #0c0b0f); border: 1px solid rgba(246,178,60,.3); border-radius: 14px; padding: 36px 28px; }
     .cta h2 { font-family: var(--display); font-size: 26px; color: var(--gold-hi); margin-bottom: 8px; }
-    .cta p { color: var(--ash); font-size: 16px; margin-bottom: 18px; }
-    .btn-amz { display: inline-block; padding: 14px 32px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; }
-    .cta .alt { font-size: 14.5px; font-style: italic; margin: 18px 0 0; }
-    .cta .alt a { color: var(--gold); text-decoration: underline; }
+    .cta p { color: #cfc6b2; font-size: 17.5px; margin-bottom: 18px; line-height: 1.55; }
+    .btn-amz { display: inline-block; padding: 15px 28px; font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; }
+    .cta .alt { font-size: 16px; margin: 18px 0 0; } .cta .alt a { color: var(--gold); text-decoration: underline; }
+    .stick { display: none; }
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px; }
+      .mini-nav { position: static; flex-wrap: nowrap; gap: 2px; margin: 0 12px 30px; padding: 5px 6px; }
+      .mini-nav a { font-size: 11.5px; letter-spacing: .06em; padding: 11px 9px; white-space: nowrap; }
+      .gs { margin: 0 -16px; border-radius: 0; border-left: 0; border-right: 0; padding: 14px 6px 18px; }
+      .gs-top, .gs-say, .gs-mid, .gs-done { margin-left: 10px; margin-right: 10px; }
+      .gs-pad { grid-template-columns: repeat(5, 1fr); padding: 0 6px; } .gs-pad button { height: 54px; }
+      .rule-row { flex-direction: column; align-items: stretch; } .sg-rule { margin: 0 auto; } .rule-t th { white-space: normal; }
+      .frames { grid-template-columns: 1fr; } .frames figure { max-width: 320px; margin: 0 auto; } .frames .sg-sm { font-size: 17px; }
+      .book-card { flex-direction: column; text-align: left; }
+      .myths thead { display: none; } .myths tr { display: block; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.09); } .myths td { display: block; border: 0; padding: 4px 0; } .myths td:first-child { color: var(--ivory); font-weight: 600; }
+      .stick:not([hidden]) { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; align-items: center; gap: 12px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: rgba(10,10,12,.96); border-top: 1px solid rgba(246,178,60,.4); }
+      .stick a { flex: 1; font-family: var(--display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-hi); }
+      .stick button { width: 44px; height: 44px; background: none; border: 0; color: var(--ash); font-size: 24px; cursor: pointer; }
+    }
+    @media (prefers-reduced-motion: reduce) { .gs-bar i { transition: none; } :global(html) { scroll-behavior: auto; } }
   </style>
 </Layout>

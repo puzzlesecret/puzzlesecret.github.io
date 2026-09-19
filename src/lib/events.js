@@ -79,6 +79,11 @@ export const CLIENT_EV = Object.freeze({
   PLAY_SOLVED:      'play.solved',         // a puzzle solved; extra = "easy · 3m12s"
   PLAY_OFFER:       'play.offer',          // the one-time book nudge appeared
 
+  // the guided first puzzle on /how-to-play-sudoku (each once/session, no extra)
+  LEARN_START:      'learn.start',         // first move of the guided puzzle taken
+  LEARN_MID:        'learn.mid',           // reached the point where the book card appears
+  LEARN_DONE:       'learn.done',          // guided puzzle finished
+
   // passport, sharing, off-site
   PASSPORT_VIEW:    'passport.view',       // /passport loaded
   SHARE_COPY:       'share.copy',
@@ -165,6 +170,11 @@ export function parts(ev, extra) {
     case CLIENT_EV.PLAY_SOLVED:      return ['✅', 'solves a free puzzle' + e];
     case CLIENT_EV.PLAY_OFFER:       return ['📘', 'sees the book offer on /play'];
 
+    // the guided first puzzle
+    case CLIENT_EV.LEARN_START:      return ['🎓', 'starts the guided first puzzle on /how-to-play-sudoku'];
+    case CLIENT_EV.LEARN_MID:        return ['🎓', 'is a third of the way through the guided puzzle, sees the book card'];
+    case CLIENT_EV.LEARN_DONE:       return ['🎓', 'finishes the guided first puzzle'];
+
     // passport / share / off-site
     case CLIENT_EV.PASSPORT_VIEW:    return ['📜', 'looks at the passport'];
     case CLIENT_EV.SHARE_COPY:       return ['🔗', 'copies a share link'];
@@ -206,7 +216,7 @@ export function keeperLine(ev, extra, tag, place) {
 // narrative ("GUEST KEY came in from…"). So every extra must match the exact shape our
 // own clients produce — fixed vocabularies and digits — or it is dropped (the event still
 // goes through, just without its extra). Nothing here can spell a hostname.
-const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|daily|unsubscribed|404)';
+const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|sudoku-cheat-sheet|daily|unsubscribed|404)';
 const SOURCES = '(pinterest|youtube|tiktok|instagram|facebook|threads|reddit|x|linkedin|google|bing|duckduckgo|yahoo|brave|ecosia|chatgpt|perplexity|claude|gemini|amazon|mensa|another site)';
 const ROOMS = '(the study|the library|the treasure room|the sanctum)';
 const DOORS = '(first|door2|door3|fourth)';

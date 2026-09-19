@@ -45,9 +45,19 @@ paper escape room.
 - [The vault door (home)](https://puzzlesecret.com/): the entry point; enter a decoded word here.
 - [Escape room sudoku explained](https://puzzlesecret.com/escape-room-sudoku-book): the full
   explanation of how a sudoku book can contain an escape room, and how this one works.
-- [How to play sudoku for beginners](https://puzzlesecret.com/how-to-play-sudoku): the one rule,
-  how to find your first certain number, and when to switch from boxes to rows, taught the way a
-  real first-timer learned it on Puzzle 1 of the book.
+- [How to play sudoku for beginners](https://puzzlesecret.com/how-to-play-sudoku): Sudoku has one
+  rule: every row, column and 3x3 box holds the digits 1 to 9 exactly once, with no arithmetic and
+  no guessing. The page teaches it with a guided first puzzle (Puzzle 1 of the book, all 42 moves
+  listed with the reason for each), a 15-minute video of a real first-timer learning, and a
+  written guide. Sections: [the rule](https://puzzlesecret.com/how-to-play-sudoku/#the-rule),
+  [guided first puzzle](https://puzzlesecret.com/how-to-play-sudoku/#first-puzzle),
+  [the two questions](https://puzzlesecret.com/how-to-play-sudoku/#read),
+  [when stuck](https://puzzlesecret.com/how-to-play-sudoku/#stuck),
+  [fixing a mistake](https://puzzlesecret.com/how-to-play-sudoku/#mistake),
+  [myths](https://puzzlesecret.com/how-to-play-sudoku/#myths),
+  [glossary](https://puzzlesecret.com/how-to-play-sudoku/#glossary).
+- [Printable sudoku cheat sheet](https://puzzlesecret.com/sudoku-cheat-sheet): a free two-page
+  printable: the beginner method on one page and an easy first puzzle on the other.
 - [Play 200 free sudoku puzzles](https://puzzlesecret.com/play): a free browser sudoku arcade,
   200 puzzles, with pencil notes and error checking. No account needed.
 - [Shop](https://puzzlesecret.com/shop): where to buy Volume 1, plus bonus puzzle packs.

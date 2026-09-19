@@ -1,0 +1,107 @@
+---
+import Layout from '../layouts/Layout.astro';
+import webPuzzles from '../data/web_puzzles.json';
+const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
+
+// The "Print it" option of /how-to-play-sudoku. Two sheets of plain black-on-white paper:
+// the cheat sheet, then Puzzle 1 large. On screen it is a white page inside the dark site;
+// @media print drops the site chrome. Someone who prints a puzzle is the likeliest
+// paperback buyer, so the footer of both sheets names the book.
+const GIVENS = webPuzzles[0].givens.split('').map(Number);
+const TITLE = "Printable Sudoku Cheat Sheet for Beginners (Rules + a First Puzzle)";
+const DESC = "A free two-page printable for Sudoku beginners: the one rule, the two questions that solve easy puzzles, what to do when stuck, how to fix a mistake, plus an easy first puzzle with big squares to try in pencil.";
+---
+
+<Layout title={TITLE} description={DESC}>
+  <main class="page-cs">
+    <div class="cs-head">
+      <p class="eyebrow">Free printable &middot; two pages &middot; black and white</p>
+      <h1>Sudoku Cheat Sheet for Beginners</h1>
+      <p class="lede">Page one is the method. Page two is an easy first puzzle with big squares. For the full lesson, see <a href="/how-to-play-sudoku">How to Play Sudoku</a>.</p>
+      <button type="button" class="btn-print" id="printBtn">Print both pages</button>
+    </div>
+
+    <article class="sheet">
+      <h2>How to Play Sudoku <span>puzzlesecret.com/how-to-play-sudoku</span></h2>
+      <p class="rule"><strong>The one rule:</strong> every row, every column and every 3&times;3 box must contain the digits 1 to 9 exactly once. No maths. No guessing. Use a pencil.</p>
+
+      <div class="cols">
+        <section>
+          <h3>Question one: where can this number go?</h3>
+          <ol>
+            <li>Pick a box that is nearly full, and a number it is missing.</li>
+            <li>Find that number elsewhere on the grid. It rules out its whole row and its whole column.</li>
+            <li>Cross off those squares in your box. One empty square left? Write the number in.</li>
+            <li>Two squares left? Leave it. Try another number.</li>
+          </ol>
+          <h3>Question two: what can go in this square?</h3>
+          <ol>
+            <li>Look at one empty square. Tick off every number in its row, its column and its box.</li>
+            <li>Only one number left? Write it in.</li>
+            <li>Easiest case: a row, column or box with eight numbers. The ninth goes in the gap.</li>
+          </ol>
+        </section>
+        <section>
+          <h3>Stuck? Try these in order</h3>
+          <ol>
+            <li>Any row, column or box with one or two gaps.</li>
+            <li>The number that appears most on the grid: where can it go in each box?</li>
+            <li>Switch shape: from boxes to rows, or to columns.</li>
+            <li>Recheck around the last number you placed.</li>
+            <li>Harder puzzle? Pencil tiny notes in squares with only two options, then go round again.</li>
+          </ol>
+          <h3>Made a mistake?</h3>
+          <p>Find the number that appears twice in one row, column or box. Erase back to the last number you were sure of. Check just that box against the answers.</p>
+          <h3>Always look three ways</h3>
+          <p>Row, column <em>and</em> box. Forgetting the box is the most common slip.</p>
+        </section>
+      </div>
+      <p class="sheet-foot">From <strong>Sudoku with a Secret, Volume 1</strong> by Dan Herlehy: 200 puzzles, 70 easy ones first, one big grid per page, answers in the back. Paperback on Amazon, or see <strong>puzzlesecret.com</strong>.</p>
+    </article>
+
+    <article class="sheet">
+      <h2>Your first puzzle <span>Puzzle 1 &middot; easy</span></h2>
+      <div class="pg">{GIVENS.map((d) => <span>{d || ''}</span>)}</div>
+      <p class="sheet-foot">Every move of this puzzle is explained at <strong>puzzlesecret.com/how-to-play-sudoku</strong>. It is Puzzle 1 of <strong>Sudoku with a Secret, Volume 1</strong> (paperback, Amazon).</p>
+    </article>
+
+    <p class="after"><a href="/how-to-play-sudoku#first-puzzle">See every move of this puzzle explained</a> &middot; <a href="/daily/">Print today&rsquo;s free puzzle</a> &middot; <a href={AMAZON_URL} target="_blank" rel="sponsored noopener">Get the book on Amazon ↗</a></p>
+  </main>
+
+  <script is:inline>document.getElementById('printBtn').addEventListener('click', function () { window.print(); });</script>
+
+  <style>
+    .page-cs { padding: 90px 16px 70px; }
+    .cs-head { text-align: center; max-width: 720px; margin: 0 auto 28px; }
+    .eyebrow { font-family: var(--display); font-size: 12px; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    h1 { font-family: var(--display); font-size: clamp(28px, 4.6vw, 44px); color: var(--ivory); line-height: 1.15; margin-bottom: 14px; }
+    .lede { font-size: 18px; line-height: 1.55; color: #cfc6b2; }
+    .lede a, .after a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+    .btn-print { margin-top: 18px; padding: 15px 26px; font-family: var(--display); font-weight: 700; font-size: 13.5px; letter-spacing: .1em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: 0; border-radius: 6px; cursor: pointer; }
+    .sheet { background: #fff; color: #111; max-width: 816px; margin: 0 auto 26px; padding: 44px 48px; border-radius: 4px; font-family: Georgia, 'Times New Roman', serif; }
+    .sheet h2 { font-size: 27px; border-bottom: 3px solid #111; padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .sheet h2 span { font-size: 13px; font-weight: 400; }
+    .sheet h3 { font-size: 17px; margin: 16px 0 6px; }
+    .sheet p, .sheet li { font-size: 15.5px; line-height: 1.5; }
+    .sheet ol { padding-left: 22px; }
+    .rule { font-size: 18px !important; border: 2px solid #111; padding: 12px 14px; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .sheet-foot { margin-top: 22px; padding-top: 10px; border-top: 1px solid #111; font-size: 13.5px !important; }
+    .pg { display: grid; grid-template-columns: repeat(9, 1fr); aspect-ratio: 1; width: 100%; max-width: 640px; margin: 22px auto; border: 4px solid #111; }
+    .pg span { display: flex; align-items: center; justify-content: center; font-size: clamp(22px, 5vw, 38px); font-weight: 700; border-right: 1px solid #777; border-bottom: 1px solid #777; }
+    .pg span:nth-child(3n) { border-right: 3px solid #111; } .pg span:nth-child(9n) { border-right: 0; }
+    .pg span:nth-child(n+19):nth-child(-n+27), .pg span:nth-child(n+46):nth-child(-n+54) { border-bottom: 3px solid #111; }
+    .pg span:nth-child(n+73) { border-bottom: 0; }
+    .after { text-align: center; font-size: 17px; color: #cfc6b2; line-height: 1.8; }
+    @media (max-width: 640px) { .sheet { padding: 24px 18px; } .cols { grid-template-columns: 1fr; gap: 0; } }
+    @media print {
+      :global(header.chrome), :global(.menu-drawer), :global(footer.global-foot), .cs-head, .after { display: none !important; }
+      :global(body) { background: #fff !important; }
+      .page-cs { padding: 0; }
+      .sheet { max-width: none; margin: 0; padding: 0; border-radius: 0; break-after: page; }
+      .sheet:last-of-type { break-after: auto; }
+      .pg span { font-size: 34pt; }
+    }
+    @page { margin: 0.6in; }
+  </style>
+</Layout>
