@@ -47,7 +47,46 @@ const HASHES = {
   // tell WHICH placement sent someone. That is the only attribution this
   // program has. Add one line per outlet; never reuse a key across two.
   '179d3b60d2b445d5ef073dfea5ddc3b401fce6779eceed81a11912de85ce03db': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Magazin Mensa (CZ)' },
+  // PinPoint Magazine (UK) — the first GUEST ROOM: the same study, but the story in it is theirs.
+  // `room` names a server-side profile below; the client never sees a room it was not handed.
+  'bae2ab8d0defd71696aa10075aff53803604ca7abe82d28fe688a419b28ea154': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'PinPoint (UK)', room: 'pinpoint' },
 };
+
+// ── GUEST ROOMS ──────────────────────────────────────────────────────────
+// A guest room is the book's Vault I with a different story in it, built ONLY when the
+// unlock response carries `room`. The Keeper's guest lines live here so the 3D and the
+// painted vault render the same words and neither bundle needs to know an outlet by name.
+// The four position fragments are NOT in this file: this repo is public, so they live in
+// an env var (GUEST_ROOM_PINPOINT="N 52° 40.|N …123|W 002° 27.|W …456"), read at request
+// time and handed out only on the matching hash — the same rail the Sanctum lines ride.
+// A missing or empty var means the place is no longer kept: the room still opens, the
+// scraps do not, and the Keeper says so. Never a placeholder that could be mistaken for real.
+const GUEST_ROOMS = {
+  pinpoint: {
+    id: 'pinpoint',
+    entry: 'PinPoint sent you, and you are exactly where I meant you to be. Somewhere in this study I tore a note into four — find every piece, and the place you are hunting is yours.',
+    scrapLabel: 'A crumpled scrap',
+    scrapLine: 'A piece of the note I tore. Pin it to the board — the rest are in here somewhere.',
+    allFound: 'Four pieces, pinned. Read them off the board in order, and mind the muggles on your way out.',
+    retired: 'PinPoint asked me to keep a place here once. It is no longer kept. The study is still yours to look around.',
+    boardEmpty: 'Four empty pins. Whatever you find in here, bring it back to the board.',
+    exit: 'You are leaving with {n} of my four pieces unfound. The corridor will keep; the note will not.',
+    door2Kicker: 'THE SECOND DOOR — SEALED WITH A WORD FROM MY BOOK',
+    door2Line: "PinPoint's word bought you the study and the scraps, and I hope you leave with both. This door wants one I hid across two hundred grids — say it if you have the book. If you have not, the book is where I keep the rest of me.",
+    door2LinkText: "The Keeper's book →",
+    door2LinkHref: '/shop',
+    env: 'GUEST_ROOM_PINPOINT',
+  },
+};
+// Env vars are read by NAME so Vite can substitute them statically; a dynamic key would be undefined.
+const GUEST_ENV = { pinpoint: () => import.meta.env.GUEST_ROOM_PINPOINT ?? process.env.GUEST_ROOM_PINPOINT };
+function guestRoom(id) {
+  const g = GUEST_ROOMS[id]; if (!g) return undefined;
+  const raw = String((GUEST_ENV[id] && GUEST_ENV[id]()) ?? '').trim();
+  const frags = raw ? raw.split('|').map((s) => s.trim()).filter(Boolean) : [];
+  const { env, ...pub } = g;                             // never ship the var name
+  return { ...pub, frags: frags.length === 4 ? frags : [] };
+}
 
 // An opaque, unguessable proof that SOMEONE solved the fourth word. Returned only on that
 // The seven framed lines in the Sanctum. They leave the server only on a true fourth word,
@@ -106,7 +145,7 @@ export async function POST({ request, clientAddress }) {
         ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens${at}`
         : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}${at}`;
     await notify(line);
-    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined });
+    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined });
   }
   if (!isBot(request)) {
     const n = missCount(ip);
