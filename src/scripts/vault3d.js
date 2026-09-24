@@ -108,6 +108,22 @@ const labelEl = document.getElementById('label');
 const rewardEl = document.getElementById('reward');
 const hintEl = document.getElementById('hint');
 const FROM_DOOR = qs.get('from') === 'door';
+/* A GUEST ROOM: an outlet's own story inside Vault I. It exists only when
+   /api/unlock handed this tab a `room` on that outlet's word — the front door stashes it in
+   sessionStorage. Nothing in the URL can switch it on; a bad or stale stash reads as null and
+   the canonical room is built, byte for byte. The four position pieces are validated here
+   and rendered with textContent only. */
+const GUEST = (() => {
+  try {
+    const s = JSON.parse(sessionStorage.getItem('ps_guest_room_v1') || 'null');
+    if (!s || typeof s !== 'object' || !/^[a-z]{2,16}$/.test(String(s.id || ''))) return null;
+    const ok = (v, max) => typeof v === 'string' && v.length <= max;
+    for (const k of ['entry', 'scrapLabel', 'scrapLine', 'allFound', 'retired', 'boardEmpty', 'exit', 'door2Kicker', 'door2Line', 'door2LinkText']) if (!ok(s[k], 400)) return null;
+    if (!/^\/[a-z0-9\-\/]{0,40}$/.test(String(s.door2LinkHref || ''))) return null;
+    const frags = Array.isArray(s.frags) ? s.frags.filter((f) => ok(f, 16) && /^[NSEW0-9°.'… ]+$/.test(f)) : [];
+    return { ...s, frags: frags.length === 4 ? frags : [], items: ['scrap0', 'scrap1', 'scrap2', 'scrap3'] };
+  } catch (e) { return null; }
+})();
 if (FROM_DOOR) { gate.style.display = 'none'; fadeEl.classList.add('from-door'); }
 
 let renderer = null;
@@ -632,12 +648,13 @@ const shadowTex = (() => {
 const deskShadow = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.9), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
 deskShadow.rotation.x = -Math.PI / 2; deskShadow.position.set(0, 0.012, -0.35); desk.add(deskShadow);
 
-// three crumpled rejects near the walls — each unfolds into a draft with TWO answers
+// three crumpled rejects near the walls — each unfolds into a draft with TWO answers.
+// In a GUEST ROOM they are four crumpled scraps instead, each holding a piece of the note.
 const rejects = [];
-[[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z], i) => {
+(GUEST ? [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5], [2.6, 2.7]] : [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]]).forEach(([x, z], i) => {
   const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), M.paperB);
   w.position.set(x, 0.07, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
-  w.userData = { kind: 'reject', idx: i, label: 'A crumpled page' };
+  w.userData = GUEST ? { kind: 'scrap', idx: i, label: GUEST.scrapLabel } : { kind: 'reject', idx: i, label: 'A crumpled page' };
   rejects.push(w);
 });
 
@@ -2234,9 +2251,11 @@ function openWordbox(key) {
   // to see which doors people even try. Extra is the target key; server sanitizes.
   psEvent(PS_EV.WORDBOX_OPEN, key);
   psTouch('wordbox-' + key);
+  if (GUEST && key === 'door2') { guestDoorLine(); return; }
   keeper(DOORS[key].vo);
 }
 function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
+function sayEntry() { if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else keeper('entry'); }
 // Dismissed without a true word — the "gave up at this door" signal. Success paths call
 // closeWordbox() directly and never reach this.
 function dismissWordbox() {
@@ -2282,7 +2301,11 @@ async function submitWord() {
   if (j.ok) holdReward(j.act, j.rewardUrl);       // any true word banks its gift
   if (j.ok && j.act === D.act) {
     const key = wbTarget;
-    if (key === 'first') { closeWordbox(); openReward('I'); return; }
+    if (key === 'first') {
+      closeWordbox();
+      if (j.room && j.room.id && !GUEST) { try { sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(j.room)); } catch (e) {} location.replace('/vault?from=door&act=I'); return; }
+      openReward('I'); return;
+    }
     if (key === 'fourth') {
       fourthWord = wbWord;                              // in-memory proof for this session
       try { if (Array.isArray(j.lines) && j.lines.length) { localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); drawLetters(); } } catch (e) {}
@@ -2462,6 +2485,7 @@ function activate(kind, hitObj) {
   }
   if (kind === 'say') {
     const u = hitObj && hitObj.userData || {};
+    if (GUEST && u.say === 'board') { goThen(1.9, -2.6, () => openScrapBoard()); return; }
     showCaption(STUDY_SAY[u.say] || '…', 5600);
     if (u.found) markFound(u.found);
     return;
@@ -2475,6 +2499,7 @@ function activate(kind, hitObj) {
     return;
   }
   if (kind === 'reject') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openDraft(w.userData.idx)); return; }
+  if (kind === 'scrap') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openScrap(w.userData.idx)); return; }
   if (kind === 'notebook') { goThen(-0.2, -1.9, () => openNotebook()); return; }
   if (kind === 'chartStudy') { goThen(2.3, -2.3, () => { showCaption(STUDY_SAY.chart, 8000); markFound('chart'); }); return; }
   if (kind === 'chair') { sitAtDesk(); return; }
@@ -2575,8 +2600,8 @@ function closeBookcase() {
    Object lines, the candle that stays snuffed, the Keeper's Notebook, three rejects that unfold
    into two-answer drafts, the discovery count, and the desk where today's page is played.
    Nothing here gates anything; no line may ever contain an answer word. */
-const STUDY_KEY = 'ps_study_v1';
-const STUDY_ITEMS = ['stack', 'p1', 'p4', 'p7', 'candle', 'quill', 'board', 'reject0', 'reject1', 'reject2', 'shelf', 'sconce', 'notebook', 'chart', 'desk'];
+const STUDY_KEY = GUEST ? 'ps_study_guest_v1' : 'ps_study_v1';
+const STUDY_ITEMS = GUEST ? GUEST.items : ['stack', 'p1', 'p4', 'p7', 'candle', 'quill', 'board', 'reject0', 'reject1', 'reject2', 'shelf', 'sconce', 'notebook', 'chart', 'desk'];
 let study = (() => { try { const v = JSON.parse(localStorage.getItem(STUDY_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } })();
 if (!Array.isArray(study.found)) study.found = [];
 function saveStudy() { try { localStorage.setItem(STUDY_KEY, JSON.stringify(study)); } catch (e) { /* private mode */ } }
@@ -2589,12 +2614,13 @@ function studyFound() {
 }
 function renderStudyCount() {
   const n = studyFound().size, m = STUDY_ITEMS.length;
-  studyCountEl.innerHTML = n >= m ? 'Every one of my things, found' : ('Found <b>' + n + '</b> of ' + m + ' in the study');
+  studyCountEl.innerHTML = GUEST ? (n >= m ? 'Every piece of the note, found' : ('Pieces found: <b>' + n + '</b> of ' + m))
+    : (n >= m ? 'Every one of my things, found' : ('Found <b>' + n + '</b> of ' + m + ' in the study'));
 }
 function markFound(id) {
   if (!STUDY_ITEMS.includes(id) || study.found.includes(id)) { renderStudyCount(); return; }
   study.found.push(id); saveStudy(); renderStudyCount();
-  if (studyFound().size >= STUDY_ITEMS.length) setTimeout(() => { showCaption('Every one of my things, and you touched them all. The study is yours as much as mine now.', 7000); burstConfetti(); }, 900);
+  if (studyFound().size >= STUDY_ITEMS.length) setTimeout(() => { showCaption(GUEST ? GUEST.allFound : 'Every one of my things, and you touched them all. The study is yours as much as mine now.', 7000); burstConfetti(); }, 900);
 }
 setCandle(study.candle !== 'out');
 renderStudyCount();
@@ -2657,6 +2683,75 @@ document.getElementById('draftA').addEventListener('click', () => { draftShow = 
 document.getElementById('draftB').addEventListener('click', () => { draftShow = 'b'; drawDraft(); });
 function markDraftBtns() { document.getElementById('draftA').setAttribute('aria-pressed', String(draftShow === 'a')); document.getElementById('draftB').setAttribute('aria-pressed', String(draftShow === 'b')); }
 document.getElementById('draftClose').addEventListener('click', () => { draftEl.hidden = true; });
+
+/* ================= THE GUEST ROOM (2026-09-24) =================
+   Built only when GUEST is set (see the top of the file). Four scraps replace the three
+   rejects; each unfolds into a piece of the note the Keeper tore; the pinboard holds the
+   pieces in four fixed slots with the whole line and a copy button, because a caption that
+   fades in six seconds is no use on a hillside. Every string here came from the server with
+   the word; nothing is written with innerHTML. Door II is the way on, and for a guest it says
+   plainly that it wants a word from the book. */
+const scrapKick = document.getElementById('scrapKick'), scrapText = document.getElementById('scrapText'),
+  scrapBoard = document.getElementById('scrapBoard'), scrapSlots = document.getElementById('scrapSlots'),
+  scrapFull = document.getElementById('scrapFull'), scrapCopy = document.getElementById('scrapCopy'), scrapSay = document.getElementById('scrapSay');
+const SLOT_HINTS = ['north, degrees', 'north, the rest', 'west, degrees', 'west, the rest'];
+function scrapsFound() { return GUEST ? GUEST.items.filter((id) => study.found.includes(id)) : []; }
+function fullPosition() { const f = GUEST.frags; return f.length === 4 ? (f[0] + f[1].replace(/^[NSEW]\s*…?/, '') + '  ' + f[2] + f[3].replace(/^[NSEW]\s*…?/, '')) : ''; }
+function showScrapOverlay() { draftEl.classList.add('scrap'); draftEl.hidden = false; }
+function openScrap(idx) {
+  if (!GUEST) return;
+  if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
+  scrapBoard.hidden = true;
+  scrapKick.textContent = 'A PIECE OF THE NOTE · ' + (idx + 1) + ' OF 4';
+  scrapText.textContent = GUEST.frags[idx] || '';
+  scrapSay.textContent = GUEST.scrapLine;
+  showScrapOverlay();
+  markFound('scrap' + idx);
+  psEventOnce(PS_EV.PAGE_REJECTS);        // a page read — the same line a reject sends
+  psTouch('rejects');
+}
+function openScrapBoard() {
+  if (!GUEST) return;
+  const have = scrapsFound();
+  scrapKick.textContent = 'THE PINBOARD';
+  scrapText.textContent = '';
+  scrapSlots.innerHTML = '';
+  GUEST.items.forEach((id, i) => {
+    const el = document.createElement('i');
+    if (have.includes(id) && GUEST.frags[i]) { el.textContent = GUEST.frags[i]; }
+    else { el.textContent = SLOT_HINTS[i]; el.classList.add('empty'); }
+    scrapSlots.appendChild(el);
+  });
+  const all = have.length === 4 && GUEST.frags.length === 4;
+  scrapFull.textContent = all ? fullPosition() : '';
+  scrapCopy.hidden = !all;
+  scrapBoard.hidden = false;
+  scrapSay.textContent = all ? GUEST.allFound : (have.length ? 'Pinned. ' + (4 - have.length) + ' still to find.' : GUEST.boardEmpty);
+  showScrapOverlay();
+  markFound('board');
+}
+scrapCopy.addEventListener('click', async () => {
+  const s = fullPosition(); if (!s) return;
+  try { await navigator.clipboard.writeText(s); scrapCopy.textContent = 'Copied'; scrapCopy.dataset.done = '1'; }
+  catch (e) { scrapCopy.textContent = 'Select and copy the line above'; }
+  setTimeout(() => { scrapCopy.textContent = 'Copy the position'; delete scrapCopy.dataset.done; }, 2600);
+});
+document.getElementById('scrapClose').addEventListener('click', () => { draftEl.hidden = true; draftEl.classList.remove('scrap'); });
+document.getElementById('draftClose').addEventListener('click', () => { draftEl.classList.remove('scrap'); });
+function guestDoorLine() {
+  document.getElementById('wbKicker').textContent = GUEST.door2Kicker;
+  const line = document.getElementById('wbLine');
+  line.textContent = GUEST.door2Line + ' ';
+  const a = document.createElement('a'); a.href = GUEST.door2LinkHref; a.textContent = GUEST.door2LinkText; a.className = 'wb-book';
+  line.appendChild(a);
+  showCaption(GUEST.door2Line, 9000);
+}
+if (GUEST) {
+  DOORS.door2.kicker = GUEST.door2Kicker;
+  // A guest who arrived without the door and spoke the word at the desk: the room is rebuilt as theirs.
+  // (submitWord stashes the room; here we only need the flag for the first-word box's wording.)
+  DOORS.first.kicker = 'THE MAGAZINE\'S WORD';
+}
 /* --- the Keeper's Notebook: six pages --- */
 /* NOTEBOOK comes from ../lib/lore.js. */
 const nbEl = document.getElementById('notebook'), nbBody = document.getElementById('nbBody'), nbPrev = document.getElementById('nbPrev'), nbNext = document.getElementById('nbNext');
@@ -2799,9 +2894,9 @@ function begin(withAudio) {
   fadeEl.classList.add('clear');
   if (withAudio) {
     initAudio(); startAmbient(); playBoom();
-    setTimeout(() => keeper('entry'), 1300);
+    setTimeout(() => sayEntry(), 1300);
   } else {
-    showCaption(VO.entry.text, 6500);
+    if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else showCaption(VO.entry.text, 6500);
   }
   setTimeout(() => { hintEl.style.opacity = '1'; }, 2500);
 }
@@ -2815,7 +2910,7 @@ if (FROM_DOOR) {
   const wake = () => {
     unlockVO(); initAudio(); startAmbient();
     hintEl.textContent = IS_TOUCH ? 'Drag to look · hold the floor to walk · tap what glows' : 'Drag to look around · Tap the floor to walk · Click what glows';
-    setTimeout(() => keeper('entry'), 400);
+    setTimeout(() => sayEntry(), 400);
   };
   addEventListener('pointerdown', wake, { once: true });
   addEventListener('keydown', wake, { once: true });
@@ -3417,7 +3512,7 @@ function tick(dt) {
   if (!exitSaid && entered && zp < -4.2 && zp > -7.0) {
     exitSaid = true;
     const left = STUDY_ITEMS.length - studyFound().size;
-    if (left > 0) showCaption(STUDY_SAY.exit(left), 5600);
+    if (left > 0) showCaption(GUEST ? GUEST.exit.replace('{n}', String(left)) : STUDY_SAY.exit(left), 5600);
   }
   if (!seenLib && zp < -8.0) { seenLib = true; keeper('libentry'); }
   if (!seenV3 && zp < -20.2) { seenV3 = true; keeper('v3entry'); }

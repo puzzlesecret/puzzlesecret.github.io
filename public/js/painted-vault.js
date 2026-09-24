@@ -21,6 +21,22 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } },
   };
   const VAULT_KEY = 'ps_vaults_v1', STORY_KEY = 'ps_story_v1', TILE_KEY = 'ps_tiles_v1', ROOM_KEY = 'ps_room_state_v1';
+  /* A GUEST ROOM (an outlet's own story inside Vault I) — exists only when /api/unlock handed this
+     tab a `room` on that outlet's word. Nothing in the URL switches it on. Mirrors vault3d.js. */
+  const GUEST = (() => {
+    try {
+      const s = JSON.parse(sessionStorage.getItem('ps_guest_room_v1') || 'null');
+      if (!s || typeof s !== 'object' || !/^[a-z]{2,16}$/.test(String(s.id || ''))) return null;
+      const ok = (v, max) => typeof v === 'string' && v.length <= max;
+      for (const k of ['entry', 'scrapLabel', 'scrapLine', 'allFound', 'retired', 'boardEmpty', 'exit', 'door2Kicker', 'door2Line', 'door2LinkText']) if (!ok(s[k], 400)) return null;
+      if (!/^\/[a-z0-9\-\/]{0,40}$/.test(String(s.door2LinkHref || ''))) return null;
+      const frags = Array.isArray(s.frags) ? s.frags.filter((f) => ok(f, 16) && /^[NSEW0-9°.'… ]+$/.test(f)) : [];
+      return Object.assign({}, s, { frags: frags.length === 4 ? frags : [] });
+    } catch (e) { return null; }
+  })();
+  const GUEST_FOUND_KEY = 'ps_study_guest_v1';
+  function guestFound() { try { const v = JSON.parse(localStorage.getItem(GUEST_FOUND_KEY) || '{}'); return Array.isArray(v.found) ? v.found : []; } catch (e) { return []; } }
+  function guestMark(id) { try { const v = JSON.parse(localStorage.getItem(GUEST_FOUND_KEY) || '{}'); const f = Array.isArray(v.found) ? v.found : []; if (!f.includes(id)) f.push(id); localStorage.setItem(GUEST_FOUND_KEY, JSON.stringify({ found: f })); } catch (e) {} }
 
   /* ================= the rooms ================= */
   // Coordinates are percentages of the 900x503 paintings (public/art/rooms/*.webp).
@@ -37,10 +53,17 @@
         { id: 'stack', x: 53, y: 47, w: 13, h: 15, label: "Take the Keeper's gift", act: 'reward', arg: 'I' },
         { id: 'candle', x: 65, y: 44, w: 6, h: 13, label: 'A candle', act: 'candle' },
         { id: 'quill', x: 37, y: 47, w: 6, h: 11, label: 'Quill and ink', act: 'say', arg: 'quill' },
-        { id: 'board', x: 60, y: 24, w: 17, h: 22, label: 'A pinboard of grids', act: 'say', arg: 'board' },
-        { id: 'reject0', x: 27, y: 73, w: 5, h: 6, label: 'A crumpled page', act: 'draft', arg: 0 },
-        { id: 'reject1', x: 60, y: 84, w: 6, h: 6, label: 'A crumpled page', act: 'draft', arg: 1 },
-        { id: 'reject2', x: 17, y: 88, w: 6, h: 6, label: 'A crumpled page', act: 'draft', arg: 2 },
+        { id: 'board', x: 60, y: 24, w: 17, h: 22, label: 'A pinboard of grids', act: GUEST ? 'scrapboard' : 'say', arg: 'board' },
+        ...(GUEST ? [
+          { id: 'scrap0', x: 27, y: 73, w: 5, h: 6, label: GUEST.scrapLabel, act: 'scrap', arg: 0 },
+          { id: 'scrap1', x: 60, y: 84, w: 6, h: 6, label: GUEST.scrapLabel, act: 'scrap', arg: 1 },
+          { id: 'scrap2', x: 17, y: 88, w: 6, h: 6, label: GUEST.scrapLabel, act: 'scrap', arg: 2 },
+          { id: 'scrap3', x: 78, y: 78, w: 6, h: 6, label: GUEST.scrapLabel, act: 'scrap', arg: 3 },
+        ] : [
+          { id: 'reject0', x: 27, y: 73, w: 5, h: 6, label: 'A crumpled page', act: 'draft', arg: 0 },
+          { id: 'reject1', x: 60, y: 84, w: 6, h: 6, label: 'A crumpled page', act: 'draft', arg: 1 },
+          { id: 'reject2', x: 17, y: 88, w: 6, h: 6, label: 'A crumpled page', act: 'draft', arg: 2 },
+        ]),
         { id: 'shelf', x: 85, y: 33, w: 10, h: 30, label: "The Keeper's shelves", act: 'say', arg: 'shelf' },
         { id: 'passage', x: 46, y: 26, w: 9, h: 24, label: 'A passage, deeper in', act: 'door', arg: 'door2' },
         { id: 'p1', page: 1, x: 31, y: 80, w: 6, h: 7 },
@@ -545,6 +568,8 @@
       case 'game': if (h.arg === 'round') startRound(); else openLock(); break;
       case 'register': openRegister(); break;
       case 'draft': openDraft(h.arg); break;
+      case 'scrap': openScrap(h.arg); break;
+      case 'scrapboard': openScrapBoard(); break;
       case 'letters': openLetters(); break;
       case 'stair': say('stair', 4000); playCreak(1.2); setTimeout(() => enterRoom('III'), 700); break;
     }
@@ -607,6 +632,12 @@
     wbMsg.textContent = ''; renderTiles(); wordboxEl.hidden = false;
     wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; try { wbInput.focus({ preventScroll: true }); } catch (err) {}
     try { window.psEvent && window.psEvent('wordbox.open', key); } catch (e) {}
+    if (GUEST && key === 'door2') {
+      $('wbKicker').textContent = GUEST.door2Kicker;
+      const line = $('wbLine'); line.textContent = GUEST.door2Line + ' ';
+      const a = document.createElement('a'); a.href = GUEST.door2LinkHref; a.textContent = GUEST.door2LinkText; a.className = 'wb-book'; line.appendChild(a);
+      caption(GUEST.door2Line, 9000); return;
+    }
     keeper(DOORS[key].vo);
   }
   function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
@@ -957,7 +988,48 @@
   }
   $('draftA').addEventListener('click', () => { draftShow = 'a'; drawDraft(); });
   $('draftB').addEventListener('click', () => { draftShow = 'b'; drawDraft(); });
-  $('draftClose').addEventListener('click', () => { $('draft').hidden = true; });
+  $('draftClose').addEventListener('click', () => { $('draft').hidden = true; $('draft').classList.remove('scrap'); });
+
+  /* ---- THE GUEST ROOM's torn note — same #draft overlay, the .scrap class flips what it shows ---- */
+  const SLOT_HINTS = ['north, degrees', 'north, the rest', 'west, degrees', 'west, the rest'];
+  function fullPosition() { const f = GUEST.frags; return f.length === 4 ? (f[0] + f[1].replace(/^[NSEW]\s*…?/, '') + '  ' + f[2] + f[3].replace(/^[NSEW]\s*…?/, '')) : ''; }
+  function showScrap() { $('draft').classList.add('scrap'); $('draft').hidden = false; }
+  function openScrap(idx) {
+    if (!GUEST) return;
+    if (!GUEST.frags.length) { caption(GUEST.retired, 7000); return; }
+    $('scrapBoard').hidden = true;
+    $('scrapKick').textContent = 'A PIECE OF THE NOTE · ' + (idx + 1) + ' OF 4';
+    $('scrapText').textContent = GUEST.frags[idx] || '';
+    $('scrapSay').textContent = GUEST.scrapLine;
+    showScrap(); guestMark('scrap' + idx);
+    try { window.psEventOnce && window.psEventOnce('page.rejects'); } catch (e) {}
+    playThud(70, 45, 0.12, 0.2);
+    if (guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length >= 4) setTimeout(() => caption(GUEST.allFound, 8000), 900);
+  }
+  function openScrapBoard() {
+    if (!GUEST) return;
+    const have = guestFound();
+    $('scrapKick').textContent = 'THE PINBOARD'; $('scrapText').textContent = '';
+    const slots = $('scrapSlots'); slots.innerHTML = '';
+    ['scrap0', 'scrap1', 'scrap2', 'scrap3'].forEach((id, i) => {
+      const el = document.createElement('i');
+      if (have.includes(id) && GUEST.frags[i]) el.textContent = GUEST.frags[i]; else { el.textContent = SLOT_HINTS[i]; el.classList.add('empty'); }
+      slots.appendChild(el);
+    });
+    const got = have.filter((i) => /^scrap[0-3]$/.test(i)).length, all = got === 4 && GUEST.frags.length === 4;
+    $('scrapFull').textContent = all ? fullPosition() : '';
+    $('scrapCopy').hidden = !all; $('scrapBoard').hidden = false;
+    $('scrapSay').textContent = all ? GUEST.allFound : (got ? 'Pinned. ' + (4 - got) + ' still to find.' : GUEST.boardEmpty);
+    showScrap();
+  }
+  $('scrapCopy').addEventListener('click', async () => {
+    const s = GUEST ? fullPosition() : ''; if (!s) return;
+    const b = $('scrapCopy');
+    try { await navigator.clipboard.writeText(s); b.textContent = 'Copied'; b.dataset.done = '1'; } catch (e) { b.textContent = 'Select and copy the line above'; }
+    setTimeout(() => { b.textContent = 'Copy the position'; delete b.dataset.done; }, 2600);
+  });
+  $('scrapClose').addEventListener('click', () => { $('draft').hidden = true; $('draft').classList.remove('scrap'); });
+  if (GUEST) DOORS.door2.kicker = GUEST.door2Kicker;
 
   /* ---- confetti (shared canvas) ---- */
   const conf = $('confetti'); const cg = conf.getContext('2d'); let confParts = [], confRaf = false;
@@ -990,7 +1062,8 @@
     // the gate: the study painting, one button
     const fromDoor = qs.get('from') === 'door' || Object.keys(opened).length > 0;
     $('pvGateKicker').textContent = fromDoor ? 'THE WORD WAS TRUE' : 'THE KEEPER’S VAULTS';
-    $('pvGateLine').textContent = fromDoor ? 'The first door stands open. Two more wait in the dark — each sealed with a word.' : 'Step in. The first room is open to anyone who knocks; the doors beyond are sealed with the book’s words.';
+    $('pvGateLine').textContent = GUEST ? (GUEST.frags.length ? GUEST.entry : GUEST.retired)
+      : fromDoor ? 'The first door stands open. Two more wait in the dark — each sealed with a word.' : 'Step in. The first room is open to anyone who knocks; the doors beyond are sealed with the book’s words.';
     $('pvEnter').addEventListener('click', () => {
       unlockVO(); initAudio(); if (actx && actx.state === 'suspended') actx.resume();
       startAmbient();

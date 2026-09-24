@@ -89,6 +89,22 @@ import Analytics from '@vercel/analytics/astro';
         <button id="draftClose" class="ghost-btn">Crumple it again →</button>
       </div>
     </div>
+    <!-- A GUEST ROOM's torn note (an outlet's own story inside Vault I). Same overlay, so the pointer gate and the
+         Back button already know it; shown only when #draft carries the .scrap class, which only a guest room sets. -->
+    <div class="scrap-wrap" aria-live="polite">
+      <div class="scrap" id="scrapNote">
+        <div class="scrap-kick" id="scrapKick">A PIECE OF THE NOTE</div>
+        <div class="scrap-text" id="scrapText"></div>
+        <div class="scrap-board" id="scrapBoard" hidden>
+          <div class="scrap-slots" id="scrapSlots"></div>
+          <div class="scrap-full" id="scrapFull"></div>
+          <button id="scrapCopy" class="ghost-btn" type="button">Copy the position</button>
+          <p class="scrap-note-p">The pieces stay pinned for this visit. If you lose them, speak the word again and they come back.</p>
+        </div>
+        <p class="scrap-say" id="scrapSay"></p>
+      </div>
+      <button id="scrapClose" class="ghost-btn" type="button">Fold it away →</button>
+    </div>
   </div>
 
   <!-- THE KEEPER'S ROUND: a HUD strip, not an overlay (the room itself is the game) -->
@@ -561,6 +577,29 @@ import Analytics from '@vercel/analytics/astro';
       .draft-side { width: 100%; padding: 16px; }
     }
     @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+
+    /* the guest room's torn note — CSS parchment, no image; shown only with #draft.scrap */
+    .scrap-wrap { display: none; flex-direction: column; align-items: center; gap: 14px; width: min(520px, 94vw); }
+    #draft.scrap .draft-wrap { display: none; }
+    #draft.scrap .scrap-wrap { display: flex; }
+    .scrap { position: relative; width: 100%; padding: 26px 26px 20px; color: #2c2011; text-align: center;
+      background: radial-gradient(120% 90% at 30% 20%, #f6efdd 0%, #eadfc2 55%, #d9c79e 100%);
+      clip-path: polygon(1% 4%, 12% 0%, 30% 3%, 52% 0%, 71% 4%, 88% 1%, 99% 6%, 100% 40%, 97% 62%, 100% 86%, 92% 100%, 70% 97%, 48% 100%, 27% 96%, 9% 100%, 0% 88%, 2% 58%, 0% 30%);
+      box-shadow: 0 24px 60px rgba(0,0,0,.8); animation: pageLift .42s cubic-bezier(.2,.8,.25,1) both; }
+    .scrap::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35;
+      background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(90,64,26,.12) 22px 23px); }
+    .scrap-kick { font-family: Cinzel, serif; font-size: clamp(9px, 1.2vw, 12px); letter-spacing: .32em; color: #6b4d1f; margin-bottom: 10px; }
+    .scrap-text { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(26px, 6vw, 44px); letter-spacing: .06em; color: #1a1208; line-height: 1.15; white-space: nowrap; }
+    .scrap-say { font-size: 15px; font-style: italic; line-height: 1.45; margin: 14px 0 0; }
+    .scrap-board { margin-top: 6px; }
+    .scrap-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
+    .scrap-slots i { font-style: normal; font-family: Cinzel, serif; font-weight: 700; font-size: clamp(15px, 3.2vw, 22px); padding: 10px 6px; border: 1px dashed rgba(90,64,26,.55); border-radius: 3px; background: rgba(255,252,244,.5); color: #1a1208; min-height: 44px; }
+    .scrap-slots i.empty { color: rgba(90,64,26,.45); font-weight: 400; font-size: 13px; letter-spacing: .2em; }
+    .scrap-full { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(16px, 3.6vw, 24px); letter-spacing: .04em; margin: 4px 0 10px; color: #1a1208; }
+    .scrap-note-p { font-size: 13px; font-style: italic; color: #5a4a2a; margin: 10px 0 0; }
+    .scrap-wrap .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.45); }
+    #scrapCopy[data-done="1"] { background: rgba(246,178,60,.35); color: #2c2011; border-color: #b8760c; }
+    .wb-book { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .nb-card { animation: none; } }
 
     #confetti { position: fixed; inset: 0; z-index: 18; pointer-events: none; }

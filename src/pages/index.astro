@@ -763,6 +763,9 @@ const HOME_LD = {
         misses = 0;
         // the gift's address — handed out only for a true word, kept in this browser
         try { const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { r[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(r)); } } catch (e) {}
+        // A GUEST ROOM (an outlet's own story inside Vault I) arrives only from the server, only on that
+        // outlet's word. It is kept for this tab and read by the vault; a book word clears any stale one.
+        try { if (data.room && data.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(data.room)); else sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {}
         const form = document.getElementById('tileForm');
         slot?.querySelectorAll('.entry-hint').forEach((h) => { h.style.display = 'none'; });
         if (form) form.style.display = 'none';
