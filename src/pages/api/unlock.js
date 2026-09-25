@@ -49,9 +49,8 @@ const HASHES = {
   '179d3b60d2b445d5ef073dfea5ddc3b401fce6779eceed81a11912de85ce03db': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Magazin Mensa (CZ)' },
   // PinPoint Magazine (UK) — the first GUEST ROOM: the same study, but the story in it is theirs.
   // `room` names a server-side profile below; the client never sees a room it was not handed.
-  '3c56e6159c0fec889a080176b76dd426fcf17ec8ad8bda5ff7825d2d616b5b5d': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'PinPoint (UK)', room: 'pinpoint' },
-  // Option 2 of the same PinPoint puzzle (letters come out scrambled). Same room; the label tells
-  // Dan's Telegram log which option a visitor solved.
+  // Option 1 (letters in order) was retired 2026-09-25: Andy was sent only the scrambled option,
+  // and the old word must not let anyone skip the puzzle.
   'cc3add48447d981efee6152fa44a730b97e557880f814e62b9562ac8793f8e52': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'PinPoint (UK), option 2', room: 'pinpoint' },
 };
 
