@@ -49,7 +49,7 @@ const HASHES = {
   '179d3b60d2b445d5ef073dfea5ddc3b401fce6779eceed81a11912de85ce03db': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Magazin Mensa (CZ)' },
   // PinPoint Magazine (UK) — the first GUEST ROOM: the same study, but the story in it is theirs.
   // `room` names a server-side profile below; the client never sees a room it was not handed.
-  'bae2ab8d0defd71696aa10075aff53803604ca7abe82d28fe688a419b28ea154': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'PinPoint (UK)', room: 'pinpoint' },
+  '3c56e6159c0fec889a080176b76dd426fcf17ec8ad8bda5ff7825d2d616b5b5d': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'PinPoint (UK)', room: 'pinpoint' },
 };
 
 // ── GUEST ROOMS ──────────────────────────────────────────────────────────
