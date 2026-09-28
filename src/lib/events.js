@@ -21,6 +21,8 @@
 // which lets Dan search Telegram for a tag and read a visit top to bottom.
 
 // ── Client events (browser may POST /api/event with these) ─────────────────
+import { PLACEMENTS } from './placements.js';
+
 export const CLIENT_EV = Object.freeze({
   // arrival — the very first line of a story
   ARRIVE:           'arrive',              // once per session; extra = "<page> from <site> · phone"
@@ -217,11 +219,16 @@ export function keeperLine(ev, extra, tag, place) {
 // own clients produce — fixed vocabularies and digits — or it is dropped (the event still
 // goes through, just without its extra). Nothing here can spell a hostname.
 const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|sudoku-cheat-sheet|daily|unsubscribed|404)';
-const SOURCES = '(pinterest|youtube|tiktok|instagram|facebook|threads|reddit|x|linkedin|google|bing|duckduckgo|yahoo|brave|ecosia|chatgpt|perplexity|claude|gemini|amazon|mensa|another site)';
+// Generic sites by kind, then every outlet in the placement registry by its fixed id. An unknown
+// site may carry its country ending (".uk") — two letters, which cannot form a link.
+export const GENERIC_SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'x', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'email'];
+const SOURCES = '(' + GENERIC_SOURCES.concat(PLACEMENTS.map((p) => p.id)).join('|') + '|another site( \\.[a-z]{2})?)';
 const ROOMS = '(the study|the library|the treasure room|the sanctum)';
 const DOORS = '(first|door2|door3|fourth)';
 export const EXTRA_RULES = Object.freeze({
-  [CLIENT_EV.ARRIVE]:          new RegExp('^' + PAGES + '( from (utm [a-z0-9_]{1,16}|direct|' + SOURCES + '))? · (phone|desktop)$'),
+  // "<page>[ from <src>] · <device>[ · first visit|visit 2..9|visit 10 or more][ · N vaults opened][ · en-GB][ · keeper]"
+  // — the tail parts are optional so a browser still holding the old events.js keeps reporting.
+  [CLIENT_EV.ARRIVE]:          new RegExp('^' + PAGES + '( from (utm [a-z0-9_]{1,16}|direct|' + SOURCES + '))? · (phone|tablet|desktop)( · (first visit|visit [2-9]|visit 10 or more))?( · [1-4] vaults? opened)?( · [a-z]{2}(-[A-Z]{2})?)?( · keeper)?$'),
   [CLIENT_EV.PAGE_VIEW]:       new RegExp('^' + PAGES + '$'),
   [CLIENT_EV.WORDBOX_OPEN]:    new RegExp('^' + DOORS + '$'),
   [CLIENT_EV.WORDBOX_CLOSE]:   new RegExp('^' + DOORS + ' (without a guess|after \\d{1,2} miss(es)?)$'),
@@ -235,13 +242,13 @@ export const EXTRA_RULES = Object.freeze({
   [CLIENT_EV.SESSION_DEPTH]:   new RegExp('^(3D|painted) · \\d{1,3} rooms · \\d{1,4}m · last ' + ROOMS + '$'),
 });
 // Length caps — a pre-slice before the grammar, so a 10 KB body never reaches a regex.
-export const EXTRA_ALLOWED = Object.freeze(Object.fromEntries(Object.keys(EXTRA_RULES).map((k) => [k, 64])));
+export const EXTRA_ALLOWED = Object.freeze(Object.fromEntries(Object.keys(EXTRA_RULES).map((k) => [k, k === CLIENT_EV.ARRIVE ? 120 : 64])));
 
 // The only way an extra gets into a line. Returns '' for any event without a rule, any
 // extra that fails its rule, or any non-string.
 export function validExtra(ev, raw) {
   const rule = EXTRA_RULES[ev];
   if (!rule || typeof raw !== 'string') return '';
-  const s = raw.slice(0, 64);
+  const s = raw.slice(0, EXTRA_ALLOWED[ev] || 64);
   return rule.test(s) ? s : '';
 }

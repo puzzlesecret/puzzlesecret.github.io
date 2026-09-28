@@ -71,7 +71,9 @@
 
   function payload(ev, extra) {
     var body = { vid: psVid(), ev: ev };
-    if (extra != null) body.extra = String(extra).slice(0, 64);
+    // The server caps `arrive` at 120 and everything else at 64 (src/lib/events.js EXTRA_ALLOWED). A cut
+    // mid-word fails the grammar and loses the whole extra, so the two caps must match.
+    if (extra != null) body.extra = String(extra).slice(0, ev === CLIENT_EV.ARRIVE ? 120 : 64);
     return JSON.stringify(body);
   }
 
@@ -142,24 +144,180 @@
   }
   // The referring SITE, as one word from a fixed list — never a hostname. (The server
   // enforces the same list; a raw domain would be dropped there, and Telegram would
-  // otherwise turn it into a tappable link.)
-  var SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'linkedin', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa'];
+  // otherwise turn it into a tappable link.) Every rule matches the real domain, never a
+  // fragment of a name, so plumbingsupply.co.uk is not "bing" and us.mensa.org is not our Mensa.
+  var SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'x', 'email'];
+  var DOMAIN_RULES = [
+    ['email',        /^(mail\.google\.com|outlook\.(live|office|office365)\.com|mail\.yahoo\.com|mail\.aol\.com|mail\.proton\.me|mail\.zoho\.com|webmail\..+|.+\.safelinks\.protection\.outlook\.com)$/],
+    ['gemini',       /(^|\.)gemini\.google\.com$/],
+    ['google',       /(^|\.)google\.[a-z.]{2,6}$/],
+    ['bing',         /(^|\.)bing\.com$/],
+    ['duckduckgo',   /(^|\.)duckduckgo\.com$/],
+    ['yahoo',        /(^|\.)yahoo\.[a-z.]{2,6}$/],
+    ['brave',        /(^|\.)search\.brave\.com$/],
+    ['ecosia',       /(^|\.)ecosia\.org$/],
+    ['chatgpt',      /(^|\.)(chatgpt\.com|chat\.openai\.com)$/],
+    ['perplexity',   /(^|\.)perplexity\.ai$/],
+    ['claude',       /(^|\.)claude\.ai$/],
+    ['pinterest',    /(^|\.)(pinterest\.[a-z.]{2,6}|pin\.it)$/],
+    ['youtube',      /(^|\.)(youtube\.com|youtu\.be)$/],
+    ['tiktok',       /(^|\.)tiktok\.com$/],
+    ['instagram',    /(^|\.)instagram\.com$/],
+    ['facebook',     /(^|\.)(facebook\.com|fb\.com|fb\.me)$/],
+    ['messenger',    /(^|\.)messenger\.com$/],
+    ['threads',      /(^|\.)threads\.(net|com)$/],
+    ['reddit',       /(^|\.)(reddit\.com|redd\.it)$/],
+    ['x',            /(^|\.)(x\.com|twitter\.com|t\.co)$/],
+    ['linkedin',     /(^|\.)(linkedin\.com|lnkd\.in)$/],
+    ['whatsapp',     /(^|\.)(whatsapp\.com|wa\.me)$/],
+    ['telegram',     /(^|\.)(telegram\.org|t\.me)$/],
+    ['amazon',       /(^|\.)(amazon\.[a-z.]{2,6}|amzn\.to)$/],
+    ['mensa',        /(^|\.)mensa\.cz$/],
+    ['goodreads',    /(^|\.)goodreads\.com$/],
+    ['librarything', /(^|\.)librarything\.com$/],
+    ['bookbub',      /(^|\.)bookbub\.com$/],
+    ['substack',     /(^|\.)substack\.com$/],
+  ];
+  // Mirror of src/lib/placements.js (host → id). scripts/verify-events.js fails if they drift.
+  var PLACEMENT_HOSTS = Object.freeze({
+    'miowandmolly.com': 'miowandmolly',
+    'mysteriouswritings.com': 'mysteriouswritings',
+    'wordsandpeace.com': 'wordsandpeace',
+    'sarcasticallyyoursjen.com': 'sarcasticallyyours',
+    'pinpointmag.co.uk': 'pinpoint',
+    'thegeocachingpodcast.com': 'geocachingpodcast',
+    'bigpinekey.com': 'bigpinekey',
+    'thedailynewsonline.com': 'batavianews',
+    'livingstonnews.com': 'batavianews',
+    'thelcn.com': 'batavianews',
+    'treasureclub.net': 'treasureclub',
+    'roomescapeartist.com': 'roomescapeartist',
+    'theescapeeffect.com': 'escapeeffect',
+    'escapetheroomers.com': 'escapetheroomers',
+    'cluedinmystery.substack.com': 'cluedinmystery',
+    'cluedinmystery.com': 'cluedinmystery',
+    'readersfavorite.com': 'readersfavorite',
+    'escapepuzzler.com': 'escapepuzzler',
+    'escapethereview.co.uk': 'escapethereview',
+    'crimefictionlover.com': 'crimefictionlover',
+    'theescaperoomer.com': 'escaperoomer',
+    'artisanalsudoku.substack.com': 'artisanalsudoku',
+    'escapeauthority.com': 'escapeauthority',
+    'geekdad.com': 'geekdad',
+    'geekyhobbies.com': 'geekyhobbies',
+    'virtualbrainhealthcenter.com': 'brainhealth',
+    'dailycaring.com': 'dailycaring',
+    'buffalospree.com': 'buffalospree',
+    'geeksofdoom.com': 'geeksofdoom',
+    'cinelinx.com': 'cinelinx',
+    'thrivinghomeblog.com': 'thrivinghome',
+    'beenews.com': 'beenews',
+    'katherinemartinko.ca': 'analogfamily',
+    'everyday-reading.com': 'everydayreading',
+    'modernmrsdarcy.com': 'modernmrsdarcy',
+    'dannypettry.com': 'rectherapy',
+    'chalkdustmagazine.com': 'chalkdust',
+    'aperiodical.com': 'aperiodical',
+    'seniorsafetyadvice.com': 'seniorsafety',
+    'btpm.org': 'btpm',
+    'atlantaparent.com': 'atlantaparent',
+    'bookgirlsguide.com': 'bookgirlsguide',
+    'ncoa.org': 'ncoa',
+    'bookreporter.com': 'bookreporter',
+    'thesenior.com': 'thesenior',
+    'thesenior.com.au': 'thesenior',
+    'hoppier.com': 'hoppier',
+    'adventuregamespodcast.com': 'adventuregames',
+    'wheniwork.com': 'wheniwork',
+    'pbfingers.com': 'pbfingers',
+    'booksofbrilliance.com': 'booksofbrilliance',
+    'homecenteredlearning.com': 'homecentered',
+    'bookriot.com': 'bookriot',
+    'witwhimsy.com': 'witwhimsy',
+    'ptoanswers.com': 'ptoanswers',
+    'weareteachers.com': 'weareteachers',
+  });
   function sourceOf(host) {
-    if (/(^|\.)(x\.com|twitter\.com|t\.co)$/.test(host)) return 'x';
-    if (/(^|\.)fb\.com$/.test(host) || /^lm?\.facebook\.com$/.test(host)) return 'facebook';
-    if (/(^|\.)pin\.it$/.test(host)) return 'pinterest';
-    for (var i = 0; i < SOURCES.length; i++) if (host.indexOf(SOURCES[i]) !== -1) return SOURCES[i];
-    return 'another site';
+    for (var h in PLACEMENT_HOSTS) if (host === h || host.slice(-(h.length + 1)) === '.' + h) return PLACEMENT_HOSTS[h];
+    for (var i = 0; i < DOMAIN_RULES.length; i++) if (DOMAIN_RULES[i][1].test(host)) return DOMAIN_RULES[i][0];
+    // An unknown site keeps only its country ending (".uk", ".au") — never the name.
+    var tld = host.split('.').pop();
+    return /^[a-z]{2}$/.test(tld) ? 'another site .' + tld : 'another site';
   }
+  // Android apps announce themselves as android-app://<package>. The Gmail app's package holds
+  // "google", so mail apps are caught before anything reads it as a Google search.
+  var APP_RULES = [
+    ['email',     /^(com\.google\.android\.gm|com\.microsoft\.office\.outlook|com\.yahoo\.mobile\.client\.android\.mail)$|mail/],
+    ['google',    /^com\.google\.android\.googlequicksearchbox$/],
+    ['telegram',  /telegram/],
+    ['messenger', /^com\.facebook\.orca$/],
+    ['facebook',  /^com\.facebook\.katana$/],
+    ['instagram', /^com\.instagram\.android$/],
+    ['pinterest', /^com\.pinterest$/],
+    ['reddit',    /^com\.reddit\.frontpage$/],
+    ['whatsapp',  /^com\.whatsapp$/],
+    ['linkedin',  /^com\.linkedin\.android$/],
+    ['youtube',   /^com\.google\.android\.youtube$/],
+    ['x',         /^com\.twitter\.android$/],
+  ];
   function referrerName() {
     try {
       var utm = new URLSearchParams(location.search).get('utm_source');
       if (utm) return 'utm ' + utm.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 16);
-      if (!document.referrer) return 'direct';
-      var h = new URL(document.referrer).hostname.replace(/^www\./, '').toLowerCase();
+      // The vault's lock sends word-less visitors to the front door; it saves where they really came from.
+      var ref = document.referrer;
+      try { var kept = sessionStorage.getItem('ps_ref'); if (kept !== null) { ref = kept; sessionStorage.removeItem('ps_ref'); } } catch (e) {}
+      if (!ref) return 'direct';
+      var app = ref.match(/^android-app:\/\/([a-z0-9_.]+)/i);
+      if (app) {
+        var pkg = app[1].toLowerCase();
+        for (var j = 0; j < APP_RULES.length; j++) if (APP_RULES[j][1].test(pkg)) return APP_RULES[j][0];
+        return 'another site';
+      }
+      var h = new URL(ref).hostname.replace(/^www\./, '').toLowerCase();
       if (h === location.hostname.replace(/^www\./, '')) return 'inside';
       return sourceOf(h);
     } catch (e) { return 'direct'; }
+  }
+  // How many visits this browser has made (counted per session, kept on the device). A browser that
+  // already carries a solver tag from before the counter existed is "returning", not "first".
+  function visitLabel() {
+    try {
+      var n = parseInt(localStorage.getItem('ps_visits'), 10);
+      if (!n) n = localStorage.getItem('ps_vid') ? 1 : 0;   // seen before the counter shipped
+      n += 1;
+      localStorage.setItem('ps_visits', String(n));
+      return n === 1 ? 'first visit' : n >= 10 ? 'visit 10 or more' : 'visit ' + n;
+    } catch (e) { return ''; }
+  }
+  // How many vaults this browser has opened (the passport's own record) — a count, never the words.
+  // Guest keys open Vault I only, so the Keeper reads "owns the book" into two or more, never one.
+  function vaultsOpened() {
+    try {
+      var held = {}, a = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {}, b = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {};
+      ['I', 'II', 'III', 'IV'].forEach(function (k) { if (a[k] || b[k]) held[k] = 1; });
+      return Object.keys(held).length;
+    } catch (e) { return 0; }
+  }
+  // The browser's language setting, e.g. "en-GB". Two letters, then an optional two-letter region.
+  function language() {
+    try {
+      var parts = String(navigator.language || '').split('-');
+      if (!/^[a-z]{2}$/i.test(parts[0] || '')) return '';
+      var region = '';
+      for (var i = 1; i < parts.length; i++) if (/^[a-z]{2}$/i.test(parts[i])) { region = parts[i].toUpperCase(); break; }
+      return parts[0].toLowerCase() + (region ? '-' + region : '');
+    } catch (e) { return ''; }
+  }
+  // Dan's own devices: open any page once with ?keeper=me and this browser is marked "you" for good
+  // (?keeper=off removes it). It only changes how the Keeper labels this browser's own visits.
+  function keeperMark() {
+    try {
+      var k = new URLSearchParams(location.search).get('keeper');
+      if (k === 'me') localStorage.setItem('ps_keeper', '1');
+      if (k === 'off') localStorage.removeItem('ps_keeper');
+      return localStorage.getItem('ps_keeper') === '1';
+    } catch (e) { return false; }
   }
   function device() {
     try { return (matchMedia('(pointer: coarse)').matches && innerWidth < 900) ? 'phone' : 'desktop'; } catch (e) { return 'desktop'; }
@@ -175,7 +333,12 @@
     } catch (e) { /* private mode: treat every load as a first page */ }
     if (!first) { psEvent(CLIENT_EV.PAGE_VIEW, pageName()); return; }
     var from = referrerName();
-    psEvent(CLIENT_EV.ARRIVE, pageName() + (from === 'inside' ? '' : ' from ' + from) + ' · ' + device());
+    var visit = visitLabel(), v = vaultsOpened(), lang = language(), me = keeperMark();
+    psEvent(CLIENT_EV.ARRIVE, pageName() + (from === 'inside' ? '' : ' from ' + from) + ' · ' + device()
+      + (visit ? ' · ' + visit : '')
+      + (v ? ' · ' + v + (v > 1 ? ' vaults opened' : ' vault opened') : '')
+      + (lang ? ' · ' + lang : '')
+      + (me ? ' · keeper' : ''));
   }
 
   // ── automatic: Amazon click-through, any page ─────────────────────────────

@@ -15,10 +15,10 @@
 // Fail-safe by design: if env vars are missing or Telegram is down, every function here
 // silently no-ops. A notification must never break an unlock.
 
-const TOKEN = import.meta.env.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN;
-const CHAT = import.meta.env.TELEGRAM_CHAT_ID ?? process.env.TELEGRAM_CHAT_ID;
+const TOKEN = import.meta.env?.TELEGRAM_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN;
+const CHAT = import.meta.env?.TELEGRAM_CHAT_ID ?? process.env.TELEGRAM_CHAT_ID;
 // Local testing: TELEGRAM_DRYRUN=1 prints the message instead of sending it.
-const DRYRUN = (import.meta.env.TELEGRAM_DRYRUN ?? process.env.TELEGRAM_DRYRUN) === '1';
+const DRYRUN = (import.meta.env?.TELEGRAM_DRYRUN ?? process.env.TELEGRAM_DRYRUN) === '1';
 
 export function solverTag(vid) {
   // Client sends a random self-assigned id; show only 4 chars. Never an IP, never a name.
