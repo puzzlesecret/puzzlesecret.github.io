@@ -14,6 +14,26 @@ import Analytics from '@vercel/analytics/astro';
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- THE VAULT IS LOCKED WITHOUT A WORD (Dan's call 2026-09-28). A browser gets in only if it has
+       spoken a true word: the front door stores the server-issued gift address (ps_rewards_v1) before
+       it forwards here, and the vault stamps ps_vaults_v1. No word → back to the front door to type it.
+       Client-side on purpose: the gifts themselves are gated on the server (/api/reward); this only
+       stops a stranger wandering in. Storage that throws (private mode) fails OPEN so a true solver is
+       never stuck in a loop. Debug params (?cam / ?open / ?panel) skip it on localhost and previews only. -->
+  <script is:inline>
+    (function () {
+      try {
+        var h = location.hostname, q = new URLSearchParams(location.search);
+        var dev = h === 'localhost' || h === '127.0.0.1' || /\.vercel\.app$/.test(h);
+        if (dev && (q.has('cam') || q.has('open') || q.has('panel'))) return;
+        var has = function (k) { var v = JSON.parse(localStorage.getItem(k) || '{}'); return !!v && typeof v === 'object' && Object.keys(v).length > 0; };
+        if (has('ps_rewards_v1') || has('ps_vaults_v1')) return;
+        // Keep where they came from: the front door's arrive line reads this instead of our own vault.
+        try { if (!sessionStorage.getItem('ps_arrived')) sessionStorage.setItem('ps_ref', document.referrer || ''); } catch (e) {}
+        location.replace('/' + location.search);
+      } catch (e) { /* storage blocked — let them in rather than loop */ }
+    })();
+  </script>
     <meta name="p:domain_verify" content="e74f3a68cdf6a1e0175624d5717e2746" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />

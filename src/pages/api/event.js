@@ -20,7 +20,8 @@
 export const prerender = false;
 
 import { notify, solverTag, place, safeExtra, isBot } from '../../lib/keeper-telegram.js';
-import { ALLOW, EXTRA_ALLOWED, validExtra, keeperLine } from '../../lib/events.js';
+import { ALLOW, EXTRA_ALLOWED, validExtra, keeperLine, CLIENT_EV } from '../../lib/events.js';
+import { guessSource } from '../../lib/traffic-guess.js';
 
 // Per-IP+event cooldown. 5 minutes per (ip64, ev, extra) tuple. Also caps the Map to 5000
 // entries with FIFO pruning so a long-lived warm instance can't grow without bound.
@@ -68,6 +69,33 @@ function ipBurst(ip) {
   return b.n > 40;
 }
 
+// Arrivals with no link, on a desktop, from a browser that has never been here, in the last ten
+// minutes, counted once per IP. Several at once is how an email scanner, a crawler sweep — or a
+// newsletter going out — looks; the Telegram line names all three. Per warm instance, so best-effort,
+// and one sender cannot inflate it (a repeat IP does not count again). Someone with many IPs could
+// still fake a burst; that only relabels lines, it cannot put text in them.
+// Also returns `nearby`: other such visits from the SAME country inside an hour — a crawler working
+// slowly through the site from somewhere no outlet of ours reaches (traffic-guess.js decides that).
+const noLink = new Map();                                  // ip64 → { t, c }
+function noLinkBurst(extra, ip, country) {
+  if (!/ from direct · desktop · first visit( ·|$)/.test(extra || '')) return { burst: 0, nearby: 0 };
+  const now = Date.now();
+  for (const [k, v] of noLink) if (now - v.t > 60 * 60 * 1000) noLink.delete(k);
+  const key = ip64(ip);
+  let burst = 0, nearby = 0;
+  for (const [k, v] of noLink) {
+    if (k === key) continue;
+    if (now - v.t <= 10 * 60 * 1000) burst++;
+    if (v.c === country) nearby++;
+  }
+  noLink.set(key, { t: now, c: country });
+  if (noLink.size > 300) noLink.delete(noLink.keys().next().value);
+  return { burst, nearby };
+}
+// An arrival's cooldown key is its stable head (page, source, device). The visit count and the rest
+// change every session, and keying on them would let one sender mint unlimited distinct keys.
+const arriveKey = (extra) => extra.split(' · ').slice(0, 2).join(' · ');
+
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -89,9 +117,20 @@ export async function POST({ request, clientAddress }) {
   const cap = EXTRA_ALLOWED[ev] || 0;
   const extra = cap ? validExtra(ev, safeExtra(body.extra, cap)) : '';
   // 5. Per-IP + per-event (+ extra) cooldown.
-  if (shouldSkip(ip, ev, extra)) return NOOP204();
+  if (shouldSkip(ip, ev, ev === CLIENT_EV.ARRIVE ? arriveKey(extra) : extra)) return NOOP204();
 
-  await notify(keeperLine(ev, extra, solverTag(body && body.vid), place(request)));
+  const where = place(request);
+  let msg = keeperLine(ev, extra, solverTag(body && body.vid), where);
+  // Every arrival carries the Keeper's best guess at where it came from, on a second line. The guess
+  // is built only from the validated extra, the country and our own placement registry.
+  if (ev === CLIENT_EV.ARRIVE) {
+    try {
+      const n = noLinkBurst(extra, ip, where.slice(0, 2));
+      const g = guessSource(extra, where, Date.now(), n.burst, n.nearby);
+      if (g) msg += '\n   ↳ ' + g;
+    } catch { /* a guess is never worth a lost line */ }
+  }
+  await notify(msg);
   return NOOP204();
 }
 
