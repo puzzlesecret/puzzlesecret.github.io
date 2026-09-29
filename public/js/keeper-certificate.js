@@ -55,7 +55,7 @@
     g.fillStyle = '#f6b23c'; g.font = '700 56px Cinzel, serif'; g.letterSpacing = '4px';
     g.fillText('CRACKED THE KEEPER’S VAULT', W / 2, 700);
     g.fillStyle = '#e8d5ae'; g.font = 'italic 500 34px "Cormorant Garamond", serif'; g.letterSpacing = '0px';
-    g.fillText('Volume I  ·  two hundred puzzles, twenty hidden keys, three sealed words', W / 2, 752);
+    g.fillText('Volume I  ·  two hundred puzzles, hidden keys, three sealed words', W / 2, 752);
     // initials
     g.fillStyle = '#ffd47a'; g.font = '700 150px Cinzel, serif'; g.letterSpacing = '18px';
     g.shadowColor = 'rgba(246,178,60,.55)'; g.shadowBlur = 40; g.fillText(initials, W / 2, 930); g.shadowColor = 'transparent';

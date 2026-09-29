@@ -1,13 +1,27 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import QuoteStrip from '../components/QuoteStrip.astro';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
 
 // This page exists for one reason: every other page on this site speaks to
 // someone who ALREADY owns the book. This one speaks to someone still asking
 // "is there a sudoku book with an escape room in it?" — a question with real
 // search demand and, as of 2026, no strong commercial page answering it.
-const PAGE_TITLE = "Escape Room Sudoku Book — A Sudoku Book with a Hidden Code";
-const PAGE_DESC = "Yes, a sudoku book with a real escape room inside exists. 200 puzzles, 20 hide a shaded key, a printed cipher turns them into words, and each word opens an online vault. Here is exactly how it works.";
+const PAGE_TITLE = "Sudoku Escape Room Book — A Sudoku Book with a Hidden Code";
+const PAGE_DESC = "Yes, a sudoku book with a real escape room inside exists. Hidden among 200 puzzles are shaded keys; a printed cipher turns them into words, and each word opens an online vault. Here is exactly how it works.";
+
+const BOOK_LD = {
+  "@context": "https://schema.org",
+  "@type": "Book",
+  "@id": "https://puzzlesecret.com/#book-v1",
+  "name": "Sudoku with a Secret, Volume 1: Crack the Keeper's Vault",
+  "author": { "@type": "Person", "name": "Dan Herlehy" },
+  "isbn": "9798188603960",
+  "bookFormat": "https://schema.org/Paperback",
+  "numberOfPages": 252,
+  "image": "https://puzzlesecret.com/art/cover-v1-360.webp",
+  "offers": { "@type": "Offer", "price": "14.99", "priceCurrency": "USD", "availability": "https://schema.org/InStock", "url": "https://www.amazon.com/dp/B0HB9K8PXC" }
+};
 
 const FAQ_LD = {
   "@context": "https://schema.org",
@@ -68,10 +82,11 @@ const FAQ_LD = {
 <Layout title={PAGE_TITLE} description={PAGE_DESC}>
   <main class="page-erb">
     <script type="application/ld+json" set:html={JSON.stringify(FAQ_LD)} />
+    <script type="application/ld+json" set:html={JSON.stringify(BOOK_LD)} />
 
     <div class="erb-hero">
       <p class="eyebrow">Escape Room · Sudoku · Ciphers</p>
-      <h1>The Sudoku Book with an Escape Room Hidden Inside It</h1>
+      <h1>A Sudoku Escape Room, Hidden Inside a Puzzle Book</h1>
       <p class="lede">Two hundred honest sudoku puzzles. Some of them are keeping a secret.</p>
     </div>
 
@@ -80,9 +95,9 @@ const FAQ_LD = {
            this is the paragraph an AI answer engine can lift whole. -->
       <div class="answer-card">
         <h2>The short answer</h2>
-        <p><strong>Yes — a sudoku book with a genuine escape room inside it exists.</strong> It is
+        <p><strong>Yes — a sudoku escape room in a book exists.</strong> It is
         <em>Sudoku with a Secret, Volume 1: Crack the Keeper's Vault</em> by Dan Herlehy: 200 original
-        sudoku puzzles, of which 20 hide a single shaded cell. Solve those 20 and you collect 20 digits.
+        sudoku puzzles. Hidden among them are keys, each a single shaded cell. Solve the key puzzles and collect their digits.
         A cipher plate printed in the back of the book converts the digits into letters, spelling three
         secret words. Each word opens a sealed vault on this website containing free bonus puzzle packs.
         Nothing is cut or folded, no app is required, and every answer key is printed in the book.</p>
@@ -99,7 +114,7 @@ const FAQ_LD = {
         <div class="step">
           <div class="s-num">02</div>
           <h3>Decode</h3>
-          <p>The Keyplate — printed on pages 211 to 213, in the <strong>back</strong> of the book —
+          <p>The Keyplate — printed on pages 213 to 215, in the <strong>back</strong> of the book —
           turns your digits into letters. The book escalates: the first act is a plain lookup, the
           second hides its letters in a letter from the Keeper, and the third shifts the alphabet.</p>
         </div>
@@ -199,7 +214,9 @@ const FAQ_LD = {
 
       <div class="cta">
         <h2>Start the hunt</h2>
+        <a href={AMAZON_URL} target="_blank" rel="noopener" class="cta-cover"><img src="/art/cover-v1-360.webp" width="180" height="233" loading="lazy" alt="Sudoku with a Secret, Volume 1: Crack the Keeper's Vault — book cover" /></a>
         <p>Volume 1 — 200 puzzles, three vaults, one hidden password. $14.99 in paperback.</p>
+        <QuoteStrip />
         <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-amz">Get Volume 1 on Amazon ↗</a>
         <p class="alt">Not ready to buy? <a href="/play">Play 200 of the puzzles free in your browser</a> — no account needed.</p>
       </div>
@@ -207,6 +224,7 @@ const FAQ_LD = {
   </main>
 
   <style>
+    .cta-cover img { display: block; margin: 0 auto 14px; width: 180px; height: auto; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
     .page-erb { padding-top: 90px; padding-bottom: 80px; }
     .erb-hero { text-align: center; max-width: 760px; margin: 0 auto 44px; padding: 0 20px; }
     .eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .34em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }

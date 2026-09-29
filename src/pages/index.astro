@@ -32,6 +32,7 @@ const ghosts = [
 // Cookieless analytics (no cookies, no personal data) — this page builds its
 // own HTML instead of using Layout.astro, so it needs its own <Analytics />.
 import Analytics from '@vercel/analytics/astro';
+import QuoteStrip from '../components/QuoteStrip.astro';
 
 // ---- SEO ----------------------------------------------------------------
 // The old title/description spoke only to people who ALREADY owned the book
@@ -77,9 +78,9 @@ const HOME_LD = {
       "numberOfPages": 252,
       "inLanguage": "en",
       "datePublished": "2026-07-24",
-      "image": "https://puzzlesecret.com/art/door-v10.webp",
+      "image": "https://puzzlesecret.com/art/cover-v1-360.webp",
       "genre": ["Puzzles", "Sudoku", "Logic and Brain Teasers"],
-      "description": "A 200-puzzle sudoku book with an escape room hidden inside it. Twenty of the puzzles conceal a shaded cell; the digits they reveal decode, through a cipher plate printed in the back of the book, into three secret words. Each word opens a sealed vault of free bonus puzzles on puzzlesecret.com. One full-page 9x9 grid per 8.5 x 11 inch page, 70 easy, 80 medium and 50 hard, with complete answer keys and a beginner's primer.",
+      "description": "A 200-puzzle sudoku book with an escape room hidden inside it. Hidden among the puzzles are shaded key cells; the digits they reveal decode, through a cipher plate printed in the back of the book, into three secret words. Each word opens a sealed vault of free bonus puzzles on puzzlesecret.com. One full-page 9x9 grid per 8.5 x 11 inch page, 70 easy, 80 medium and 50 hard, with complete answer keys and a beginner's primer.",
       "offers": {
         "@type": "Offer",
         "price": "14.99",
@@ -129,6 +130,7 @@ const HOME_LD = {
     <script type="application/ld+json" set:html={JSON.stringify(HOME_LD)} />
     <!-- The Keeper's event helper: `arrive` once per session + Amazon click-through ping. -->
     <script is:inline src="/js/events.js" defer></script>
+    <script is:inline src="/js/amazon-store.js" defer></script>
   </head>
 
   <body>
@@ -138,6 +140,7 @@ const HOME_LD = {
       </button>
       <a class="chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span></a>
       <a class="chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span></a>
+      <a class="chip buy-chip" href={AMAZON_URL} target="_blank" rel="noopener" title="Buy Volume 1 on Amazon">Buy the book</a>
       <button class="chip" id="menuBtn" title="Menu"><span class="ic" aria-hidden="true">≡</span></button>
     </header>
 
@@ -288,6 +291,7 @@ const HOME_LD = {
             <h3>Don't have it yet?</h3>
             <p><strong>Sudoku with a Secret · Volume 1</strong> — 200 puzzles, 3 vaults, one hidden password. $14.99 in paperback. Or try 200 free puzzles here first.</p>
             <p class="explain-link">New here? <a href="/escape-room-sudoku-book">Read how a sudoku book can hide an escape room</a> — the whole mechanic, explained. Never done a sudoku? <a href="/how-to-play-sudoku">Start with the one rule</a>.</p>
+            <QuoteStrip />
             <div class="card-actions">
               <a class="btn" href={AMAZON_URL} target="_blank" rel="noopener">Get the book on Amazon ↗</a>
               <a class="btn ghost" href="/play">Play 200 free first</a>
@@ -950,7 +954,9 @@ const HOME_LD = {
       /* chrome */
       .chrome { position: fixed; top: 0; right: 0; z-index: 40; display: flex; gap: 8px; padding: 16px 18px; }
       .chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 11px; border: 1px solid rgba(185,143,82,.28); border-radius: 999px; background: rgba(14,14,18,.55); backdrop-filter: blur(6px); color: var(--ash); cursor: pointer; font-family: var(--display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transition: color .3s, border-color .3s; }
+      .chip.buy-chip { color: #1a1206; background: linear-gradient(180deg, var(--gold-hi, #e8c478), var(--gold, #f6b23c)); border-color: var(--gold, #f6b23c); font-weight: 700; }
       .chip:hover { color: var(--gold-hi); border-color: rgba(246,178,60,.5); }
+      .chip.buy-chip:hover { color: #1a1206; }
       .chip.muted { color: var(--ash-dim); border-color: rgba(154,146,127,.18); }
       .chip .ic { font-size: 15px; line-height: 1; }
       .chip .key { color: var(--brass-hi); }

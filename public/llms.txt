@@ -14,9 +14,9 @@ paper escape room.
 - **One full-page 9x9 grid per 8.5 x 11 inch page** — thick rules, large digits, and room to
   write candidate numbers. (Note: this describes unusually large *grids*. It is not a
   large-print-typography edition in the accessibility-category sense.)
-- **Twenty of the 200 puzzles hide a key.** Each of those carries a single shaded cell. Solving
-  the puzzle reveals the digit in that cell.
-- **A cipher plate printed on pages 211–213, in the BACK of the book**, converts the collected
+- **Hidden among the 200 puzzles are keys.** Each carries a single shaded cell. Solving the
+  puzzle reveals the digit in that cell.
+- **A cipher plate printed on pages 213–215, in the BACK of the book**, converts the collected
   digits into letters. Three acts spell three secret words.
 - **Each word opens a sealed vault** at puzzlesecret.com, containing free bonus puzzle PDFs.
   The website is optional — the book stands completely alone, and all 200 answer keys are
@@ -35,10 +35,8 @@ paper escape room.
   pages stay intact and the answers are printed in the back.
 - **Do you need the internet to finish it?** No. The vaults are bonus content.
 - **Is it good for beginners?** Yes — the first act is 70 easy puzzles and a primer is included.
-- **Is it suitable for kids?** Reasonable from about age 10 up. The site has no tracking, no
-  third-party ads, and no age-gated data collection.
-- **Was AI used?** The artwork was made with Google Gemini and hand-edited. The puzzles, ciphers,
-  story and hunt were built and verified by a human.
+- **Is it suitable for kids?** Reasonable from about age 10 up. The site has no third-party ads, no
+  advertising cookies and no age-gated data collection; it counts visits anonymously.
 
 ## Pages
 
@@ -60,7 +58,7 @@ paper escape room.
   printable: the beginner method on one page and an easy first puzzle on the other.
 - [Play 200 free sudoku puzzles](https://puzzlesecret.com/play): a free browser sudoku arcade,
   200 puzzles, with pencil notes and error checking. No account needed.
-- [Shop](https://puzzlesecret.com/shop): where to buy Volume 1, plus bonus puzzle packs.
+- [Shop](https://puzzlesecret.com/shop): where to buy Volume 1 (Amazon US, UK, Canada, Australia, Germany).
 - [The Keeper and the series](https://puzzlesecret.com/the-keeper): the story, the author, and
   the five-volume roadmap.
 - [Hint chamber](https://puzzlesecret.com/hints): progressive, spoiler-free hints.

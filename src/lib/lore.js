@@ -42,7 +42,7 @@ export const NOTEBOOK = [
    (see STUDY_ITEMS in vault3d.js); only the objects that have a spoken line. */
 export const OVERHEARD = {
   quill:  { thing: 'the quill and ink',   line: 'Every puzzle I ever set began with that nib. Most of them ended in the fire.' },
-  board:  { thing: 'the pinboard',        line: 'Two hundred grids, pinned and re-pinned. Twenty were never quite what they seemed.' },
+  board:  { thing: 'the pinboard',        line: 'Two hundred grids, pinned and re-pinned. Some were never quite what they seemed.' },
   shelf:  { thing: 'the shelves',         line: 'Books I solved, and books I never will. A keeper collects both.' },
   sconce: { thing: 'the wall sconce',     line: 'That sconce has burned since before I came. I never asked what feeds it.' },
   chart:  { thing: 'the covered easel',   line: 'Under the cloth, a chart still being drawn — The Corsair’s Chart. Volume II. It will not be kinder than this one.' },

@@ -166,7 +166,7 @@
   // Silent lines (no recording exists; the caption carries them — never browser TTS).
   const SAY = {
     quill: 'Every puzzle I ever set began with that nib. Most of them ended in the fire.',
-    board: 'Two hundred grids, pinned and re-pinned. Twenty were never quite what they seemed.',
+    board: 'Two hundred grids, pinned and re-pinned. Some were never quite what they seemed.',
     reject: 'A second attempt. I keep my failures where I can see them.',
     shelf: 'Books I solved, and books I never will. A keeper collects both.',
     candleOut: 'Snuffed. The dark is patient.',

@@ -1,0 +1,31 @@
+---
+// What readers who aren't us have said, in public, with written permission to quote.
+// ONLY rows marked CLEARED for the website in marketing/promoter/QUOTES.md may go here,
+// with the person's name and a link back, and a note when they got a free copy (FTC: never hide it). Never an Amazon customer review. Never Dan's own words.
+const QUOTES = [
+  {
+    words: "This is a unique Sudoku book, that at the same time contains an Escape Room game hidden in it!",
+    who: "Emma Cazabonne",
+    outlet: "Words and Peace",
+    note: "sent a free review copy",
+    href: "https://wordsandpeace.com/2026/09/13/sunday-post-166-books-and-more-sudoku/",
+  },
+];
+---
+<div class="qs">
+  {QUOTES.map((q) => (
+    <figure class="qs-q">
+      <blockquote><p>&ldquo;{q.words}&rdquo;</p></blockquote>
+      <figcaption>— {q.who}, <a href={q.href} target="_blank" rel="noopener">{q.outlet}</a>{q.note && <span class="qs-note"> ({q.note})</span>}</figcaption>
+    </figure>
+  ))}
+</div>
+<style>
+  .qs { margin: 18px 0 6px; padding: 0; }
+  .qs-q { margin: 0; padding: 12px 16px; border-left: 3px solid var(--gold, #f6b23c); background: rgba(246, 178, 60, 0.06); border-radius: 0 8px 8px 0; }
+  .qs-q blockquote { margin: 0; }
+  .qs-q p { margin: 0 0 6px; font-style: italic; line-height: 1.45; }
+  .qs-q figcaption { font-size: 0.85em; opacity: 0.85; }
+  .qs-q a { color: inherit; text-decoration: underline; }
+  .qs-note { opacity: 0.8; }
+</style>
