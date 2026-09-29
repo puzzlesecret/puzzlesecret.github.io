@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import webPuzzles from '../data/web_puzzles.json';
 ---
 
-<Layout title="Play 200 Sudoku Games · PuzzleSecret Arcade" description="Play 200 free interactive Sudoku puzzles online. Includes Easy, Medium, and Hard puzzles with pencil notes, error checking, and secret key cipher rewards.">
+<Layout title="Play 200 Sudoku Games · PuzzleSecret Arcade" description="Play 200 free sudoku puzzles online, easy to hard, with pencil notes and error checking. No account needed. From the puzzle book Sudoku with a Secret.">
   <!-- Embed mode: the vault's desk shows this page inside a parchment frame (?embed=1&daily=1).
        Decided before first paint so the header never flashes. -->
   <script is:inline>
@@ -17,7 +17,10 @@ import webPuzzles from '../data/web_puzzles.json';
     html.embed .arcade-top { margin-bottom: 10px !important; }
     html.embed .board-layout { grid-template-columns: 1fr !important; gap: 12px !important; max-width: 440px; margin: 0 auto; }
     html.embed .puz-title-btn { pointer-events: none; }
-    html.embed .btn-stat { display: none !important; }
+    html.embed .btn-stat, html.embed .book-line { display: none !important; }
+    .ps-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .book-line { text-align: center; max-width: 720px; margin: 28px auto 0; padding: 0 16px; font-size: 15px; line-height: 1.5; opacity: .9; }
+    .book-line a { color: var(--gold-hi, #e8c478); }
     html.embed .top-row { padding: 8px 12px !important; }
     @media (min-width: 640px) {
       html.embed .board-layout { grid-template-columns: minmax(300px, 400px) 1fr !important; max-width: 720px; gap: 20px !important; }
@@ -52,6 +55,7 @@ import webPuzzles from '../data/web_puzzles.json';
 
   </style>
   <main class="page-play">
+    <h1 class="ps-sr">Play Free Sudoku Online — 200 Puzzles, Easy to Hard</h1>
     <!-- Pinterest daily puzzles live at /daily/, not in these 200: point people there by number -->
     <p class="pin-find"><a href="/daily/#find">Found a puzzle on Pinterest, like <b>M-001</b>? Look it up by its number →</a><br /><a href="/how-to-play-sudoku">New to sudoku? Learn how to play in two minutes →</a></p>
     <style>
@@ -160,7 +164,7 @@ import webPuzzles from '../data/web_puzzles.json';
           <button class="f-tab" data-filter="easy">Easy (50)</button>
           <button class="f-tab" data-filter="medium">Medium (100)</button>
           <button class="f-tab" data-filter="hard">Hard (50)</button>
-          <button class="f-tab" data-filter="key">Key Puzzles (20)</button>
+          <button class="f-tab" data-filter="key">Key Puzzles</button>
         </div>
 
         <div class="picker-grid" id="pickerGrid">
@@ -168,6 +172,8 @@ import webPuzzles from '../data/web_puzzles.json';
         </div>
       </div>
     </div>
+
+    <p class="book-line">Liked these? The real hunt is in the book: <a href="https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20" target="_blank" rel="noopener">Sudoku with a Secret, $14.99 paperback on Amazon ↗</a> · <a href="/escape-room-sudoku-book">how the secret works</a></p>
 
     <!-- Victory Modal -->
     <div class="victory-modal" id="vicModal" hidden>

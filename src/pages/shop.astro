@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import QuoteStrip from '../components/QuoteStrip.astro';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
 // Same @id as the homepage Book node, so both pages describe ONE entity
 // rather than two competing ones. The offer URL is deliberately untagged:
@@ -18,8 +19,8 @@ const BOOK_LD = {
   "numberOfPages": 252,
   "datePublished": "2026-07-24",
   "genre": ["Puzzles", "Sudoku", "Logic and Brain Teasers"],
-  "image": "https://puzzlesecret.com/art/door-v10.webp",
-  "description": "200 honest Sudoku puzzles (70 Easy, 80 Medium, 50 Hard), one full-page 9x9 grid per 8.5 x 11 inch page. Twenty hide a shaded cipher digit; decode the words they spell to open three online vaults of free bonus puzzles. Answer keys and a new-to-Sudoku primer included.",
+  "image": "https://puzzlesecret.com/art/cover-v1-360.webp",
+  "description": "200 honest Sudoku puzzles (70 Easy, 80 Medium, 50 Hard), one full-page 9x9 grid per 8.5 x 11 inch page. Hidden among them are shaded cipher digits; decode the words they spell to open three online vaults of free bonus puzzles. Answer keys and a new-to-Sudoku primer included.",
   "url": "https://puzzlesecret.com/shop",
   "offers": {
     "@type": "Offer",
@@ -31,13 +32,13 @@ const BOOK_LD = {
 };
 ---
 
-<Layout title="The Keeper's Commissary · PuzzleSecret Shop" description="Get Sudoku with a Secret Volume 1 on Amazon or download standalone bonus puzzle packs from the Keeper's commissary.">
+<Layout title="The Keeper's Commissary · PuzzleSecret Shop" description="Buy Sudoku with a Secret, Volume 1 — a $14.99 paperback sudoku book with an escape room hidden inside — on Amazon. Crack its words to earn 350 free bonus puzzles.">
   <main class="page-shop">
     <script type="application/ld+json" set:html={JSON.stringify(BOOK_LD)} />
     <div class="shop-hero">
       <p class="eyebrow">The Commissary</p>
       <h1>Books &amp; Vault Rewards</h1>
-      <p class="lede">Order the physical book on Amazon to start the hunt, or redeem discount codes earned by cracking the vaults.</p>
+      <p class="lede">The hunt starts with the paperback, printed and shipped by Amazon. The bonus puzzles below are free gifts inside the vaults, earned by cracking the book.</p>
     </div>
 
     <section class="wrap shop-grid">
@@ -46,7 +47,7 @@ const BOOK_LD = {
         <div class="badge-tag">VOLUME 1 · AVAILABLE NOW</div>
         <div class="prod-split">
           <div class="prod-img-wrap">
-            <img src="/art/door-v10.webp" alt="Sudoku with a Secret — Volume 1 Cover" width="360" height="520" class="prod-cover" />
+            <img src="/art/cover-v1-360.webp" alt="Sudoku with a Secret, Volume 1: Crack the Keeper's Vault — book cover" width="360" height="466" class="prod-cover" />
           </div>
           <div class="prod-details">
             <h2>Sudoku with a Secret</h2>
@@ -54,15 +55,16 @@ const BOOK_LD = {
             <div class="price-tag">$14.99 <span class="format">Paperback (8.5" × 11")</span></div>
             <ul class="feat-list">
               <li>✦ 200 honest Sudoku puzzles (70 Easy, 80 Medium, 50 Hard)</li>
-              <li>✦ 20 secret key puzzles hiding shaded cipher digits</li>
+              <li>✦ Secret key puzzles hidden among them, each with a shaded cipher digit</li>
               <li>✦ 3 escalating decode acts opening 3 web vaults</li>
               <li>✦ Unlocks up to 350 free bonus puzzles on this site</li>
               <li>✦ Full answer keys included in the back</li>
             </ul>
+            <QuoteStrip />
             <a href={AMAZON_URL} target="_blank" rel="noopener" class="btn-buy">
               Buy Volume 1 on Amazon ↗
             </a>
-            <p class="sub-fine">Dispatched globally via Amazon Prime POD</p>
+            <p class="sub-fine">Printed and shipped by Amazon — also on Amazon UK, Canada, Australia and Germany</p>
           </div>
         </div>
       </article>
@@ -85,7 +87,7 @@ const BOOK_LD = {
         <article class="pack-card">
           <div class="p-rn">II</div>
           <h3>100 Medium Puzzles</h3>
-          <p>The Library of Puzzles — 100 printable medium puzzles for seasoned solvers.</p>
+          <p>The Library of Puzzles — 100 printable medium puzzles for seasoned puzzlers.</p>
           <div class="p-status">THE GIFT OF VAULT II</div>
           <a href="/vault" class="btn-download">Earned in the vault ↗</a>
         </article>

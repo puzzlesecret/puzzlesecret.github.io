@@ -2626,7 +2626,7 @@ setCandle(study.candle !== 'out');
 renderStudyCount();
 const STUDY_SAY = {
   quill: 'Every puzzle I ever set began with that nib. Most of them ended in the fire.',
-  board: 'Two hundred grids, pinned and re-pinned. Twenty were never quite what they seemed.',
+  board: 'Two hundred grids, pinned and re-pinned. Some were never quite what they seemed.',
   shelf: 'Books I solved, and books I never will. A keeper collects both.',
   sconce: 'That sconce has burned since before I came. I never asked what feeds it.',
   candleOut: 'Snuffed. The dark is patient.',

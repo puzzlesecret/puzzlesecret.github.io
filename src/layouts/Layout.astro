@@ -103,6 +103,7 @@ const SITE_LD = {
         <a class="chip nav-chip" href="/play" title="Play 200 Sudokus"><span class="ic" aria-hidden="true">🎮</span><span class="lbl-desktop">Play</span></a>
         <a class="chip nav-chip" href="/passport" title="Your passport"><span class="ic" aria-hidden="true">✦</span><span class="lbl-desktop">Passport</span></a>
         <a class="chip nav-chip" href="/shop" title="The Keeper's Commissary"><span class="ic key" aria-hidden="true">⚷</span><span class="lbl-desktop">Shop</span></a>
+        <a class="chip buy-chip" href={AMAZON_URL} target="_blank" rel="noopener" title="Buy Volume 1 on Amazon">Buy<span class="lbl-desktop">&nbsp;the book</span></a>
         <button class="chip" id="menuBtn" aria-label="Open Menu"><span class="ic" aria-hidden="true">≡</span></button>
       </div>
     </header>
@@ -123,9 +124,9 @@ const SITE_LD = {
           <a href="/daily/" class="d-link"><span class="d-num">03b</span> Today's Free Puzzle · find by number <span class="d-arrow">→</span></a>
           <a href="/how-to-play-sudoku" class="d-link"><span class="d-num">03c</span> How to Play Sudoku <span class="d-arrow">→</span></a>
           <a href="/escape-room-sudoku-book" class="d-link"><span class="d-num">04</span> What Is This Book? <span class="d-arrow">→</span></a>
-          <a href="/shop" class="d-link"><span class="d-num">05</span> The Commissary <span class="d-arrow">→</span></a>
-          <a href="/passport" class="d-link"><span class="d-num">06</span> Solver's Passport <span class="d-arrow">→</span></a>
-          <a href="/hints" class="d-link"><span class="d-num">07</span> Hint Chamber <span class="d-arrow">→</span></a>
+          <a href="/shop" class="d-link"><span class="d-num">05</span> Shop · Buy the Book <span class="d-arrow">→</span></a>
+          <a href="/passport" class="d-link"><span class="d-num">06</span> Your Passport (vault progress) <span class="d-arrow">→</span></a>
+          <a href="/hints" class="d-link"><span class="d-num">07</span> Hints <span class="d-arrow">→</span></a>
           <a href="/the-keeper" class="d-link"><span class="d-num">08</span> The Keeper's Story <span class="d-arrow">→</span></a>
           <a href="/newsletter" class="d-link"><span class="d-num">09</span> Free Monthly Dispatch <span class="d-arrow">→</span></a>
           <a href="/faq" class="d-link"><span class="d-num">10</span> FAQ & Help <span class="d-arrow">→</span></a>
@@ -231,6 +232,8 @@ const SITE_LD = {
       .chip.brand-chip { border-color: rgba(246,178,60,.5); background: rgba(10,10,12,.92); }
       .chip .wm { font-weight: 700; color: var(--ash); letter-spacing: .2em; }
       .chip .wm span { color: var(--gold); text-shadow: 0 0 10px rgba(246,178,60,.4); }
+      .chip.buy-chip { color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-color: var(--gold); font-weight: 700; }
+      .chip.buy-chip:hover { color: #1a1206; }
       .chip.muted { color: var(--ash-dim); border-color: rgba(154,146,127,.25); }
       .chip .ic { font-size: 14px; line-height: 1; }
       .chip .key { color: var(--brass-hi); }
@@ -288,5 +291,6 @@ const SITE_LD = {
          the site-wide Amazon click-through ping; index.astro and vault.astro (which do not
          use this layout) load the same file themselves. -->
     <script is:inline src="/js/events.js" defer></script>
+    <script is:inline src="/js/amazon-store.js" defer></script>
   </body>
 </html>
