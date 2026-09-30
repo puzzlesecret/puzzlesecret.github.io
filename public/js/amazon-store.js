@@ -22,5 +22,9 @@
   function fixAll() { var l = document.querySelectorAll('a[href*="' + ASIN + '"]'); for (var i = 0; i < l.length; i++) fix(l[i]); }
   // links that appear later (modals, the arcade nudge) are caught at click time
   document.addEventListener('click', function (e) { var a = e.target && e.target.closest ? e.target.closest('a') : null; fix(a); }, true);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fixAll); else fixAll();
+  var STORE = { 'www.amazon.co.uk': 'Amazon UK', 'www.amazon.ca': 'Amazon Canada', 'www.amazon.com.au': 'Amazon Australia', 'www.amazon.de': 'Amazon Germany' }[host];
+  // outside the US, name the local store on the strip under the door
+  function fixPrices() { var p = document.querySelectorAll('[data-ps-price]'); for (var i = 0; i < p.length; i++) p[i].textContent = '200 puzzles · on ' + STORE; }
+  function run() { fixAll(); fixPrices(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 })();
