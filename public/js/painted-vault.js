@@ -1023,7 +1023,8 @@
     showScrap();
   }
   $('scrapCopy').addEventListener('click', async () => {
-    const s = GUEST ? fullPosition() : ''; if (!s) return;
+    const got = GUEST ? guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length : 0;
+    const s = got === 4 ? fullPosition() : ''; if (!s) return;   // never copy before all four are found
     const b = $('scrapCopy');
     try { await navigator.clipboard.writeText(s); b.textContent = 'Copied'; b.dataset.done = '1'; } catch (e) { b.textContent = 'Select and copy the line above'; }
     setTimeout(() => { b.textContent = 'Copy the position'; delete b.dataset.done; }, 2600);

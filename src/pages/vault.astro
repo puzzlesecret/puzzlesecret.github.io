@@ -515,6 +515,9 @@ import Analytics from '@vercel/analytics/astro';
       background: rgba(4,2,0,0.55); backdrop-filter: blur(2px); padding: 12px;
     }
     #desk[hidden], #notebook[hidden], #draft[hidden] { display: none; }
+    /* .ghost-btn sets display, which beat the hidden attribute: the copy button showed (and copied
+       the whole position) before a single scrap was found. Found by the 2026-10-01 phone test. */
+    #scrapCopy[hidden], #scrapBoard[hidden] { display: none !important; }
 
     /* ---- the key-tile games ---- */
     #roundHud { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 12; width: min(560px, 94vw); background: rgba(10,6,2,.86); border: 1px solid rgba(246,178,60,.45); border-radius: 10px; padding: 10px 14px; pointer-events: none; }

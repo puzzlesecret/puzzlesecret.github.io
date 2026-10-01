@@ -66,7 +66,7 @@ const HASHES = {
 const GUEST_ROOMS = {
   pinpoint: {
     id: 'pinpoint',
-    entry: 'PinPoint sent you, and you are exactly where I meant you to be. Somewhere in this study I tore a note into four — find every piece, and the place you are hunting is yours.',
+    entry: 'PinPoint sent you, and you are exactly where I meant you to be. I tore a note into four and scattered the pieces around this study — find every one, and the place you are hunting is yours.',
     scrapLabel: 'A crumpled scrap',
     scrapLine: 'A piece of the note I tore. Pin it to the board — the rest are in here somewhere.',
     allFound: 'Four pieces, pinned. Read them off the board in order, and mind the muggles on your way out.',

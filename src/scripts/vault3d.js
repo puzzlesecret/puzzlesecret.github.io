@@ -598,6 +598,7 @@ stack.userData = { kind: 'stack', label: "Take the Keeper's gift" };
 [0, 1, 2, 3].forEach(i =>
   box(0.44 - i * 0.02, 0.08, 0.33 - i * 0.015, M.stack, (R() - 0.5) * 0.03, 0.04 + i * 0.082, (R() - 0.5) * 0.03, (R() - 0.5) * 0.3, stack));
 const stackGlow = sprite(1.5, 0, 0.28, 0, stack, 0.95);
+if (GUEST) stackGlow.raycast = () => {};   // in a guest room its big halo stole clicks meant for a scrap behind it; the stack itself still takes the tap
 const stackLight = new THREE.PointLight(0xffb84a, 30, 7, 2);
 stackLight.position.set(0, 0.55, 0); stack.add(stackLight);
 
@@ -652,9 +653,13 @@ deskShadow.rotation.x = -Math.PI / 2; deskShadow.position.set(0, 0.012, -0.35); 
 // In a GUEST ROOM they are four crumpled scraps instead, each holding a piece of the note.
 const rejects = [];
 (GUEST ? [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5], [2.6, 2.7]] : [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]]).forEach(([x, z], i) => {
-  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), M.paperB);
-  w.position.set(x, 0.07, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
+  // A guest's scraps are the whole game and are found on phones in a field: bigger, and they glow
+  // (the glow sprite is a child, so a tap on it resolves to the scrap). 2026-10-01 phone test.
+  const r0 = GUEST ? 0.12 : 0.07;
+  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(r0, 0), M.paperB);
+  w.position.set(x, r0, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
   w.userData = GUEST ? { kind: 'scrap', idx: i, label: GUEST.scrapLabel } : { kind: 'reject', idx: i, label: 'A crumpled page' };
+  if (GUEST) w.userData.glow = sprite(0.75, 0, 0, 0, w, 0.42);   // dimmed below once `study` has loaded
   rejects.push(w);
 });
 
@@ -2610,6 +2615,9 @@ function studyFound() {
   const s = new Set(study.found);
   pagesFound.forEach((p) => { if (p === 1 || p === 4 || p === 7) s.add('p' + p); });
   try { const v = JSON.parse(localStorage.getItem(VAULT_KEY) || '{}'); if (v && v.I) s.add('stack'); } catch (e) {}
+  // A guest counts the four scraps and nothing else — the gift and the story pages were tipping the
+  // count to "every piece found" with a scrap still missing (2026-10-01 desktop test).
+  if (GUEST) return new Set([...s].filter((id) => GUEST.items.includes(id)));
   return s;
 }
 function renderStudyCount() {
@@ -2624,6 +2632,7 @@ function markFound(id) {
 }
 setCandle(study.candle !== 'out');
 renderStudyCount();
+if (GUEST) rejects.forEach((w, i) => { if (w.userData.glow && (study.found || []).includes('scrap' + i)) w.userData.glow.material.opacity = 0.10; });
 const STUDY_SAY = {
   quill: 'Every puzzle I ever set began with that nib. Most of them ended in the fire.',
   board: 'Two hundred grids, pinned and re-pinned. Some were never quite what they seemed.',
@@ -2707,6 +2716,7 @@ function openScrap(idx) {
   scrapSay.textContent = GUEST.scrapLine;
   showScrapOverlay();
   markFound('scrap' + idx);
+  const wq = rejects[idx]; if (wq && wq.userData.glow) wq.userData.glow.material.opacity = 0.10;   // found = quiet, still visible
   psEventOnce(PS_EV.PAGE_REJECTS);        // a page read — the same line a reject sends
   psTouch('rejects');
 }
@@ -2731,7 +2741,7 @@ function openScrapBoard() {
   markFound('board');
 }
 scrapCopy.addEventListener('click', async () => {
-  const s = fullPosition(); if (!s) return;
+  const s = scrapsFound().length === 4 ? fullPosition() : ''; if (!s) return;   // never copy before all four are found
   try { await navigator.clipboard.writeText(s); scrapCopy.textContent = 'Copied'; scrapCopy.dataset.done = '1'; }
   catch (e) { scrapCopy.textContent = 'Select and copy the line above'; }
   setTimeout(() => { scrapCopy.textContent = 'Copy the position'; delete scrapCopy.dataset.done; }, 2600);
