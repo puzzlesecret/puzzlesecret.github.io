@@ -6,8 +6,8 @@ export const prerender = false;
 import crypto from 'node:crypto';
 import { notify, solverTag, place, isBot } from '../../lib/keeper-telegram.js';
 
-// Wrong guesses are the one place a stranger's typed letters reach Telegram (bare A-Z,
-// 4-12 long). A human at a door misses a handful of times; a script at the 25-per-10s
+// Spoken words are the one place a stranger's typed letters reach Telegram (bare A-Z,
+// 4-12 long; a true word only ever echoes one of the hashed words below). A human at a door misses a handful of times; a script at the 25-per-10s
 // limit could push ~150 chosen words a minute into the chat. So: the first 8 misses per
 // IP in any 10 minutes are relayed, the 9th says the Keeper is going quiet, the rest are
 // silent. Unlocks are never muted.
@@ -141,11 +141,15 @@ export async function POST({ request, clientAddress }) {
   const atKey = String(body && body.at || '');
   const at = Object.hasOwn(AT, atKey) ? AT[atKey] : '';   // hasOwn: "constructor" / "__proto__" must not resolve
   if (hit) {
+    // The word that opened it, as typed and reduced to bare A-Z (the same shape a miss is
+    // relayed in). An act can be opened by more than one word (the book's, or any guest key),
+    // so Dan sees exactly which one was spoken. Echoed from the request, never from this file.
+    const said = `\u201c${w}\u201d`;
     const line = hit.guest
-      ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY \u2014 came in from ${hit.guest}${at}`
+      ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY ${said} \u2014 came in from ${hit.guest}${at}`
       : hit.act === 'IV'
-        ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word \u2014 the floor opens${at}`
-        : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act}${at}`;
+        ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word ${said} \u2014 the floor opens${at}`
+        : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act} with ${said}${at}`;
     await notify(line);
     return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined });
   }

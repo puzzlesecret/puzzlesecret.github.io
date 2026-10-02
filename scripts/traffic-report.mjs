@@ -13,7 +13,7 @@
 // "opened Vault" lines for the same tag), because lines before 2026-09-28 do not carry them.
 // The chat export's dates are the PC's local time; the report prints them as-is.
 import fs from 'node:fs';
-import { guessSource } from '../src/lib/traffic-guess.js';
+import { guessSource, returningNote } from '../src/lib/traffic-guess.js';
 
 const file = process.argv[2];
 if (!file) { console.error('usage: node scripts/traffic-report.mjs <result.json> [--since YYYY-MM-DD]'); process.exit(1); }
@@ -42,8 +42,11 @@ for (const m of data.messages || []) {
   const x = t.match(LINE);
   if (!x) continue;
   const [, tag, place, rest] = x;
+  // Every true word counts: the book's (Vaults I-III), the fourth (its own line, "found the
+  // FOURTH word"), and a guest key (always Vault I). Old lines carry no quoted word; new ones do.
   const o = rest.match(/^opened Vault (I|II|III|IV)\b/);
-  if (o) { (words[tag] ||= new Set()).add(o[1]); continue; }
+  const act = o ? o[1] : /^found the FOURTH word\b/.test(rest) ? 'IV' : /^GUEST KEY\b/.test(rest) ? 'I' : '';
+  if (act) { (words[tag] ||= new Set()).add(act); continue; }
   const a = rest.match(/^arrives at (.+)$/);
   if (!a) continue;
   visits[tag] = (visits[tag] || 0) + 1;
@@ -70,7 +73,8 @@ for (const m of data.messages || []) {
   bySource[src] = (bySource[src] || 0) + 1;
   const kind = g.split(' ')[0] || '—';
   byGuess[kind] = (byGuess[kind] || 0) + 1;
-  rows.push(`${m.date.replace('T', ' ').slice(0, 16)}  ${tag}  ${place.padEnd(7)}  ${a[1]}\n${' '.repeat(18)}↳ ${g || '—'}`);
+  const r = returningNote(extra);
+  rows.push(`${m.date.replace('T', ' ').slice(0, 16)}  ${tag}  ${place.padEnd(7)}  ${a[1]}\n${' '.repeat(18)}↳ ${g || '—'}` + (r ? `\n${' '.repeat(18)}${r}` : ''));
 }
 
 console.log(rows.join('\n'));

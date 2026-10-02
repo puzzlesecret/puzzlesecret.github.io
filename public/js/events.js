@@ -71,9 +71,9 @@
 
   function payload(ev, extra) {
     var body = { vid: psVid(), ev: ev };
-    // The server caps `arrive` at 120 and everything else at 64 (src/lib/events.js EXTRA_ALLOWED). A cut
+    // The server caps `arrive` at 160 and everything else at 64 (src/lib/events.js EXTRA_ALLOWED). A cut
     // mid-word fails the grammar and loses the whole extra, so the two caps must match.
-    if (extra != null) body.extra = String(extra).slice(0, ev === CLIENT_EV.ARRIVE ? 120 : 64);
+    if (extra != null) body.extra = String(extra).slice(0, ev === CLIENT_EV.ARRIVE ? 160 : 64);
     return JSON.stringify(body);
   }
 
@@ -290,6 +290,18 @@
       return n === 1 ? 'first visit' : n >= 10 ? 'visit 10 or more' : 'visit ' + n;
     } catch (e) { return ''; }
   }
+  // How long since this browser's last visit, in whole days ("back same day" / "back after 3 days").
+  // Kept on the device as a date; only the day count leaves. Unknown for a browser's first counted visit.
+  function sinceLast() {
+    try {
+      var today = new Date(), t = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+      var last = parseInt(localStorage.getItem('ps_last_day'), 10);
+      localStorage.setItem('ps_last_day', String(t));
+      if (!last || last > t) return '';
+      var d = Math.round((t - last) / 86400000);
+      return d === 0 ? 'back same day' : 'back after ' + Math.min(d, 999) + (d === 1 ? ' day' : ' days');
+    } catch (e) { return ''; }
+  }
   // How many vaults this browser has opened (the passport's own record) — a count, never the words.
   // Guest keys open Vault I only, so the Keeper reads "owns the book" into two or more, never one.
   function vaultsOpened() {
@@ -333,9 +345,10 @@
     } catch (e) { /* private mode: treat every load as a first page */ }
     if (!first) { psEvent(CLIENT_EV.PAGE_VIEW, pageName()); return; }
     var from = referrerName();
-    var visit = visitLabel(), v = vaultsOpened(), lang = language(), me = keeperMark();
+    var visit = visitLabel(), gap = sinceLast(), v = vaultsOpened(), lang = language(), me = keeperMark();
     psEvent(CLIENT_EV.ARRIVE, pageName() + (from === 'inside' ? '' : ' from ' + from) + ' · ' + device()
       + (visit ? ' · ' + visit : '')
+      + (gap && visit !== 'first visit' ? ' · ' + gap : '')
       + (v ? ' · ' + v + (v > 1 ? ' vaults opened' : ' vault opened') : '')
       + (lang ? ' · ' + lang : '')
       + (me ? ' · keeper' : ''));

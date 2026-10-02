@@ -18,3 +18,7 @@ _qa/
 # Internal working docs: stay on disk, never published.
 # They name the answer words; the repo and GitHub Pages are public.
 _content/
+
+# Telegram chat exports of the Keeper log: since 2026-10-01 they quote every true word.
+ChatExport*/
+result*.json

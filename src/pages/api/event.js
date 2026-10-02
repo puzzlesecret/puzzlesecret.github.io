@@ -21,7 +21,7 @@ export const prerender = false;
 
 import { notify, solverTag, place, safeExtra, isBot } from '../../lib/keeper-telegram.js';
 import { ALLOW, EXTRA_ALLOWED, validExtra, keeperLine, CLIENT_EV } from '../../lib/events.js';
-import { guessSource } from '../../lib/traffic-guess.js';
+import { guessSource, returningNote } from '../../lib/traffic-guess.js';
 
 // Per-IP+event cooldown. 5 minutes per (ip64, ev, extra) tuple. Also caps the Map to 5000
 // entries with FIFO pruning so a long-lived warm instance can't grow without bound.
@@ -128,6 +128,8 @@ export async function POST({ request, clientAddress }) {
       const n = noLinkBurst(extra, ip, where.slice(0, 2));
       const g = guessSource(extra, where, Date.now(), n.burst, n.nearby);
       if (g) msg += '\n   ↳ ' + g;
+      const r = returningNote(extra);                   // "🔁 RETURNING VISITOR: …" for a repeat visitor
+      if (r) msg += '\n   ' + r;
     } catch { /* a guess is never worth a lost line */ }
   }
   await notify(msg);

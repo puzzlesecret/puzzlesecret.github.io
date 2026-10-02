@@ -8,14 +8,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validExtra, EXTRA_ALLOWED } from '../src/lib/events.js';
 import { safeExtra } from '../src/lib/keeper-telegram.js';
-import { guessSource } from '../src/lib/traffic-guess.js';
+import { guessSource, returningNote } from '../src/lib/traffic-guess.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const pub = fs.readFileSync(path.join(here, '..', 'public', 'js', 'events.js'), 'utf8');
 // Lift the browser's naming functions out of the IIFE and run them against fake pages.
 const chunk = pub.slice(pub.indexOf('  var SOURCES'), pub.indexOf('  function device()'));
 const load = (ref, search = '', lang = 'en-US', store = {}) => new Function('document', 'location', 'URLSearchParams', 'localStorage', 'sessionStorage', 'navigator',
-  chunk + '; return { referrerName, language, visitLabel, vaultsOpened, keeperMark };')(
+  chunk + '; return { referrerName, language, visitLabel, sinceLast, vaultsOpened, keeperMark };')(
   { referrer: ref }, { search, hostname: 'puzzlesecret.com' }, URLSearchParams,
   { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
   { getItem: () => null, setItem() {}, removeItem() {} }, { language: lang });
@@ -69,7 +69,7 @@ for (const x of ['home from example.com · desktop', 'home from another site .co
   const pages = ['home', 'escape-room-sudoku-book', 'how-to-play-sudoku'];
   const srcs = ['', ' from utm abcdefghijklmnop', ' from another site .uk', ' from roomescapeartist', ' from mysteriouswritings', ' from direct'];
   const devs = [' · phone', ' · desktop'];
-  const visits = ['', ' · first visit', ' · visit 9', ' · visit 10 or more'];
+  const visits = ['', ' · first visit', ' · visit 9 · back same day', ' · visit 10 or more · back after 365 days', ' · visit 2 · back after 1 day'];
   const vaults = ['', ' · 1 vault opened', ' · 4 vaults opened'];
   const langs = ['', ' · en-GB'];
   const me = ['', ' · keeper'];
@@ -89,9 +89,18 @@ has('tagged outlet link is named', guessSource('home from utm miowandmolly · de
 has('unknown .uk site is NOT guessed as Miow and Molly (new format)', guessSource('home from another site .uk · desktop · first visit · en-GB', 'GB', T), 'Miow', true);
 has('old-format line may still guess a published outlet', guessSource('home from another site · desktop', 'GB', T), 'maybe Miow and Molly');
 has('forged utm "constructor" names nothing', guessSource('home from utm constructor · desktop', 'US · NY', T), 'not on file');
-has('one vault is not proof of the book (guest keys)', guessSource('home from direct · desktop · visit 2 · 1 vault opened', 'CZ', T), 'has the book', true);
-has('vaults read as history, not now', guessSource('home from direct · desktop · visit 2 · 1 vault opened', 'CZ', T), 'so far');
-has('two vaults is', guessSource('home from direct · desktop · visit 4 · 2 vaults opened', 'US · NY', T), 'has the book');
+// ── the returning-visitor line (Dan, 2026-09-28) ──
+has('one vault is not proof of the book (guest keys)', returningNote('home from direct · desktop · visit 2 · 1 vault opened'), 'has the book', true);
+has('vaults read as history, not now', returningNote('home from direct · desktop · visit 2 · 1 vault opened'), 'so far');
+has('two vaults is', returningNote('home from direct · desktop · visit 4 · 2 vaults opened'), 'has the book');
+has('a repeat visitor is flagged', returningNote('home from google · phone · visit 2'), '🔁 RETURNING VISITOR: visit 2');
+has('the gap since last visit shows', returningNote('home from direct · desktop · visit 5 · back after 3 days'), 'last here 3 days ago');
+has('same-day return reads as earlier today', returningNote('home from direct · desktop · visit 3 · back same day'), 'earlier today');
+eq('a first visit gets no returning line', returningNote('home from direct · desktop · first visit'), '');
+eq('an old-format line gets no returning line', returningNote('home from direct · desktop'), '');
+eq('your own device gets no returning line', returningNote('home from direct · desktop · visit 10 or more · keeper'), '');
+eq('sinceLast: first time → nothing', load('', '', 'en', {}).sinceLast(), '');
+eq('sinceLast: same day', load('', '', 'en', { ps_last_day: String(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) }).sinceLast(), 'back same day');
 has('unpublished outlet tag reads as them testing', guessSource('home from utm bigpinekey · desktop · first visit', 'US · NY', T), 'them testing');
 has('a pitched outlet\'s own SITE sending someone reads as possible new coverage', guessSource('home from bookriot · desktop · first visit', 'US · CA', T), 'new coverage');
 has('keeper device reads as you', guessSource('home from direct · desktop · visit 10 or more · 3 vaults opened · en-US · keeper', 'US · NY', T), '🏠 you');
