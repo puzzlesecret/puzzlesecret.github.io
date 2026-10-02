@@ -42,7 +42,7 @@ const daysSince = (ymd, now) => (now - Date.parse(ymd + 'T00:00:00Z')) / 8640000
 
 // Parse a validated arrive extra. Old clients send only "<page>[ from <src>] · <device>".
 export function parseArrive(extra) {
-  const out = { page: '', source: '', tld: '', device: '', visit: 0, fresh: false, words: 0, lang: '', keeper: false, newFormat: false };
+  const out = { page: '', source: '', tld: '', device: '', visit: 0, gap: -1, fresh: false, words: 0, lang: '', keeper: false, newFormat: false };
   if (!extra) return out;
   const parts = extra.split(' · ');
   const m = (parts.shift() || '').match(/^(\S+)(?: from (.+))?$/);
@@ -54,6 +54,8 @@ export function parseArrive(extra) {
     else if (p === 'first visit') { out.visit = 1; out.fresh = true; out.newFormat = true; }
     else if (p === 'visit 10 or more') { out.visit = 10; out.newFormat = true; }
     else if (/^visit \d+$/.test(p)) { out.visit = Number(p.slice(6)); out.newFormat = true; }
+    else if (p === 'back same day') out.gap = 0;
+    else if (/^back after \d+ days?$/.test(p)) out.gap = Number(p.split(' ')[2]);
     else if (/^\d vaults? opened$/.test(p)) out.words = Number(p[0]);
     else if (p === 'keeper') out.keeper = true;
     else if (/^[a-z]{2}(-[A-Z]{2})?$/.test(p)) out.lang = p;
@@ -82,13 +84,7 @@ export function guessSource(extra, place, now = Date.now(), burst = 0, nearby = 
   if (a.keeper) return '🏠 you (a device you marked)';
   const country = String(place || '').slice(0, 2);
   const src = a.source;
-  // History, worded as history: these vaults were opened on EARLIER visits, not now.
-  // "(visit 4; Vault I so far)" / "(visit 10+; 3 vaults so far, has the book)"
-  const bits = [];
-  if (a.visit >= 2) bits.push(a.visit >= 10 ? 'visit 10+' : `visit ${a.visit}`);
-  if (a.words >= 2) bits.push(`${a.words} vaults so far, has the book`);
-  else if (a.words === 1) bits.push('Vault I so far');
-  const who = bits.length ? ` (${bits.join('; ')})` : '';
+  const who = '';                     // a returning visitor's history now has its own line: returningNote()
 
   // 1. The browser names the outlet (its site, or the tag on its link). An outlet that has not
   // published yet is almost always the outlet itself (or Dan) trying the link, so history is dropped.
@@ -128,10 +124,11 @@ export function guessSource(extra, place, now = Date.now(), burst = 0, nearby = 
     return `🤖 likely bots: ${nearby + 1} no-link visits from ${country || 'one country'} within an hour`;
   }
 
-  // 4. Returning visitors need no source guess.
-  if ((a.words || a.visit >= 2) && (src === 'direct' || src === 'another site' || src === 'inside')) {
-    return '↩ back again' + who;
-  }
+  // 4. A returning visitor with no link came back on their own (the 🔁 line says so).
+  if ((a.words || a.visit >= 2) && src === 'direct') return a.page === 'home'
+    ? '❔ no link: a bookmark, or typed the address'
+    : `❔ no link: a bookmark or saved link to ${a.page.replace(/^the-/, '')}`;
+  if (src === 'inside') return '';
 
   // 5. A site we don't know.
   if (src === 'another site') {
@@ -154,5 +151,25 @@ export function guessSource(extra, place, now = Date.now(), burst = 0, nearby = 
     if (a.page === 'home') return `❔ no link: typed the address, or tapped it in an app or email${maybe}`;
     return `❔ no link: a saved or shared link to ${a.page.replace(/^the-/, '')}${maybe}`;
   }
-  return who ? '↩ back again' + who : '';
+  return '';
+}
+
+/**
+ * The third line of an arrival, shown only for a browser that has been here before (Dan, 2026-09-28:
+ * "add a note anytime somebody is a repeat visitor"). History is worded as history — "so far",
+ * "last here" — so it never reads as something happening now.
+ *   🔁 RETURNING VISITOR: visit 5, last here 3 days ago · Vault I opened so far
+ * @returns {string} the line, or '' for a first visit / unknown
+ */
+export function returningNote(extra) {
+  const a = parseArrive(extra);
+  if (a.keeper || (a.visit < 2 && !a.words)) return '';
+  const bits = [];
+  if (a.visit >= 2) {
+    const when = a.gap === 0 ? ', earlier today' : a.gap === 1 ? ', last here yesterday' : a.gap > 1 ? `, last here ${a.gap} days ago` : '';
+    bits.push((a.visit >= 10 ? 'visit 10+' : `visit ${a.visit}`) + when);
+  }
+  if (a.words >= 2) bits.push(`${a.words} vaults opened so far: has the book`);
+  else if (a.words === 1) bits.push('Vault I opened so far (book or guest key)');
+  return '🔁 RETURNING VISITOR: ' + bits.join(' · ');
 }

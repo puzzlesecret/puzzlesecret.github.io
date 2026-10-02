@@ -226,9 +226,9 @@ const SOURCES = '(' + GENERIC_SOURCES.concat(PLACEMENTS.map((p) => p.id)).join('
 const ROOMS = '(the study|the library|the treasure room|the sanctum)';
 const DOORS = '(first|door2|door3|fourth)';
 export const EXTRA_RULES = Object.freeze({
-  // "<page>[ from <src>] · <device>[ · first visit|visit 2..9|visit 10 or more][ · N vaults opened][ · en-GB][ · keeper]"
+  // "<page>[ from <src>] · <device>[ · first visit|visit 2..9|visit 10 or more][ · back same day|back after N days][ · N vaults opened][ · en-GB][ · keeper]"
   // — the tail parts are optional so a browser still holding the old events.js keeps reporting.
-  [CLIENT_EV.ARRIVE]:          new RegExp('^' + PAGES + '( from (utm [a-z0-9_]{1,16}|direct|' + SOURCES + '))? · (phone|tablet|desktop)( · (first visit|visit [2-9]|visit 10 or more))?( · [1-4] vaults? opened)?( · [a-z]{2}(-[A-Z]{2})?)?( · keeper)?$'),
+  [CLIENT_EV.ARRIVE]:          new RegExp('^' + PAGES + '( from (utm [a-z0-9_]{1,16}|direct|' + SOURCES + '))? · (phone|tablet|desktop)( · (first visit|visit [2-9]|visit 10 or more))?( · (back same day|back after \\d{1,3} days?))?( · [1-4] vaults? opened)?( · [a-z]{2}(-[A-Z]{2})?)?( · keeper)?$'),
   [CLIENT_EV.PAGE_VIEW]:       new RegExp('^' + PAGES + '$'),
   [CLIENT_EV.WORDBOX_OPEN]:    new RegExp('^' + DOORS + '$'),
   [CLIENT_EV.WORDBOX_CLOSE]:   new RegExp('^' + DOORS + ' (without a guess|after \\d{1,2} miss(es)?)$'),
@@ -242,7 +242,7 @@ export const EXTRA_RULES = Object.freeze({
   [CLIENT_EV.SESSION_DEPTH]:   new RegExp('^(3D|painted) · \\d{1,3} rooms · \\d{1,4}m · last ' + ROOMS + '$'),
 });
 // Length caps — a pre-slice before the grammar, so a 10 KB body never reaches a regex.
-export const EXTRA_ALLOWED = Object.freeze(Object.fromEntries(Object.keys(EXTRA_RULES).map((k) => [k, k === CLIENT_EV.ARRIVE ? 120 : 64])));
+export const EXTRA_ALLOWED = Object.freeze(Object.fromEntries(Object.keys(EXTRA_RULES).map((k) => [k, k === CLIENT_EV.ARRIVE ? 160 : 64])));
 
 // The only way an extra gets into a line. Returns '' for any event without a rule, any
 // extra that fails its rule, or any non-string.

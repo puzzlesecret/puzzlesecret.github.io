@@ -63,6 +63,13 @@ is `false` for that reason — flip it only if you decide otherwise.
 - **`setupDispatch()`** — re-stamps the sheet: fills blank `Status`, issues missing `Token`s,
   removes duplicate addresses. Idempotent. Not required before a send (`sendDispatch` mints a
   token for anyone missing one), but harmless and tidy to run occasionally.
+  🔴 **A FRESH SIGNUP ROW WITH BLANK `Status` AND BLANK `Token` IS NORMAL — IT IS NOT A DEFECT AND
+  NEEDS NO ACTION.** The intake webhook only ever writes Timestamp / Email / Source; `sendDispatch()`
+  treats blank Status as `active` and mints the unsubscribe token immediately before sending, then
+  writes it back. **Do not read those blanks as a broken subscriber or turn them into a task** —
+  that misreading happened on 2026-09-26, on the list's very first signup, and cost an unnecessary
+  round trip. The only thing that genuinely blocks a send is a **missing column header**, which is
+  what the `"Run setupDispatch() once before sending"` error actually means.
 - **`listStats()`** — logs a tally of active / unsubscribed / bounced.
 - Do **not** confuse `setupDispatch()` with `setupSheet()`. `setupSheet()` belongs to the
   intake script and only formats the Timestamp/Email/Source columns.

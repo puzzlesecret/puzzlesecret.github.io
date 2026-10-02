@@ -4,8 +4,8 @@
 // visits, every word attempt (right or wrong), tile pickups, page reads, reward downloads,
 // carvings — with NO personal information. What we send: a self-assigned random 4-char
 // solver tag (so the same browser's journey reads as a story), a COARSE place (country
-// always; US/CA state only), and the event itself. Wrong guesses are normalized to bare
-// A-Z upstream so an accidentally-typed email or name can never reach this channel.
+// always; US/CA state only), and the event itself. Spoken words (right or wrong) are
+// normalized to bare A-Z upstream so an accidentally-typed email or name can never reach this channel.
 //
 // GDPR / CCPA / COPPA posture: no vid persistence across cookies/browsers, no city
 // resolution, no lat/long, no user-typed free text ever forwarded, no `parse_mode` so
