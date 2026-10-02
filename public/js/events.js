@@ -53,6 +53,10 @@
     PASSPORT_VIEW:    'passport.view',
     SHARE_COPY:       'share.copy',
     OUTBOUND_AMAZON:  'outbound.amazon',
+    GUEST_SCRAP:      'guest.scrap',
+    GUEST_BOARD:      'guest.board',
+    GUEST_SOLVED:     'guest.solved',
+    GUEST_COPY:       'guest.copy',
     SESSION_DEPTH:    'session.depth',
   });
 

@@ -25,6 +25,7 @@ const PS_EV = Object.freeze({
   PLAY_START: 'play.start', PLAY_SOLVED: 'play.solved', PLAY_OFFER: 'play.offer',
   LEARN_START: 'learn.start', LEARN_MID: 'learn.mid', LEARN_DONE: 'learn.done',
   PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
+  GUEST_SCRAP: 'guest.scrap', GUEST_BOARD: 'guest.board', GUEST_SOLVED: 'guest.solved', GUEST_COPY: 'guest.copy',
   SESSION_DEPTH: 'session.depth',
 });
 function psEvent(ev, extra) {
@@ -2717,7 +2718,7 @@ function openScrap(idx) {
   showScrapOverlay();
   markFound('scrap' + idx);
   const wq = rejects[idx]; if (wq && wq.userData.glow) wq.userData.glow.material.opacity = 0.10;   // found = quiet, still visible
-  psEventOnce(PS_EV.PAGE_REJECTS);        // a page read — the same line a reject sends
+  psEvent(PS_EV.GUEST_SCRAP, scrapsFound().length + ' of 4');   // every scrap, with the running count (2026-10-01)
   psTouch('rejects');
 }
 function openScrapBoard() {
@@ -2739,9 +2740,12 @@ function openScrapBoard() {
   scrapSay.textContent = all ? GUEST.allFound : (have.length ? 'Pinned. ' + (4 - have.length) + ' still to find.' : GUEST.boardEmpty);
   showScrapOverlay();
   markFound('board');
+  psEvent(PS_EV.GUEST_BOARD, have.length + ' of 4 pinned');
+  if (all) psEventOnce(PS_EV.GUEST_SOLVED);
 }
 scrapCopy.addEventListener('click', async () => {
   const s = scrapsFound().length === 4 ? fullPosition() : ''; if (!s) return;   // never copy before all four are found
+  psEvent(PS_EV.GUEST_COPY);
   try { await navigator.clipboard.writeText(s); scrapCopy.textContent = 'Copied'; scrapCopy.dataset.done = '1'; }
   catch (e) { scrapCopy.textContent = 'Select and copy the line above'; }
   setTimeout(() => { scrapCopy.textContent = 'Copy the position'; delete scrapCopy.dataset.done; }, 2600);
