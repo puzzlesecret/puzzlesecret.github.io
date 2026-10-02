@@ -1002,7 +1002,7 @@
     $('scrapText').textContent = GUEST.frags[idx] || '';
     $('scrapSay').textContent = GUEST.scrapLine;
     showScrap(); guestMark('scrap' + idx);
-    try { window.psEventOnce && window.psEventOnce('page.rejects'); } catch (e) {}
+    try { window.psEvent && window.psEvent('guest.scrap', guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length + ' of 4'); } catch (e) {}
     playThud(70, 45, 0.12, 0.2);
     if (guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length >= 4) setTimeout(() => caption(GUEST.allFound, 8000), 900);
   }
@@ -1021,11 +1021,13 @@
     $('scrapCopy').hidden = !all; $('scrapBoard').hidden = false;
     $('scrapSay').textContent = all ? GUEST.allFound : (got ? 'Pinned. ' + (4 - got) + ' still to find.' : GUEST.boardEmpty);
     showScrap();
+    try { window.psEvent && window.psEvent('guest.board', got + ' of 4 pinned'); if (all && window.psEventOnce) window.psEventOnce('guest.solved'); } catch (e) {}
   }
   $('scrapCopy').addEventListener('click', async () => {
     const got = GUEST ? guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length : 0;
     const s = got === 4 ? fullPosition() : ''; if (!s) return;   // never copy before all four are found
     const b = $('scrapCopy');
+    try { window.psEvent && window.psEvent('guest.copy'); } catch (e) {}
     try { await navigator.clipboard.writeText(s); b.textContent = 'Copied'; b.dataset.done = '1'; } catch (e) { b.textContent = 'Select and copy the line above'; }
     setTimeout(() => { b.textContent = 'Copy the position'; delete b.dataset.done; }, 2600);
   });

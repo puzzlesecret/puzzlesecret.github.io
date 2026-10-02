@@ -91,6 +91,13 @@ export const CLIENT_EV = Object.freeze({
   SHARE_COPY:       'share.copy',
   OUTBOUND_AMAZON:  'outbound.amazon',     // clicked any Amazon/buy link; extra = page
 
+  // a guest room (an outlet's own room, e.g. PinPoint): its torn note and pinboard. Counts only —
+  // the position itself never leaves the page. (2026-10-01)
+  GUEST_SCRAP:      'guest.scrap',         // a scrap of the torn note opened; extra = "2 of 4" (scraps found so far)
+  GUEST_BOARD:      'guest.board',         // the pinboard opened; extra = "3 of 4 pinned"
+  GUEST_SOLVED:     'guest.solved',        // all four pinned: the full position is showing (once/session)
+  GUEST_COPY:       'guest.copy',          // "Copy the position" pressed (only possible with all four)
+
   // each time the tab hides — the last one is the story's last line
   SESSION_DEPTH:    'session.depth',       // extra = "3D · 4 rooms · 12m · last the library"
 });
@@ -182,6 +189,12 @@ export function parts(ev, extra) {
     case CLIENT_EV.SHARE_COPY:       return ['🔗', 'copies a share link'];
     case CLIENT_EV.OUTBOUND_AMAZON:  return ['🛒', 'clicks through to Amazon' + (extra ? ' from ' + extra : '')];
 
+    // guest rooms
+    case CLIENT_EV.GUEST_SCRAP:      return ['🧩', 'finds a scrap of the torn note' + (extra ? ' (' + extra + ')' : '')];
+    case CLIENT_EV.GUEST_BOARD:      return ['🪧', 'checks the pinboard' + e];   // not 📌 — that icon means Pinterest in the arrival guesses
+    case CLIENT_EV.GUEST_SOLVED:     return ['🎯', 'pins all four pieces — the full position is on the board'];
+    case CLIENT_EV.GUEST_COPY:       return ['📋', 'copies the position'];
+
     // session
     case CLIENT_EV.SESSION_DEPTH:    return ['👣', 'steps away' + e];   // sent on every tab-hide; the last one is the exit
 
@@ -239,6 +252,8 @@ export const EXTRA_RULES = Object.freeze({
   [CLIENT_EV.PERF_SLOW]:       /^\d{1,3} fps$/,
   [CLIENT_EV.PLAY_SOLVED]:     /^(easy|medium|hard) · \d{1,3}m\d{2}s · \d{1,4} total$/,
   [CLIENT_EV.OUTBOUND_AMAZON]: new RegExp('^' + PAGES + '$'),
+  [CLIENT_EV.GUEST_SCRAP]:     /^[0-4] of 4$/,   // 0 only if the browser blocks storage
+  [CLIENT_EV.GUEST_BOARD]:     /^[0-4] of 4 pinned$/,
   [CLIENT_EV.SESSION_DEPTH]:   new RegExp('^(3D|painted) · \\d{1,3} rooms · \\d{1,4}m · last ' + ROOMS + '$'),
 });
 // Length caps — a pre-slice before the grammar, so a 10 KB body never reaches a regex.
