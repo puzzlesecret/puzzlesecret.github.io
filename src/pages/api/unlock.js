@@ -52,6 +52,9 @@ const HASHES = {
   // Option 1 (letters in order) was retired 2026-09-25: Andy was sent only the scrambled option,
   // and the old word must not let anyone skip the puzzle.
   'cc3add48447d981efee6152fa44a730b97e557880f814e62b9562ac8793f8e52': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'PinPoint (UK), option 2', room: 'pinpoint' },
+  // The Aperiodical (UK maths blog) — sample puzzle sent to Katie Steckles 2026-10-08 for a
+  // possible article on how the book is built. Plain Vault I, no guest room.
+  'c0dadca8c0620466f15274857520fbd3ad3bc7ecb2a584cb3c7d32ac82be118c': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'The Aperiodical (UK)' },
 };
 
 // ── GUEST ROOMS ──────────────────────────────────────────────────────────
