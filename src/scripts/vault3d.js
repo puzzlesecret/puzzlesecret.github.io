@@ -625,7 +625,9 @@ const quill = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.34), new THREE.Mesh
 quill.position.set(-0.72, 1.02, 0.12); quill.rotation.set(0.5, 0.4, 0.9); desk.add(quill);
 ink.userData = { kind: 'say', say: 'quill', found: 'quill', label: 'Quill and ink' };
 quill.userData = { kind: 'say', say: 'quill', found: 'quill', label: 'Quill and ink' };
-chair.userData = { kind: 'chair', label: "Sit at the Keeper's desk" };
+chair.userData = { kind: 'chair', label: GUEST ? "The Keeper's logbook" : "Sit at the Keeper's desk" };
+// a guest's logbook glows at the desk once the note is whole, until it is signed (set by setLogGlow)
+const logGlow = GUEST ? sprite(0.9, 0.1, 1.0, -0.92, desk, 0.0) : null;
 // the Keeper's Notebook — a small closed book at the desk's edge
 const notebook = new THREE.Group(); notebook.position.set(-0.42, 0.825, -0.22); notebook.rotation.y = 0.25; desk.add(notebook);
 box(0.22, 0.035, 0.16, new THREE.MeshStandardMaterial({ color: 0x4a2a16, roughness: 0.7 }), 0, 0.018, 0, 0, notebook);
@@ -1540,7 +1542,9 @@ const STORY_SPOTS = [
   [9, AX + 0.2,       -25.35, 1.1],   // treasure: beneath the seals wall
 ];
 const storyPages = [];
-STORY_SPOTS.forEach(([no, x, z, ry]) => {
+// In a guest room the study's three floor pages are left out: they glowed on the same floor as the
+// four scraps and read as more pieces (2026-10-09). The deeper rooms keep theirs.
+STORY_SPOTS.filter(([, , z]) => !(GUEST && z > -3.6)).forEach(([no, x, z, ry]) => {
   const g = new THREE.Group();
   g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
   g.userData = { kind: 'page', pageNo: no, label: 'A page in the Keeper’s hand' };
@@ -1880,6 +1884,7 @@ window.addEventListener('beforeunload', silenceAll);
 /* ================= movement / interaction ================= */
 const player = { pos: new THREE.Vector3(0, 0, 3.0), target: new THREE.Vector3(0, 0, 2.6) };
 let yaw = 0, pitch = -0.02;
+if (GUEST) pitch = -0.2;   // a guest's pieces are on the floor: arrive looking a little down
 let pendingAction = null;      // fires when the glide arrives
 let rewardGiven = false, doorOpened = false;
 let door2Open = false, door3Open = false, door4Open = false;
@@ -2001,8 +2006,11 @@ renderer.domElement.addEventListener('pointermove', (e) => {
     const dx = e.clientX - down.x, dy = e.clientY - down.y;
     if (Math.hypot(dx, dy) > 9) dragging = true;
     if (dragging) {
-      yaw = down.yaw - dx * 0.0034;
-      pitch = THREE.MathUtils.clamp(down.pitch - dy * 0.0026, -0.75, 0.6);
+      // A guest room drags like a map or Street View (pull the room toward you): PinPoint's
+      // non-gamer tester found the gamer-style direction backwards (2026-10-08).
+      const dir = GUEST ? -1 : 1;
+      yaw = down.yaw - dir * dx * 0.0034;
+      pitch = THREE.MathUtils.clamp(down.pitch - dir * dy * 0.0026, -0.75, 0.6);
     }
     return;
   }
@@ -2053,6 +2061,9 @@ if (IS_TOUCH) {
   hintEl.textContent = 'Drag to look · hold the floor to walk · tap what glows';
   hintEl.style.display = 'block';
 }
+// A guest's hint names the one job in the room, and the GPSr that helps with it.
+const GUEST_HINT = (IS_TOUCH ? 'Drag to look · hold the floor to walk · ' : 'Drag to look · click the floor to walk · ') + 'the GPSr at the top points the way';
+if (GUEST) { hintEl.textContent = GUEST_HINT; if (IS_TOUCH) hintEl.style.display = 'block'; }
 // glowing destination ring on the floor while holding
 const walkRing = new THREE.Mesh(
   new THREE.RingGeometry(0.14, 0.2, 24),
@@ -2508,7 +2519,11 @@ function activate(kind, hitObj) {
   if (kind === 'scrap') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openScrap(w.userData.idx)); return; }
   if (kind === 'notebook') { goThen(-0.2, -1.9, () => openNotebook()); return; }
   if (kind === 'chartStudy') { goThen(2.3, -2.3, () => { showCaption(STUDY_SAY.chart, 8000); markFound('chart'); }); return; }
-  if (kind === 'chair') { sitAtDesk(); return; }
+  if (kind === 'chair') { if (GUEST) openGuestLog(); else sitAtDesk(); return; }
+  if (kind === 'stack' && GUEST && !study.boardSolved) {
+    showCaption('My own puzzles, and a gift for later. They are not part of the cache: find the note first.', 6000);
+    return;
+  }
   if (kind === 'stack') {
     markFound('stack');
     const sp = stackWorldPos();
@@ -2582,7 +2597,7 @@ function openBookcase() {
   doorAnim = { from: hinge.rotation.y, to: -1.62, start: performance.now(), dur: 1700 };
   playCreak();
   setTimeout(() => playBoom(0.5), 1400);
-  showCaption('The shelves swing wide — a passage, kept from every map.', 5600);
+  showCaption(GUEST ? 'The shelves swing wide onto my own vaults. They open only with words from my book, and none of your note lies beyond them.' : 'The shelves swing wide — a passage, kept from every map.', GUEST ? 9000 : 5600);
   hinge.userData.label = 'The way lies open · tap the shelves to close them';
   oddHit.userData.label = 'The odd book · tap to close the shelves';
   doorOpened = true;
@@ -2610,6 +2625,14 @@ const STUDY_KEY = GUEST ? 'ps_study_guest_v1' : 'ps_study_v1';
 const STUDY_ITEMS = GUEST ? GUEST.items : ['stack', 'p1', 'p4', 'p7', 'candle', 'quill', 'board', 'reject0', 'reject1', 'reject2', 'shelf', 'sconce', 'notebook', 'chart', 'desk'];
 let study = (() => { try { const v = JSON.parse(localStorage.getItem(STUDY_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } })();
 if (!Array.isArray(study.found)) study.found = [];
+// A guest's record belongs to one room and one note: a new outlet, or a re-kept position, starts clean.
+// (A record without a stamp - older visits, or the painted vault - is adopted, never wiped.)
+if (GUEST) {
+  const stamp = GUEST.id + ':' + GUEST.frags.join('').replace(/\D/g, '').slice(-6);
+  if (study.room && study.room !== stamp) study = { found: [] };
+  study.room = stamp;
+  try { localStorage.setItem(STUDY_KEY, JSON.stringify(study)); } catch (e) { /* private mode */ }
+}
 function saveStudy() { try { localStorage.setItem(STUDY_KEY, JSON.stringify(study)); } catch (e) { /* private mode */ } }
 const studyCountEl = document.getElementById('studyCount');
 function studyFound() {
@@ -2623,8 +2646,61 @@ function studyFound() {
 }
 function renderStudyCount() {
   const n = studyFound().size, m = STUDY_ITEMS.length;
-  studyCountEl.innerHTML = GUEST ? (n >= m ? 'Every piece of the note, found' : ('Pieces found: <b>' + n + '</b> of ' + m))
-    : (n >= m ? 'Every one of my things, found' : ('Found <b>' + n + '</b> of ' + m + ' in the study'));
+  if (GUEST) { renderGpsr(true); return; }
+  studyCountEl.innerHTML = n >= m ? 'Every one of my things, found' : ('Found <b>' + n + '</b> of ' + m + ' in the study');
+}
+/* --- A GUEST's counter is a GPSr (2026-10-09, PinPoint's feedback: "I couldn't see the counter",
+       and two of the four pieces sit beside and behind where you arrive). It says how many pieces
+       are found and points, with a distance, at the nearest one still on the floor; then at the
+       pinboard; then at the logbook on the desk. Built with DOM nodes, never innerHTML. --- */
+const GPSR_BOARD = { x: 1.9, z: -3.2 }, GPSR_LOG = { x: 0.5, z: -0.4 };
+let gpsrEls = null, gpsrLast = '';
+function gpsrTarget() {
+  const have = scrapsFound();
+  if (have.length < 4) {
+    let best = null;
+    rejects.forEach((w, i) => {
+      if (have.includes('scrap' + i)) return;
+      const d = Math.hypot(w.position.x - player.pos.x, w.position.z - player.pos.z);
+      if (!best || d < best.d) best = { x: w.position.x, z: w.position.z, d, what: 'nearest piece' };
+    });
+    return best;
+  }
+  const t = study.boardSolved ? (study.logged ? null : { ...GPSR_LOG, what: 'the logbook' }) : { ...GPSR_BOARD, what: 'the board' };
+  if (t) t.d = Math.hypot(t.x - player.pos.x, t.z - player.pos.z);
+  return t;
+}
+function renderGpsr(force) {
+  if (!GUEST) return;
+  if (!gpsrEls) {
+    studyCountEl.classList.add('gpsr');
+    studyCountEl.textContent = '';
+    const mk = (cls, tag) => { const e = document.createElement(tag || 'span'); e.className = cls; studyCountEl.appendChild(e); return e; };
+    gpsrEls = { ttl: mk('g-ttl'), count: mk('g-count'), arr: mk('g-arr'), dist: mk('g-dist') };
+    gpsrEls.ttl.textContent = 'GPSr';
+    gpsrEls.arr.textContent = '▲';
+    gpsrEls.arr.setAttribute('aria-hidden', 'true');
+  }
+  if (!GUEST.frags.length) { studyCountEl.style.display = 'none'; return; }   // a room no longer kept: nothing to point at
+  const n = scrapsFound().length, t = gpsrTarget();
+  const countTxt = n >= 4 ? 'All 4 pieces found' : ('Pieces found: ' + n + ' of 4');
+  // angle of the target relative to where the camera faces: 0 = dead ahead, + = to the right
+  let ang = 0;
+  if (t) {
+    const dx = t.x - player.pos.x, dz = t.z - player.pos.z;
+    const fwd = dx * -Math.sin(yaw) + dz * -Math.cos(yaw), right = dx * Math.cos(yaw) + dz * -Math.sin(yaw);
+    ang = Math.atan2(right, fwd) * 180 / Math.PI;
+  }
+  let distTxt;
+  if (!t) distTxt = 'Logged. Happy caching!';
+  else if (t.d < 1.1) distTxt = t.what === 'nearest piece' ? 'right here, look down' : t.what + ', right here';
+  else distTxt = t.what + ' · ' + t.d.toFixed(1) + ' m' + (Math.abs(ang) > 135 ? ', behind you' : '');
+  const key = countTxt + '|' + distTxt;
+  if (force || key !== gpsrLast) { gpsrLast = key; gpsrEls.count.textContent = countTxt; gpsrEls.dist.textContent = distTxt; }
+  // style writes only when something changed (this runs every frame in the study)
+  const vis = (t && t.d >= 1.1) ? 'visible' : 'hidden', rot = 'rotate(' + ang.toFixed(0) + 'deg)';
+  if (gpsrEls.vis !== vis) { gpsrEls.vis = vis; gpsrEls.arr.style.visibility = vis; }
+  if (gpsrEls.rot !== rot) { gpsrEls.rot = rot; gpsrEls.arr.style.transform = rot; }
 }
 function markFound(id) {
   if (!STUDY_ITEMS.includes(id) || study.found.includes(id)) { renderStudyCount(); return; }
@@ -2712,11 +2788,16 @@ function openScrap(idx) {
   if (!GUEST) return;
   if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
   scrapBoard.hidden = true;
-  scrapKick.textContent = 'A PIECE OF THE NOTE · ' + (idx + 1) + ' OF 4';
-  scrapText.textContent = GUEST.frags[idx] || '';
-  scrapSay.textContent = GUEST.scrapLine;
-  showScrapOverlay();
+  const isNew = !study.found.includes('scrap' + idx);
   markFound('scrap' + idx);
+  const k = scrapsFound().length, left = ['', 'One', 'Two', 'Three'][4 - k] || '';
+  // the count, not the slot number: a first find used to read "3 OF 4" (2026-10-09)
+  scrapKick.textContent = 'A PIECE OF THE NOTE · ' + k + ' OF 4 FOUND';
+  scrapText.textContent = GUEST.frags[idx] || '';
+  scrapSay.textContent = GUEST.scrapLine + ' ' + (k < 4
+    ? left + (k === 3 ? ' piece still lies on the floor; the GPSr will point you to it.' : ' pieces still lie on the floor; the GPSr will point you to them.')
+    : isNew ? 'That was the last of them. Go to the board: it holds the whole note now.' : 'All four are pinned on the board.');
+  showScrapOverlay();
   const wq = rejects[idx]; if (wq && wq.userData.glow) wq.userData.glow.material.opacity = 0.10;   // found = quiet, still visible
   psEvent(PS_EV.GUEST_SCRAP, scrapsFound().length + ' of 4');   // every scrap, with the running count (2026-10-01)
   psTouch('rejects');
@@ -2741,7 +2822,38 @@ function openScrapBoard() {
   showScrapOverlay();
   markFound('board');
   psEvent(PS_EV.GUEST_BOARD, have.length + ' of 4 pinned');
-  if (all) psEventOnce(PS_EV.GUEST_SOLVED);
+  if (all) {
+    psEventOnce(PS_EV.GUEST_SOLVED);
+    if (!study.boardSolved) { study.boardSolved = true; saveStudy(); }
+    if (!study.logged) scrapSay.textContent = GUEST.allFound + ' And before you go, my logbook on the desk is waiting for you.';
+    setLogGlow();
+  }
+  renderGpsr(true);
+}
+/* --- The Keeper's logbook (guest rooms only): the desk's daily sudoku was being taken for a cache
+       step (PinPoint, 2026-10-07/08), so in a guest room the desk holds a logbook instead. It does
+       nothing until the note is whole; then a finder can sign it. Kept on this device only. --- */
+function setLogGlow() { if (logGlow) logGlow.material.opacity = (study.boardSolved && !study.logged) ? 0.6 : 0.0; }
+setLogGlow();
+function openGuestLog() {
+  if (!GUEST) return;
+  goThen(0.2, -1.4, () => {
+    if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
+    if (scrapsFound().length < 4) {
+      showCaption('My logbook is for finders. Gather all four pieces of the note, then sign it.', 6000);
+      return;
+    }
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const first = !study.logged;
+    if (first) { study.logged = today; saveStudy(); }
+    scrapBoard.hidden = true;
+    scrapKick.textContent = "THE KEEPER'S LOGBOOK";
+    scrapText.textContent = 'FOUND IT';
+    scrapSay.textContent = (first ? 'Signed on ' : 'You signed it on ') + study.logged + '. My thanks for the find. Now go and sign the real one, out where the note says.';
+    showScrapOverlay();
+    if (first && !REDUCED) burstConfetti();
+    setLogGlow(); renderGpsr(true);
+  });
 }
 scrapCopy.addEventListener('click', async () => {
   const s = scrapsFound().length === 4 ? fullPosition() : ''; if (!s) return;   // never copy before all four are found
@@ -2776,7 +2888,7 @@ function drawNotebook() {
   nbPrev.disabled = nbPage === 0; nbNext.disabled = nbPage === NOTEBOOK.length - 1;
   nbPrev.style.opacity = nbPage === 0 ? '.35' : ''; nbNext.style.opacity = nbPage === NOTEBOOK.length - 1 ? '.35' : '';
 }
-function openNotebook() { nbPage = 0; drawNotebook(); nbEl.hidden = false; markFound('notebook'); psEventOnce(PS_EV.PAGE_NOTEBOOK); psTouch('notebook'); showCaption('My notebook. Read it, and the rest of my book will go easier.', 5200); }
+function openNotebook() { nbPage = 0; drawNotebook(); nbEl.hidden = false; markFound('notebook'); psEventOnce(PS_EV.PAGE_NOTEBOOK); psTouch('notebook'); showCaption(GUEST ? 'My notebook, for readers of my book. Nothing in it is part of the cache.' : 'My notebook. Read it, and the rest of my book will go easier.', 5200); }
 nbPrev.addEventListener('click', () => { if (nbPage > 0) { nbPage--; drawNotebook(); } });
 nbNext.addEventListener('click', () => { if (nbPage < NOTEBOOK.length - 1) { nbPage++; drawNotebook(); } });
 document.getElementById('nbClose').addEventListener('click', () => { nbEl.hidden = true; });
@@ -2923,7 +3035,7 @@ if (FROM_DOOR) {
   hintEl.style.display = 'block';
   const wake = () => {
     unlockVO(); initAudio(); startAmbient();
-    hintEl.textContent = IS_TOUCH ? 'Drag to look · hold the floor to walk · tap what glows' : 'Drag to look around · Tap the floor to walk · Click what glows';
+    hintEl.textContent = GUEST ? GUEST_HINT : IS_TOUCH ? 'Drag to look · hold the floor to walk · tap what glows' : 'Drag to look around · Tap the floor to walk · Click what glows';
     setTimeout(() => sayEntry(), 400);
   };
   addEventListener('pointerdown', wake, { once: true });
@@ -3429,6 +3541,7 @@ function watchFrameRate() {
 }
 function offerFlat(fps) {
   if (document.getElementById('slowBar')) return;
+  if (GUEST && simT < 12) { setTimeout(() => offerFlat(fps), (12 - simT) * 1000); return; }   // let a guest read the Keeper's first line
   psEvent(PS_EV.PERF_SLOW, fps + ' fps');           // the device, not the person, is what is stuck here
   const bar = document.createElement('div');
   bar.id = 'slowBar';
@@ -3523,6 +3636,7 @@ function tick(dt) {
   psRoom = PS_ROOM_SHORT[label] || psRoom; psRooms.add(psRoom);
   const inStudy = entered && zp > -3.6 && player.pos.y > -0.4;
   if (studyCountEl.hidden === inStudy) studyCountEl.hidden = !inStudy;
+  if (GUEST && inStudy) renderGpsr(false);
   if (!exitSaid && entered && zp < -4.2 && zp > -7.0) {
     exitSaid = true;
     const left = STUDY_ITEMS.length - studyFound().size;

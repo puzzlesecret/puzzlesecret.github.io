@@ -36,7 +36,7 @@
   })();
   const GUEST_FOUND_KEY = 'ps_study_guest_v1';
   function guestFound() { try { const v = JSON.parse(localStorage.getItem(GUEST_FOUND_KEY) || '{}'); return Array.isArray(v.found) ? v.found : []; } catch (e) { return []; } }
-  function guestMark(id) { try { const v = JSON.parse(localStorage.getItem(GUEST_FOUND_KEY) || '{}'); const f = Array.isArray(v.found) ? v.found : []; if (!f.includes(id)) f.push(id); localStorage.setItem(GUEST_FOUND_KEY, JSON.stringify({ found: f })); } catch (e) {} }
+  function guestMark(id) { try { const v = JSON.parse(localStorage.getItem(GUEST_FOUND_KEY) || '{}'); const f = Array.isArray(v.found) ? v.found : []; if (!f.includes(id)) f.push(id); v.found = f; localStorage.setItem(GUEST_FOUND_KEY, JSON.stringify(v)); } catch (e) {} }   // keep the 3D room's other fields (room stamp, board, logbook)
 
   /* ================= the rooms ================= */
   // Coordinates are percentages of the 900x503 paintings (public/art/rooms/*.webp).
@@ -66,9 +66,11 @@
         ]),
         { id: 'shelf', x: 85, y: 33, w: 10, h: 30, label: "The Keeper's shelves", act: 'say', arg: 'shelf' },
         { id: 'passage', x: 46, y: 26, w: 9, h: 24, label: 'A passage, deeper in', act: 'door', arg: 'door2' },
-        { id: 'p1', page: 1, x: 31, y: 80, w: 6, h: 7 },
-        { id: 'p4', page: 4, x: 36, y: 90, w: 7, h: 6 },
-        { id: 'p7', page: 7, x: 84, y: 52, w: 6, h: 7 },
+        ...(GUEST ? [] : [
+          { id: 'p1', page: 1, x: 31, y: 80, w: 6, h: 7 },
+          { id: 'p4', page: 4, x: 36, y: 90, w: 7, h: 6 },
+          { id: 'p7', page: 7, x: 84, y: 52, w: 6, h: 7 },
+        ]),
       ],
     },
     II: {
@@ -998,10 +1000,12 @@
     if (!GUEST) return;
     if (!GUEST.frags.length) { caption(GUEST.retired, 7000); return; }
     $('scrapBoard').hidden = true;
-    $('scrapKick').textContent = 'A PIECE OF THE NOTE · ' + (idx + 1) + ' OF 4';
+    guestMark('scrap' + idx);
+    const k = guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length;
+    $('scrapKick').textContent = 'A PIECE OF THE NOTE · ' + k + ' OF 4 FOUND';
     $('scrapText').textContent = GUEST.frags[idx] || '';
-    $('scrapSay').textContent = GUEST.scrapLine;
-    showScrap(); guestMark('scrap' + idx);
+    $('scrapSay').textContent = GUEST.scrapLine + (k < 4 ? ' ' + ['', 'One', 'Two', 'Three'][4 - k] + (k === 3 ? ' piece still lies' : ' pieces still lie') + ' on the floor.' : ' Go to the board: it holds the whole note now.');
+    showScrap();
     try { window.psEvent && window.psEvent('guest.scrap', guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length + ' of 4'); } catch (e) {}
     playThud(70, 45, 0.12, 0.2);
     if (guestFound().filter((i) => /^scrap[0-3]$/.test(i)).length >= 4) setTimeout(() => caption(GUEST.allFound, 8000), 900);
