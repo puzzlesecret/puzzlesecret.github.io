@@ -1,0 +1,160 @@
+---
+// PINPOINT'S DOOR — a standalone entrance to the PinPoint guest room (GCBYBY3, PinPoint Puzzler, Autumn 2026).
+// Why it exists (2026-10-13): Groundspeak's reviewer rejected the cache page because it linked to the
+// homepage, whose purpose is the book. This page is the one the cache page links instead: no book, no
+// shop, no prices, no links out — only the word box. The word is checked SERVER-SIDE by /api/unlock
+// (the same rail as the front door, so the guest-key Telegram line still names PinPoint), and the room's
+// four co-ordinate pieces come back only on that word. The vault itself is unchanged: on a true word this
+// page stores exactly what the front door stores and forwards to /vault?from=door&act=I.
+import Analytics from '@vercel/analytics/astro';
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>The Keeper's Study · GCBYBY3</title>
+  <meta name="description" content="The study door for the PinPoint Puzzler, Autumn 2026 (GCBYBY3)." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/favicon.ico" sizes="48x48" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="prefetch" href="/vault" />
+  <script is:inline src="/js/events.js" defer></script>
+  <style>
+    :root { --gold: #f6b23c; --gold-dim: #b07c25; --parchment: #efe2c4; --ink: #0b0704; --muted: #b9a684; --bad: #ff9a8a; }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      background: var(--ink) url('/art/rooms/study.webp') center / cover no-repeat fixed;
+      color: var(--parchment); font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; line-height: 1.5;
+      display: grid; place-items: center; padding: 24px 16px;
+    }
+    body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse at center, rgba(11,7,4,.62), rgba(11,7,4,.92)); z-index: 0; }
+    main {
+      position: relative; z-index: 1; width: 100%; max-width: 520px; text-align: center;
+      background: rgba(20,13,7,.82); border: 1px solid rgba(246,178,60,.35); border-radius: 14px;
+      padding: 30px 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.6); display: grid; gap: 16px;
+    }
+    .kicker { font-family: Cinzel, serif; font-size: 12px; letter-spacing: .28em; color: var(--gold); }
+    h1 { font-family: Cinzel, serif; font-weight: 600; font-size: 30px; letter-spacing: .06em; margin: 0; text-wrap: balance; }
+    p { margin: 0; }
+    .steps { color: var(--muted); font-size: 17px; }
+    form { display: grid; gap: 14px; justify-items: center; }
+    .tiles { display: flex; gap: 8px; justify-content: center; }
+    .tiles input {
+      width: 46px; height: 56px; text-align: center; font-family: Cinzel, serif; font-size: 26px; text-transform: uppercase;
+      color: var(--parchment); background: rgba(0,0,0,.45); border: 1px solid var(--gold-dim); border-radius: 8px; caret-color: var(--gold);
+    }
+    .tiles input:focus { outline: 2px solid var(--gold); outline-offset: 2px; }
+    button, .enter {
+      font-family: Cinzel, serif; font-size: 15px; letter-spacing: .14em; cursor: pointer; text-decoration: none;
+      color: var(--ink); background: var(--gold); border: 0; border-radius: 8px; padding: 12px 22px;
+    }
+    button:disabled { opacity: .55; cursor: default; }
+    button:focus-visible, .enter:focus-visible { outline: 2px solid var(--parchment); outline-offset: 3px; }
+    .msg { min-height: 1.5em; font-size: 18px; }
+    .msg.bad { color: var(--bad); }
+    .msg.good { color: var(--gold); }
+    .small { font-size: 15px; color: var(--muted); }
+    .credit { font-family: Cinzel, serif; font-size: 11px; letter-spacing: .22em; color: var(--muted); margin-top: 4px; }
+    .shake { animation: shake .45s; }
+    @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+    @media (max-width: 400px) { .tiles input { width: 40px; height: 50px; font-size: 22px; } h1 { font-size: 25px; } }
+    @media (prefers-reduced-motion: reduce) { .shake { animation: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="kicker">THE PINPOINT PUZZLER · GCBYBY3</div>
+    <h1>The Keeper's Study</h1>
+    <p>Solved the sudoku on the cache page? Its shaded squares spell a six-letter name. Type it here and the study door opens.</p>
+    <p class="steps">Inside, the Keeper has torn a note into four pieces and dropped them on the floor. Find all four and his board gives you the final co-ordinates.</p>
+
+    <form id="doorForm" autocomplete="off">
+      <div class="tiles" id="tiles" role="group" aria-label="The six-letter name">
+        <input id="t0" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 1" />
+        <input id="t1" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 2" />
+        <input id="t2" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 3" />
+        <input id="t3" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 4" />
+        <input id="t4" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 5" />
+        <input id="t5" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 6" />
+      </div>
+      <button type="submit" id="openBtn">Open the door</button>
+    </form>
+    <p class="msg" id="msg" aria-live="polite"></p>
+
+    <p class="small">In the study, drag to look around, tap the floor to walk, and tap anything that glows. Works on a phone or a computer. Nothing to sign up for.</p>
+    <p class="credit">PUZZLE BY DAN HERLEHY</p>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var tiles = Array.prototype.slice.call(document.querySelectorAll('#tiles input'));
+      var form = document.getElementById('doorForm'), btn = document.getElementById('openBtn'), msg = document.getElementById('msg');
+      var busy = false, misses = 0;
+      var say = function (t, cls) { msg.textContent = t; msg.className = 'msg' + (cls ? ' ' + cls : ''); };
+      function vid() {
+        try {
+          var v = localStorage.getItem('ps_vid');
+          if (!v) { v = Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(4)), function (b) { return b.toString(16).padStart(2, '0'); }).join(''); localStorage.setItem('ps_vid', v); }
+          return v;
+        } catch (e) { return ''; }
+      }
+      tiles.forEach(function (t, i) {
+        t.addEventListener('input', function () {
+          var s = t.value.replace(/[^a-z]/gi, '').toUpperCase();
+          // a phone keyboard can drop a whole suggestion into one box: spread it across the boxes
+          for (var k = 0; k < s.length && i + k < tiles.length; k++) tiles[i + k].value = s[k];
+          if (!s) t.value = '';
+          var next = tiles[Math.min(i + Math.max(s.length, 1), tiles.length - 1)];
+          if (s && next) next.focus();
+          if (msg.classList.contains('bad')) say('');
+        });
+        t.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' && !t.value && tiles[i - 1]) { tiles[i - 1].focus(); tiles[i - 1].value = ''; e.preventDefault(); }
+          else if (e.key === 'ArrowLeft' && tiles[i - 1]) tiles[i - 1].focus();
+          else if (e.key === 'ArrowRight' && tiles[i + 1]) tiles[i + 1].focus();
+        });
+        t.addEventListener('paste', function (e) {
+          var s = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/[^a-z]/gi, '').toUpperCase();
+          if (!s) return; e.preventDefault();
+          for (var k = 0; k < tiles.length; k++) tiles[k].value = s[k] || '';
+          (tiles[Math.min(s.length, tiles.length) - 1] || tiles[0]).focus();
+        });
+      });
+      function wrong(t) {
+        misses += 1;
+        var box = document.getElementById('tiles');
+        box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+        say(t || (misses < 3 ? "That isn't the name. Check your shaded squares, and remember the six letters come out scrambled." : 'Still not it. Run every shaded digit through the decode table on the cache page, then unscramble the six letters into a name.'), 'bad');
+      }
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (busy) return;
+        var word = tiles.map(function (t) { return t.value; }).join('');
+        if (word.length < 6) { say('All six letters, please.', 'bad'); (tiles.find(function (t) { return !t.value; }) || tiles[0]).focus(); return; }
+        busy = true; btn.disabled = true; say('Trying the door…');
+        fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word: word, vid: vid(), at: 'pinpoint' }) })
+          .then(function (r) { return r.json().catch(function () { return { ok: false }; }).then(function (d) { d.__status = r.status; return d; }); })
+          .then(function (data) {
+            if (!data.ok) {
+              wrong(data.__status === 429 ? 'Too many tries at once. Wait a few seconds, then try again.' : data.__status === 503 ? 'The door is stuck for a moment. Please try again shortly.' : '');
+              return;
+            }
+            // exactly what the front door stores on a true word (index.astro onCorrect), so the vault lets them in
+            try { var rw = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { rw[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(rw)); } } catch (err) {}
+            try { if (data.room && data.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(data.room)); else sessionStorage.removeItem('ps_guest_room_v1'); } catch (err) {}
+            say('The door swings open. Step inside…', 'good');
+            setTimeout(function () { location.href = '/vault?from=door&act=' + encodeURIComponent(data.act || 'I'); }, 900);
+          })
+          .catch(function () { wrong('The door would not answer. Check your connection and try again.'); })
+          .then(function () { setTimeout(function () { busy = false; btn.disabled = false; }, 900); });
+      });
+      // focus the first box on a computer only: on a phone the keyboard would cover the instructions
+      if (matchMedia('(pointer: fine)').matches) tiles[0].focus({ preventScroll: true });
+    })();
+  </script>
+  <Analytics />
+</body>
+</html>
