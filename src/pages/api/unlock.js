@@ -55,6 +55,8 @@ const HASHES = {
   // The Aperiodical (UK maths blog) — sample puzzle sent to Katie Steckles 2026-10-08 for a
   // possible article on how the book is built. Plain Vault I, no guest room.
   'c0dadca8c0620466f15274857520fbd3ad3bc7ecb2a584cb3c7d32ac82be118c': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'The Aperiodical (UK)' },
+  // Geeks of Doom (US) — sample puzzle for Eve Conte, who asked to see one (2026-10-14). Plain Vault I.
+  '1553ce78b5422c4070f0655c9eb82670517afe872eeeec2c379da6ba646ee896': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Geeks of Doom' },
 };
 
 // ── GUEST ROOMS ──────────────────────────────────────────────────────────
