@@ -76,10 +76,13 @@ const GUEST_ROOMS = {
     retired: 'PinPoint asked me to keep a place here once. It is no longer kept. The study is still yours to look around.',
     boardEmpty: 'Four empty pins. Every piece you find on the floor is pinned here for you.',
     exit: 'You are leaving with {n} of my four pieces unfound. The corridor will keep; the note will not.',
-    door2Kicker: 'THE SECOND DOOR — SEALED WITH A WORD FROM MY BOOK',
-    door2Line: "This door is not part of PinPoint's cache: every piece of the note is in the study behind you. It wants a word I hid across two hundred grids, so say it if you have the book. If you have not, the book is where I keep the rest of me.",
-    door2LinkText: "The Keeper's book →",
-    door2LinkHref: '/shop',
+    door2Kicker: 'THE SECOND DOOR — NOT PART OF THE CACHE',
+    door2Line: "This door is not part of PinPoint's cache: every piece of the note is in the study behind you.",
+    door2LinkText: "Back to PinPoint's door →",
+    door2LinkHref: '/pinpoint',
+    // where the room's own exits lead: PinPoint's standalone door, not the book's homepage (2026-10-13,
+    // after Groundspeak ruled the homepage commercial — the cache page links /pinpoint)
+    home: '/pinpoint',
     env: 'GUEST_ROOM_PINPOINT',
   },
 };
@@ -109,7 +112,7 @@ const LETTERS = [
 // It reveals nothing (a hash of the salt) and never appears for a non-solver.
 const CARVE_TOKEN = SALT ? crypto.createHash('sha256').update(SALT + '|carve-proof-v1').digest('hex') : '';
 const norm = (w) => String(w || '').toUpperCase().replace(/[^A-Z]/g, '');
-const AT = { door: ' · at the front door', '3d': ' · at the 3D word box', painted: ' · at the painted word box' };
+const AT = { door: ' · at the front door', '3d': ' · at the 3D word box', painted: ' · at the painted word box', pinpoint: ' · at the PinPoint door' };
 const hash = (w) => crypto.createHash('sha256').update(SALT + '|' + w).digest('hex');
 
 // Tiny per-IP token bucket (generous for humans, hostile to wordlist scripts).

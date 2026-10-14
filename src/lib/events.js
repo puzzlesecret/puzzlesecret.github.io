@@ -231,7 +231,7 @@ export function keeperLine(ev, extra, tag, place) {
 // narrative ("GUEST KEY came in from…"). So every extra must match the exact shape our
 // own clients produce — fixed vocabularies and digits — or it is dropped (the event still
 // goes through, just without its extra). Nothing here can spell a hostname.
-const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|sudoku-cheat-sheet|daily|unsubscribed|404)';
+const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|sudoku-cheat-sheet|daily|unsubscribed|pinpoint|404)';
 // Generic sites by kind, then every outlet in the placement registry by its fixed id. An unknown
 // site may carry its country ending (".uk") — two letters, which cannot form a link.
 export const GENERIC_SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'x', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'email'];

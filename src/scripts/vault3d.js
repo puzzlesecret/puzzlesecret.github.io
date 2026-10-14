@@ -122,7 +122,8 @@ const GUEST = (() => {
     for (const k of ['entry', 'scrapLabel', 'scrapLine', 'allFound', 'retired', 'boardEmpty', 'exit', 'door2Kicker', 'door2Line', 'door2LinkText']) if (!ok(s[k], 400)) return null;
     if (!/^\/[a-z0-9\-\/]{0,40}$/.test(String(s.door2LinkHref || ''))) return null;
     const frags = Array.isArray(s.frags) ? s.frags.filter((f) => ok(f, 16) && /^[NSEW0-9°.'… ]+$/.test(f)) : [];
-    return { ...s, frags: frags.length === 4 ? frags : [], items: ['scrap0', 'scrap1', 'scrap2', 'scrap3'] };
+    const home = /^\/[a-z0-9\-]{1,40}$/.test(String(s.home || '')) ? s.home : '/';   // the room's own front door (optional)
+    return { ...s, home, frags: frags.length === 4 ? frags : [], items: ['scrap0', 'scrap1', 'scrap2', 'scrap3'] };
   } catch (e) { return null; }
 })();
 if (FROM_DOOR) { gate.style.display = 'none'; fadeEl.classList.add('from-door'); }
@@ -2551,7 +2552,7 @@ function activate(kind, hitObj) {
     goThen(0, 3.05, () => {
       showCaption('Back to the beginning. The door remembers you.', 2400);
       fadeEl.classList.remove('clear');
-      setTimeout(() => { window.location.href = '/'; }, 900);
+      setTimeout(() => { window.location.href = GUEST ? GUEST.home : '/'; }, 900);
     });
   } else if (kind === 'door2' || kind === 'door3') {
     const D = DOORS[kind];
@@ -2874,6 +2875,9 @@ function guestDoorLine() {
 }
 if (GUEST) {
   DOORS.door2.kicker = GUEST.door2Kicker;
+  // a guest room's way out is its own door, never the book's homepage
+  const bl = document.getElementById('backlink');
+  if (bl && GUEST.home !== '/') { bl.href = GUEST.home; bl.textContent = '◄ back to the door'; }
   // A guest who arrived without the door and spoke the word at the desk: the room is rebuilt as theirs.
   // (submitWord stashes the room; here we only need the flag for the first-word box's wording.)
   DOORS.first.kicker = 'THE MAGAZINE\'S WORD';

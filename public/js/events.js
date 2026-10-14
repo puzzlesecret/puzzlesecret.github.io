@@ -189,6 +189,7 @@
     'wordsandpeace.com': 'wordsandpeace',
     'sarcasticallyyoursjen.com': 'sarcasticallyyours',
     'pinpointmag.co.uk': 'pinpoint',
+    'geocaching.com': 'pinpoint',   // GCBYBY3's cache page links /pinpoint (2026-10-13)
     'thegeocachingpodcast.com': 'geocachingpodcast',
     'bigpinekey.com': 'bigpinekey',
     'thedailynewsonline.com': 'batavianews',
