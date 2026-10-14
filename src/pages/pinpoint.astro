@@ -26,7 +26,7 @@ import Analytics from '@vercel/analytics/astro';
     * { box-sizing: border-box; }
     html, body { min-height: 100%; margin: 0; }
     body {
-      background: var(--ink) url('/art/rooms/study.webp') center / cover no-repeat fixed;
+      background: var(--ink) url('/art/rooms/study.webp') center / cover no-repeat;
       color: var(--parchment); font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; line-height: 1.5;
       display: grid; place-items: center; padding: 24px 16px;
     }
@@ -73,15 +73,16 @@ import Analytics from '@vercel/analytics/astro';
 
     <form id="doorForm" autocomplete="off">
       <div class="tiles" id="tiles" role="group" aria-label="The six-letter name">
-        <input id="t0" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 1" />
-        <input id="t1" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 2" />
-        <input id="t2" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 3" />
-        <input id="t3" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 4" />
-        <input id="t4" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 5" />
-        <input id="t5" maxlength="1" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 6" />
+        <input id="t0" inputmode="text" aria-describedby="msg" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 1" />
+        <input id="t1" inputmode="text" aria-describedby="msg" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 2" />
+        <input id="t2" inputmode="text" aria-describedby="msg" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 3" />
+        <input id="t3" inputmode="text" aria-describedby="msg" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 4" />
+        <input id="t4" inputmode="text" aria-describedby="msg" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 5" />
+        <input id="t5" inputmode="text" aria-describedby="msg" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Letter 6" />
       </div>
       <button type="submit" id="openBtn">Open the door</button>
     </form>
+    <p id="backIn" hidden><a class="enter" id="backInBtn" href="/vault?from=door&amp;act=I">Back into the study →</a></p>
     <p class="msg" id="msg" aria-live="polite"></p>
 
     <p class="small">In the study, drag to look around, tap the floor to walk, and tap anything that glows. Works on a phone or a computer. Nothing to sign up for.</p>
@@ -92,7 +93,19 @@ import Analytics from '@vercel/analytics/astro';
     (function () {
       var tiles = Array.prototype.slice.call(document.querySelectorAll('#tiles input'));
       var form = document.getElementById('doorForm'), btn = document.getElementById('openBtn'), msg = document.getElementById('msg');
-      var busy = false, misses = 0;
+      var busy = false, misses = 0, done = false;
+      // A cacher who already opened the door in this browser goes straight back in (this page only, 60 days):
+      // the room lives in a tab's session, which a new tab or the Geocaching app's browser does not keep.
+      var KEEP = 'ps_pinpoint_room_v1';
+      try {
+        var kept = JSON.parse(localStorage.getItem(KEEP) || 'null');
+        if (kept && kept.room && kept.room.id === 'pinpoint' && Date.now() - (kept.t || 0) < 60 * 864e5) {
+          document.getElementById('backIn').hidden = false;
+          document.getElementById('backInBtn').addEventListener('click', function () {
+            try { sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(kept.room)); } catch (e) {}
+          });
+        } else if (kept) localStorage.removeItem(KEEP);
+      } catch (e) {}
       var say = function (t, cls) { msg.textContent = t; msg.className = 'msg' + (cls ? ' ' + cls : ''); };
       function vid() {
         try {
@@ -104,11 +117,14 @@ import Analytics from '@vercel/analytics/astro';
       tiles.forEach(function (t, i) {
         t.addEventListener('input', function () {
           var s = t.value.replace(/[^a-z]/gi, '').toUpperCase();
+          // typing over a filled box keeps the newest letter (no maxlength: it would block phone suggestions)
+          if (s.length === 2 && t.dataset.prev && s.indexOf(t.dataset.prev) !== -1) s = s.replace(t.dataset.prev, '');
           // a phone keyboard can drop a whole suggestion into one box: spread it across the boxes
           for (var k = 0; k < s.length && i + k < tiles.length; k++) tiles[i + k].value = s[k];
           if (!s) t.value = '';
           var next = tiles[Math.min(i + Math.max(s.length, 1), tiles.length - 1)];
           if (s && next) next.focus();
+          tiles.forEach(function (x) { x.dataset.prev = x.value; x.removeAttribute('aria-invalid'); });
           if (msg.classList.contains('bad')) say('');
         });
         t.addEventListener('keydown', function (e) {
@@ -127,6 +143,7 @@ import Analytics from '@vercel/analytics/astro';
         misses += 1;
         var box = document.getElementById('tiles');
         box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+        tiles.forEach(function (x) { x.setAttribute('aria-invalid', 'true'); });
         say(t || (misses < 3 ? "That isn't the name. Check your shaded squares, and remember the six letters come out scrambled." : 'Still not it. Run every shaded digit through the decode table on the cache page, then unscramble the six letters into a name.'), 'bad');
       }
       form.addEventListener('submit', function (e) {
@@ -145,11 +162,13 @@ import Analytics from '@vercel/analytics/astro';
             // exactly what the front door stores on a true word (index.astro onCorrect), so the vault lets them in
             try { var rw = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { rw[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(rw)); } } catch (err) {}
             try { if (data.room && data.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(data.room)); else sessionStorage.removeItem('ps_guest_room_v1'); } catch (err) {}
+            try { if (data.room && data.room.id === 'pinpoint') localStorage.setItem(KEEP, JSON.stringify({ room: data.room, act: data.act || 'I', t: Date.now() })); } catch (err) {}
+            done = true;
             say('The door swings open. Step inside…', 'good');
             setTimeout(function () { location.href = '/vault?from=door&act=' + encodeURIComponent(data.act || 'I'); }, 900);
           })
           .catch(function () { wrong('The door would not answer. Check your connection and try again.'); })
-          .then(function () { setTimeout(function () { busy = false; btn.disabled = false; }, 900); });
+          .then(function () { if (!done) setTimeout(function () { busy = false; btn.disabled = false; }, 900); });
       });
       // focus the first box on a computer only: on a phone the keyboard would cover the instructions
       if (matchMedia('(pointer: fine)').matches) tiles[0].focus({ preventScroll: true });

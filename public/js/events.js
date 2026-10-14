@@ -150,7 +150,7 @@
   // enforces the same list; a raw domain would be dropped there, and Telegram would
   // otherwise turn it into a tappable link.) Every rule matches the real domain, never a
   // fragment of a name, so plumbingsupply.co.uk is not "bing" and us.mensa.org is not our Mensa.
-  var SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'x', 'email'];
+  var SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'x', 'email', 'geocaching'];
   var DOMAIN_RULES = [
     ['email',        /^(mail\.google\.com|outlook\.(live|office|office365)\.com|mail\.yahoo\.com|mail\.aol\.com|mail\.proton\.me|mail\.zoho\.com|webmail\..+|.+\.safelinks\.protection\.outlook\.com)$/],
     ['gemini',       /(^|\.)gemini\.google\.com$/],
@@ -181,6 +181,7 @@
     ['librarything', /(^|\.)librarything\.com$/],
     ['bookbub',      /(^|\.)bookbub\.com$/],
     ['substack',     /(^|\.)substack\.com$/],
+    ['geocaching',   /(^|\.)geocaching\.com$/],   // cache pages, checkers' referrals (GCBYBY3 links /pinpoint)
   ];
   // Mirror of src/lib/placements.js (host → id). scripts/verify-events.js fails if they drift.
   var PLACEMENT_HOSTS = Object.freeze({
@@ -189,7 +190,6 @@
     'wordsandpeace.com': 'wordsandpeace',
     'sarcasticallyyoursjen.com': 'sarcasticallyyours',
     'pinpointmag.co.uk': 'pinpoint',
-    'geocaching.com': 'pinpoint',   // GCBYBY3's cache page links /pinpoint (2026-10-13)
     'thegeocachingpodcast.com': 'geocachingpodcast',
     'bigpinekey.com': 'bigpinekey',
     'thedailynewsonline.com': 'batavianews',

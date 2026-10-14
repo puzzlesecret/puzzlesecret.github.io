@@ -1233,11 +1233,11 @@ lglass.position.y = 0.14; unlitObj.add(lglass);
 const unlitGlim = sprite(0.22, 0, 0.14, 0, unlitObj, 0.0); // dark until noticed… then the faintest breath of light
 
 // Series Wall Gallery of original still pictures behind the chest in Vault III
-makeFramedPicture('/art/door-v10.webp', 0.9, 1.3, AX - 2.1, 2.4, -25.35);
-makeFramedPicture('/art/door-v2.webp', 0.9, 1.3, AX - 1.05, 2.4, -25.35);
-makeFramedPicture('/art/og-door.jpg', 1.1, 1.5, AX, 2.5, -25.35);
-makeFramedPicture('/art/door-v4.webp', 0.9, 1.3, AX + 1.05, 2.4, -25.35);
-makeFramedPicture('/art/door-v5.webp', 0.9, 1.3, AX + 2.1, 2.4, -25.35);
+if (!GUEST) makeFramedPicture('/art/door-v10.webp', 0.9, 1.3, AX - 2.1, 2.4, -25.35);
+if (!GUEST) makeFramedPicture('/art/door-v2.webp', 0.9, 1.3, AX - 1.05, 2.4, -25.35);
+if (!GUEST) makeFramedPicture('/art/og-door.jpg', 1.1, 1.5, AX, 2.5, -25.35);
+if (!GUEST) makeFramedPicture('/art/door-v4.webp', 0.9, 1.3, AX + 1.05, 2.4, -25.35);
+if (!GUEST) makeFramedPicture('/art/door-v5.webp', 0.9, 1.3, AX + 2.1, 2.4, -25.35);
 const galleryLight = new THREE.PointLight(0xffd47a, 20, 8, 2);
 galleryLight.position.set(AX, 3.2, -24.5); scene.add(galleryLight);
 
@@ -1313,7 +1313,7 @@ box((AX + 3.2) - STAIR.x1, 2.75, 0.2, M.frieze, (STAIR.x1 + (AX + 3.2)) / 2, 1.3
 box(STAIR.x1 - STAIR.x0, 0.75, 0.2, M.frieze, STAIR.cx, 2.375, -26.1, 0, sanctumG);
 
 // Master Altar Tapestry of original still art on the back wall of Vault IV
-makeFramedPicture('/art/door-v10.webp', 3.8, 2.5, AX, 1.5, -31.05, 0, sanctumG);
+if (!GUEST) makeFramedPicture('/art/door-v10.webp', 3.8, 2.5, AX, 1.5, -31.05, 0, sanctumG);
 // dialled back from 35: the ceiling is 2.75m here, not 4.2m, so the lamp sits far closer
 const sanctumLight = new THREE.PointLight(0xffd47a, 16, 7.5, 2);
 sanctumLight.position.set(AX, V4Y + 1.9, -29.5); scene.add(sanctumLight);
@@ -2317,6 +2317,7 @@ async function submitWord() {
   if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
   const D = DOORS[wbTarget];
   if (j.ok) holdReward(j.act, j.rewardUrl);       // any true word banks its gift
+  if (j.ok && !(j.room && j.room.id)) { try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {} }   // a book word ends any guest room for the next load
   if (j.ok && j.act === D.act) {
     const key = wbTarget;
     if (key === 'first') {
@@ -2598,7 +2599,7 @@ function openBookcase() {
   doorAnim = { from: hinge.rotation.y, to: -1.62, start: performance.now(), dur: 1700 };
   playCreak();
   setTimeout(() => playBoom(0.5), 1400);
-  showCaption(GUEST ? 'The shelves swing wide onto my own vaults. They open only with words from my book, and none of your note lies beyond them.' : 'The shelves swing wide — a passage, kept from every map.', GUEST ? 9000 : 5600);
+  showCaption(GUEST ? 'The shelves swing wide onto other vaults. They are not part of your cache, and none of your note lies beyond them.' : 'The shelves swing wide — a passage, kept from every map.', GUEST ? 9000 : 5600);
   hinge.userData.label = 'The way lies open · tap the shelves to close them';
   oddHit.userData.label = 'The odd book · tap to close the shelves';
   doorOpened = true;
