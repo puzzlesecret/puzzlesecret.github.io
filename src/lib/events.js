@@ -234,7 +234,7 @@ export function keeperLine(ev, extra, tag, place) {
 const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter|the-keeper|escape-room-sudoku-book|how-to-play-sudoku|sudoku-cheat-sheet|daily|unsubscribed|pinpoint|404)';
 // Generic sites by kind, then every outlet in the placement registry by its fixed id. An unknown
 // site may carry its country ending (".uk") — two letters, which cannot form a link.
-export const GENERIC_SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'x', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'email'];
+export const GENERIC_SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'x', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'email', 'geocaching'];
 const SOURCES = '(' + GENERIC_SOURCES.concat(PLACEMENTS.map((p) => p.id)).join('|') + '|another site( \\.[a-z]{2})?)';
 const ROOMS = '(the study|the library|the treasure room|the sanctum)';
 const DOORS = '(first|door2|door3|fourth)';

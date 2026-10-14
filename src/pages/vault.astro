@@ -30,6 +30,10 @@ import Analytics from '@vercel/analytics/astro';
         if (has('ps_rewards_v1') || has('ps_vaults_v1')) return;
         // Keep where they came from: the front door's arrive line reads this instead of our own vault.
         try { if (!sessionStorage.getItem('ps_arrived')) sessionStorage.setItem('ps_ref', document.referrer || ''); } catch (e) {}
+        // A no-word arrival on the door hand-off address (/vault?from=door&act=I) can only have come from a link that
+        // skipped a door: in practice PinPoint's GCBYBY3 checker (2026-10-14). Send it to PinPoint's own door, never the
+        // book's homepage, which Groundspeak ruled commercial. Book visitors always carry a word here.
+        if (q.get('from') === 'door') { location.replace('/pinpoint'); return; }
         location.replace('/' + location.search);
       } catch (e) { /* storage blocked — let them in rather than loop */ }
     })();
@@ -59,7 +63,7 @@ import Analytics from '@vercel/analytics/astro';
     <button id="muteBtn" aria-label="Mute">🔊</button>
     <div id="hint">Drag to look around · Tap the floor to walk · Click what glows</div>
     <button id="fwdBtn" aria-label="Walk forward">▲</button>
-    <div id="caption"><span id="capText"></span></div>
+    <div id="caption"><span id="capText" role="status" aria-live="polite"></span></div>
     <div id="label"></div>
     <div id="studyCount" hidden></div>
     <script is:inline>
@@ -72,6 +76,12 @@ import Analytics from '@vercel/analytics/astro';
           if (!home) return;
           var bl = document.getElementById('backlink'); if (bl) { bl.href = home; bl.textContent = '◄ back to the door'; }
           var mc = document.getElementById('modeChip'); if (mc) mc.hidden = true;
+          if (g.id === 'pinpoint') {
+            document.title = "The Keeper's Study · GCBYBY3";
+            var br = document.getElementById('brand'); if (br && br.firstChild && br.firstChild.nodeType === 3) br.firstChild.nodeValue = 'PINPOINT PUZZLER · ';
+          }
+          var fix = function () { var pb = document.querySelector('.pv-back'); if (pb) { pb.href = home; pb.textContent = '◄ back to the door'; } };
+          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fix); else fix();
         } catch (e) {}
       })();
     </script>
@@ -642,7 +652,7 @@ import Analytics from '@vercel/analytics/astro';
     .scrap-board { margin-top: 6px; }
     .scrap-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
     .scrap-slots i { font-style: normal; font-family: Cinzel, serif; font-weight: 700; font-size: clamp(15px, 3.2vw, 22px); padding: 10px 6px; border: 1px dashed rgba(90,64,26,.55); border-radius: 3px; background: rgba(255,252,244,.5); color: #1a1208; min-height: 44px; }
-    .scrap-slots i.empty { color: rgba(90,64,26,.45); font-weight: 400; font-size: 13px; letter-spacing: .2em; }
+    .scrap-slots i.empty { color: rgba(90,64,26,.85); font-weight: 400; font-size: 13px; letter-spacing: .2em; }
     .scrap-full { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(16px, 3.6vw, 24px); letter-spacing: .04em; margin: 4px 0 10px; color: #1a1208; }
     .scrap-note-p { font-size: 13px; font-style: italic; color: #5a4a2a; margin: 10px 0 0; }
     .scrap-wrap .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.45); }
