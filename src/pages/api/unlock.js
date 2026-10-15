@@ -76,7 +76,7 @@ const HASHES = {
   'c49eb6ca6fc7dd9d0de6dce1d758cb3294b12d00fd508b4295790123931ad665': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 15' },
   '3d4dccae2cb42b7c7ddf96dce873eb146165ea5656862f405102e58007935bb0': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 16' },
   '996e0b187209ec507d6ecfe5f1eb057eb00c5b373d9ace6eb5dd5c27ec0eec30': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 17' },
-  'c4dbea79aa55e14926e61c1effcbb9b46c6acffaa3d48bd59eb17765fad4ea11': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 18' },
+  'dcf2dd523635f6cb3f023ec8015481ff71f0b93481a4342e704ad10a8290d3e5': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 18' },
   '81205b12ed5e833eb7b5ab10854ba1f7a9cc1c5943e0a8ae5151238def8422cc': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 19' },
 };
 
