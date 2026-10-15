@@ -191,4 +191,6 @@ export async function POST({ request, clientAddress }) {
 }
 
 // A GET is handy for a health check; never reveals anything.
-export const GET = () => json({ ok: true, service: 'unlock', ready: true });
+// `pool` = how many press-pack guest keys are live, so the outreach robot can confirm a deploy without typing a word.
+const POOL_LIVE = Object.values(HASHES).filter((h) => String(h.guest || '').startsWith('Press pool')).length;
+export const GET = () => json({ ok: true, service: 'unlock', ready: true, pool: POOL_LIVE });
