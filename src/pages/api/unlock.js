@@ -57,6 +57,27 @@ const HASHES = {
   'c0dadca8c0620466f15274857520fbd3ad3bc7ecb2a584cb3c7d32ac82be118c': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'The Aperiodical (UK)' },
   // Geeks of Doom (US) — sample puzzle for Eve Conte, who asked to see one (2026-10-14). Plain Vault I.
   '1553ce78b5422c4070f0655c9eb82670517afe872eeeec2c379da6ba646ee896': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Geeks of Doom' },
+  // PRESS POOL (2026-10-15): one key per outreach email's sample puzzle, each used by exactly ONE outlet.
+  // The outlet each number went to is recorded in marketing/guest-puzzles/pool/POOL.md (not in this repo).
+  'a93e621de118e1a559776a1ebed267b0abba5123eadc14a0f20e4677319bae9b': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 01' },
+  '897672aadfe12f03d80a423ab7ee88ec56e78f7c026c6f7c66268c0843388ad4': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 02' },
+  'ec3b0e46773e82e5391c693e98f1105bb7c95319d6dfce15ee677a853b69fecf': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 03' },
+  'dac521b29481fb1d7652a48a493575bb58a737108a46672b0409f2208c57e30d': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 04' },
+  '8493a3cee36d891be73c0579e276ab68203b92bcd2ec84e9b18e93402fa802d6': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 05' },
+  '7b457dba2a7f6592260de853130d786e7a34e37e85347e651f108294ecc5f68a': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 06' },
+  'd053193033695ec31bfdb2b92439caa6a11833e14174ca5a688e95e2e6180083': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 07' },
+  'bd3fe34485a62ca2c0ecdaa4a8fb24a30e2a59590105a40b949d153eb52089cf': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 08' },
+  '05a268a28595b5cd728cc2badb77d681b9ba7f45e9358575d11441b3facef313': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 09' },
+  '6ce8dfa83e2e6ddfa8d024bfb744d528a1f3c1d0af29132e7c2fd4d035a83a60': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 10' },
+  '40b33cd1184be00744e8fa8097cf1b0253b3207c2899649f1f360da5a4534aa8': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 11' },
+  'c23fa99b0ba18462274f6dc0e45be9c35bdd25ff5abeb15c1369c5ff2e7b8e48': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 12' },
+  'fa1768d45eed1d1147c7ef20a15aab867ac3119a978449987f27127c60d3e82d': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 13' },
+  '8661fe15e06b4e8a4ba38455447adb5cc96eb9cd7317d897e8ac6bc8eae94a7f': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 14' },
+  'c49eb6ca6fc7dd9d0de6dce1d758cb3294b12d00fd508b4295790123931ad665': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 15' },
+  '3d4dccae2cb42b7c7ddf96dce873eb146165ea5656862f405102e58007935bb0': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 16' },
+  '996e0b187209ec507d6ecfe5f1eb057eb00c5b373d9ace6eb5dd5c27ec0eec30': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 17' },
+  'dcf2dd523635f6cb3f023ec8015481ff71f0b93481a4342e704ad10a8290d3e5': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 18' },
+  '81205b12ed5e833eb7b5ab10854ba1f7a9cc1c5943e0a8ae5151238def8422cc': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10, guest: 'Press pool 19' },
 };
 
 // ── GUEST ROOMS ──────────────────────────────────────────────────────────
@@ -170,4 +191,6 @@ export async function POST({ request, clientAddress }) {
 }
 
 // A GET is handy for a health check; never reveals anything.
-export const GET = () => json({ ok: true, service: 'unlock', ready: true });
+// `pool` = how many press-pack guest keys are live, so the outreach robot can confirm a deploy without typing a word.
+const POOL_LIVE = Object.values(HASHES).filter((h) => String(h.guest || '').startsWith('Press pool')).length;
+export const GET = () => json({ ok: true, service: 'unlock', ready: true, pool: POOL_LIVE });
