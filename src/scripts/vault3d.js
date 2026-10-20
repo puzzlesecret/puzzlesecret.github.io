@@ -726,8 +726,10 @@ const chartHitS = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.7, 0.6), new THREE
 chartHitS.position.set(0, 0.9, 0); easelS.add(chartHitS);
 easelS.userData = { kind: 'chartStudy', label: 'Something half-covered on an easel' };
 
-// wall sconce with flame (left wall, near the entrance — per concept)
-const sconce = new THREE.Group(); sconce.position.set(-3.88, 2.3, 1.9); scene.add(sconce);
+// wall sconce with flame (left wall). Sits in the bare stone between the two left
+// bookcases (they span z -2.55..-0.65 and 0.45..2.35); at z 1.9 it was buried in the
+// front case (Dan, 2026-10-19).
+const sconce = new THREE.Group(); sconce.position.set(-3.88, 2.3, -0.1); scene.add(sconce);
 box(0.1, 0.34, 0.1, M.iron, 0, -0.12, 0, 0, sconce);
 const sconceCup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.045, 0.1, 10), M.gold);
 sconceCup.position.set(0.12, 0.02, 0); sconce.add(sconceCup);
@@ -737,6 +739,16 @@ sprite(0.75, 0.12, 0.16, 0, sconce);
 const sconceLight = new THREE.PointLight(0xff9a3a, 28, 9, 2);
 sconceLight.position.set(0.25, 0.2, 0); sconce.add(sconceLight);
 sconce.userData = { kind: 'say', say: 'sconce', found: 'sconce', label: 'A wall sconce' };
+// its twin on the right wall, in the gap between those cases (z -0.25..0.75), for balance.
+// Flame + glow only; the left sconce's light already reaches it.
+const sconceR = new THREE.Group(); sconceR.position.set(3.88, 2.3, 0.25); sconceR.rotation.y = Math.PI; scene.add(sconceR);
+box(0.1, 0.34, 0.1, M.iron, 0, -0.12, 0, 0, sconceR);
+const sconceCupR = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.045, 0.1, 10), M.gold);
+sconceCupR.position.set(0.12, 0.02, 0); sconceR.add(sconceCupR);
+const sflameR = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 10), M.flame);
+sflameR.position.set(0.12, 0.14, 0); sconceR.add(sflameR);
+sprite(0.75, 0.12, 0.16, 0, sconceR);
+sconceR.userData = { kind: 'say', say: 'sconce', found: 'sconce', label: 'A wall sconce' };
 
 /* ---- THE SECRET BOOKCASE (hinged over the passage opening) ---- */
 const hinge = new THREE.Group();
@@ -1971,7 +1983,7 @@ const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, unlitObj,
   hoodStand, pbChest, ...roundHits,
-  candle, ink, quill, board, sconce, chair, notebook, easelS, ...rejects, ...wallCases,
+  candle, ink, quill, board, sconce, sconceR, chair, notebook, easelS, ...rejects, ...wallCases,
   ...storyPages,
   ...sealPulse.filter(o => o.isMesh)];
 let down = null, dragging = false;
@@ -3606,7 +3618,7 @@ function tick(dt) {
   candleLight.intensity = candleLit ? 24 * fl : 0;
   sconceLight.intensity = 28 * (0.85 + 0.3 * Math.sin(t * 9.2 + 2));
   torchLight.intensity = 14 * (0.85 + 0.3 * Math.sin(t * 8.1 + 4));
-  flame.scale.y = sflame.scale.y = tflame.scale.y = 0.9 + 0.2 * Math.sin(t * 13);
+  flame.scale.y = sflame.scale.y = sflameR.scale.y = tflame.scale.y = 0.9 + 0.2 * Math.sin(t * 13);
   const pulse = 0.75 + 0.45 * Math.sin(t * 2.2);
   M.stack.emissiveIntensity = pulse;
   oddBookMat.emissiveIntensity = doorAmt > 0.5 ? 0.08 : 0.12 + 0.16 * (0.5 + 0.5 * Math.sin(t * 1.6));
