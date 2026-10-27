@@ -6,7 +6,9 @@ import Layout from '../../layouts/Layout.astro';
 import DailyBoard from '../../components/DailyBoard.astro';
 import SeriesStrip from '../../components/SeriesStrip.astro';
 import PuzzleLookup from '../../components/PuzzleLookup.astro';
+import DailySignup from '../../components/DailySignup.astro';
 import daily from '../../data/daily_puzzles.json';
+import dailyKeys from '../../data/daily_keys.json';   // gold squares + decoders from 2026-10-28 (scripts/daily_keys/export_site.py)
 
 export function getStaticPaths() {
   const list = daily.puzzles;
@@ -35,7 +37,8 @@ const ld = {
 ---
 <Layout title={title} description={description} ogImage={`/og/daily-${p.tier}.jpg`} noindex={true}>
   <script type="application/ld+json" set:html={JSON.stringify(ld)} />
-  <DailyBoard serial={p.serial} tier={p.tier} givens={p.givens} solution={p.solution} theme={p.theme} />
+  <DailyBoard serial={p.serial} tier={p.tier} givens={p.givens} solution={p.solution} theme={p.theme} vkey={dailyKeys.puzzles[p.serial] || null} />
+  <DailySignup />
   <nav class="d-nav" aria-label="More daily puzzles">
     {prev ? <a href={`/daily/${prev}/`}>← Previous puzzle</a> : <span></span>}
     <a href="/daily/">All daily puzzles</a>

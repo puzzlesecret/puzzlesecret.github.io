@@ -130,6 +130,7 @@ const HOME_LD = {
     <script type="application/ld+json" set:html={JSON.stringify(HOME_LD)} />
     <!-- The Keeper's event helper: `arrive` once per session + Amazon click-through ping. -->
     <script is:inline src="/js/events.js" defer></script>
+    <script is:inline src="/js/guest-key.js" defer></script>
     <script is:inline src="/js/amazon-store.js" defer></script>
   </head>
 
@@ -773,6 +774,7 @@ const HOME_LD = {
         // A GUEST ROOM (an outlet's own story inside Vault I) arrives only from the server, only on that
         // outlet's word. It is kept for this tab and read by the vault; a book word clears any stale one.
         try { if (data.room && data.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(data.room)); else sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {}
+        if (window.psGuest) window.psGuest.note(data);   // a guest key vs a book word (public/js/guest-key.js)
         const form = document.getElementById('tileForm');
         slot?.querySelectorAll('.entry-hint').forEach((h) => { h.style.display = 'none'; });
         if (form) form.style.display = 'none';

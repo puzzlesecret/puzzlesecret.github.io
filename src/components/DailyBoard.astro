@@ -1,16 +1,20 @@
 ---
 // One daily Pinterest puzzle, playable. A deliberate COPY of the /play board, not a refactor of it:
 // /play is embedded by the homepage five-a-day and the vault desk, and its saved progress is keyed
-// by bare id. This board keeps its own storage (ps_daily_*), has no key cells, no passport, and fires
-// NO play.* events (their Keeper lines say "on /play") — page.view from events.js is all it logs.
+// by bare id. This board keeps its own storage (ps_daily_*), no passport, and fires NO play.* events
+// (their Keeper lines say "on /play"). From 2026-10-28 a puzzle may carry `vkey`: six numbered GOLD squares and its
+// own decoder, spelling that week's Pinterest vault word (plan marketing/pinterest/VAULT-KEY-PINS-PLAN.md). The word
+// is never in this file or the data: the page spells it from the player's digits and /api/unlock checks it.
 export interface Props {
   serial: string;
   tier: 'easy' | 'medium' | 'hard';
   givens: string;
   solution: string;
   theme: string;
+  vkey?: { cells: number[]; cols: string[]; week: string } | null;
 }
-const { serial, tier, givens, solution, theme } = Astro.props;
+const { serial, tier, givens, solution, theme, vkey = null } = Astro.props;
+const goldNo = new Map((vkey?.cells || []).map((c, k) => [c, k + 1]));   // cell index -> square number 1..6
 const TIER_WORD = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[tier];
 const KEYS = { easy: 1, medium: 2, hard: 3 }[tier];
 const SEAM = { v1: '#f0b040', v2: '#3cdc82', v3: '#ec7896', v4: '#46d2eb', v5: '#f59628' }[theme] || '#f0b040';
@@ -29,10 +33,11 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       <div class="d-grid" id="dGrid" tabindex="0" role="grid" aria-label={`${TIER_WORD} sudoku number ${serial}. Use arrow keys to move and digits to fill.`}>
         {rows.flatMap((row, r) => row.map((ch, c) => (
           <div
-            class:list={['d-cell', { given: ch !== '0', br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8 }]}
+            class:list={['d-cell', { given: ch !== '0', br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8, gold: goldNo.has(r * 9 + c) }]}
             role="gridcell"
             data-i={r * 9 + c}
-            aria-label={`Row ${r + 1} column ${c + 1}${ch !== '0' ? ', given ' + ch : ', empty'}`}
+            data-k={goldNo.get(r * 9 + c)}
+            aria-label={`Row ${r + 1} column ${c + 1}${ch !== '0' ? ', given ' + ch : ', empty'}${goldNo.has(r * 9 + c) ? ', gold square ' + goldNo.get(r * 9 + c) : ''}`}
           >{ch !== '0' ? ch : ''}</div>
         )))}
       </div>
@@ -68,20 +73,66 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     </div>
   </div>
 
+  {vkey && (
+    <section class="d-vault" id="dVault" aria-labelledby="vTitle">
+      <p class="v-kicker"><span aria-hidden="true">🔒</span> This sudoku opens a vault</p>
+      <h2 class="v-title" id="vTitle">Six gold squares, one word</h2>
+      <p class="v-how">Solve the puzzle. Each numbered gold square holds a digit. Find that digit in the square's own column
+        below, and the six letters spell a word. Say the word at the door, and the first vault opens.</p>
+      <div class="v-scroll">
+        <table class="v-table" id="vTable">
+          <caption class="sr-only">Decoder: the digit in each gold square picks one letter from that square's column</caption>
+          <thead><tr><th scope="col">Digit</th>{vkey.cols.map((_, k) => <th scope="col"><span class="v-sq">Square </span>{k + 1}</th>)}</tr></thead>
+          <tbody>
+            {Array.from({ length: 9 }, (_, d) => (
+              <tr><th scope="row">{d + 1}</th>{vkey.cols.map((col, k) => <td data-k={k + 1} data-d={d + 1}>{col[d]}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div class="v-code" role="group" aria-label="Your six gold-square digits">
+        {vkey.cols.map((_, k) => (
+          <label class="v-slot"><span class="v-no">{k + 1}</span>
+            <input class="v-dig" data-k={k + 1} inputmode="numeric" maxlength="1" autocomplete="off" aria-label={`Digit in gold square ${k + 1}`} />
+            <span class="v-let" aria-hidden="true">·</span>
+          </label>
+        ))}
+      </div>
+      <p class="v-word" id="vWord" aria-live="polite"></p>
+      <div class="d-actions">
+        <button type="button" class="d-btn" id="vCheck">Check my gold squares</button>
+        <button type="button" class="d-btn d-strong" id="vOpen" disabled>Open the vault →</button>
+      </div>
+      <p class="v-msg" id="vMsg" role="status" aria-live="polite"></p>
+      <div id="vBridge"></div>
+      <p class="v-fine">Stuck? <b>Reveal solution</b> above fills the gold squares for you. Every Pinterest puzzle's answer is on
+        <a href="/daily/answers/">the answers page</a>.</p>
+    </section>
+  )}
+
   <!-- Print-only page: givens on a clean black-on-white grid, hairline frame, URL line -->
   <div class="d-print" aria-hidden="true">
     <p class="p-title">{TIER_WORD.toUpperCase()} SUDOKU · No. {serial}</p>
     <table class="p-grid">
       {rows.map((row, r) => (
-        <tr>{row.map((ch, c) => <td class:list={{ br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8 }}>{ch !== '0' ? ch : ''}</td>)}</tr>
+        <tr>{row.map((ch, c) => <td class:list={{ br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8, gold: goldNo.has(r * 9 + c) }}>{ch !== '0' ? ch : goldNo.has(r * 9 + c) ? <span class="p-ring"><i>{goldNo.get(r * 9 + c)}</i></span> : ''}</td>)}</tr>
       ))}
     </table>
+    {vkey && (
+      <div class="p-vault">
+        <p class="p-vhow">The six numbered ringed squares spell a word: find each square's digit in its own column. Say the word at puzzlesecret.com and the first vault opens.</p>
+        <table class="p-dec">
+          <tr><th>Digit</th>{vkey.cols.map((_, k) => <th>Sq {k + 1}</th>)}</tr>
+          {Array.from({ length: 9 }, (_, d) => <tr><th>{d + 1}</th>{vkey.cols.map((col) => <td>{col[d]}</td>)}</tr>)}
+        </table>
+      </div>
+    )}
     <p class="p-url">Play it free and check your answer at puzzlesecret.com/daily/{serial.toLowerCase()}/</p>
     <p class="p-brand">SUDOKU with a SECRET</p>
   </div>
 </section>
 
-<script define:vars={{ serial, givens, solution, tierWord: TIER_WORD }}>
+<script define:vars={{ serial, givens, solution, tierWord: TIER_WORD, vkey }}>
   (function () {
     const KEY = 'ps_daily_' + serial;
     const grid = document.getElementById('dGrid');
@@ -124,7 +175,79 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
           } else el.textContent = '';
         }
       });
+      if (V) V.fromBoard();
     }
+
+    /* ---- the vault word (only on puzzles that carry gold squares) ---- */
+    const V = vkey ? (function () {
+      const digs = Array.from(document.querySelectorAll('.v-dig'));
+      const lets = Array.from(document.querySelectorAll('.v-let'));
+      const tds = Array.from(document.querySelectorAll('#vTable td'));
+      const wordEl = document.getElementById('vWord'), msg = document.getElementById('vMsg');
+      const openBtn = document.getElementById('vOpen');
+      const typed = [false, false, false, false, false, false];   // a paper solver typed this slot; the board stops overwriting it
+      let decoded = false, opening = false;
+      function digits() { return digs.map((d) => Number(d.value) || 0); }
+      function word() { const ds = digits(); return ds.every((d) => d >= 1 && d <= 9) ? ds.map((d, k) => vkey.cols[k][d - 1]).join('') : ''; }
+      function paint() {
+        const ds = digits();
+        lets.forEach((el, k) => { el.textContent = ds[k] ? vkey.cols[k][ds[k] - 1] : '·'; });
+        tds.forEach((td) => td.classList.toggle('on', ds[Number(td.dataset.k) - 1] === Number(td.dataset.d)));
+        digs.forEach((d) => d.classList.remove('bad'));
+        const w = word();
+        wordEl.textContent = w ? 'Your word: ' + w.split('').join(' ') : '';
+        openBtn.disabled = !w || opening;
+        if (w && !decoded) {
+          decoded = true;
+          const how = revealed ? 'revealed' : typed.some(Boolean) ? 'typed' : 'solved';
+          if (window.psEvent) window.psEvent('daily.decode', how);
+          const br = document.getElementById('vBridge');
+          if (br && window.psGuest && !br.firstChild) { const c = window.psGuest.card('daily', { force: 'pinterest' }); if (c) br.appendChild(c); }
+        }
+      }
+      function fromBoard() {
+        vkey.cells.forEach((c, k) => { if (!typed[k]) digs[k].value = vals[c] ? String(vals[c]) : ''; });
+        paint();
+      }
+      digs.forEach((el, k) => el.addEventListener('input', () => {
+        el.value = el.value.replace(/[^1-9]/g, '').slice(0, 1);
+        typed[k] = el.value !== '';
+        msg.textContent = '';
+        if (el.value && digs[k + 1]) digs[k + 1].focus();
+        paint();
+      }));
+      document.getElementById('vCheck').addEventListener('click', () => {
+        const ds = digits(); const wrong = [];
+        vkey.cells.forEach((c, k) => { if (ds[k] && ds[k] !== Number(solution[c])) { wrong.push(k + 1); digs[k].classList.add('bad'); } });
+        const filled = ds.filter(Boolean).length;
+        msg.textContent = wrong.length
+          ? 'Gold square ' + wrong.join(' and ') + (wrong.length === 1 ? ' does not' : ' do not') + ' match the answer. Recheck ' + (wrong.length === 1 ? 'it.' : 'them.')
+          : filled < 6 ? filled + ' of 6 gold squares filled, and right so far.' : 'All six gold squares are right.';
+      });
+      openBtn.addEventListener('click', async () => {
+        const w = word(); if (!w || opening) return;
+        opening = true; openBtn.disabled = true; openBtn.textContent = 'The vault is listening…'; msg.textContent = '';
+        let data = null;
+        try {
+          const res = await fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ word: w, vid: window.psVid ? window.psVid() : '', at: 'daily' }) });
+          data = await res.json();
+        } catch (e) {}
+        if (data && data.ok) {
+          // the same hand-off the front door makes: the gift's address, any guest room, the guest flag, then the vault
+          try { const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { r[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(r)); } } catch (e) {}
+          try { if (data.room && data.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(data.room)); else sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {}
+          if (window.psGuest) window.psGuest.note(data);
+          msg.textContent = 'The word was true. The door is opening…';
+          setTimeout(() => { window.location.href = '/vault?from=door&act=' + encodeURIComponent(data.act || 'I'); }, 700);
+          return;
+        }
+        opening = false; openBtn.textContent = 'Open the vault →'; paint();
+        msg.textContent = data ? 'The door stayed shut. Tap “Check my gold squares” to find the one that is off.' : 'The vault cannot hear you right now. Try again in a moment.';
+      });
+      return { fromBoard };
+    })() : null;
+
     function push() { hist.push({ v: vals.slice(), n: notes.map((s) => new Set(s)) }); if (hist.length > 200) hist.shift(); }
     function put(n) {
       if (sel < 0 || given[sel] || revealed) return;
@@ -182,6 +305,13 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       }
       x.font = 'bold 64px "Palatino Linotype", Palatino, Arial, sans-serif';
       for (let i = 0; i < 81; i++) if (given[i]) x.fillText(givens[i], pad + (i % 9) * cw + cw / 2, top + Math.floor(i / 9) * cw + cw / 2 + 4);
+      if (vkey) vkey.cells.forEach((c, k) => {   // gold squares: a double ring + the square's number (shape survives a mono printer)
+        const cx = pad + (c % 9) * cw, cy = top + Math.floor(c / 9) * cw;
+        x.strokeStyle = '#7A5512'; x.lineWidth = 5; x.strokeRect(cx + 9, cy + 9, cw - 18, cw - 18);
+        x.lineWidth = 2; x.strokeRect(cx + 17, cy + 17, cw - 34, cw - 34);
+        x.fillStyle = '#7A5512'; x.font = 'bold 22px Georgia, serif'; x.fillText(String(k + 1), cx + 26, cy + 30);
+        x.fillStyle = '#111';
+      });
       x.font = '34px Georgia, serif'; x.fillText('Play free + answers: puzzlesecret.com/daily/' + serial.toLowerCase() + '/', S / 2, top + g + 70);
       x.font = 'italic 30px Georgia, serif'; x.fillText('Sudoku with a Secret', S / 2, top + g + 125);
       cv.toBlob((b) => {
@@ -255,8 +385,46 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   .d-fine { margin: 12px 0 0; font-size: 14px; color: var(--ash); }
   .d-fine a { color: var(--gold); }
 
+  /* gold squares: a dark bronze ring (readable on the cream board and in print), a pale gold wash, the square's number */
+  .d-cell.gold { position: relative; background: rgba(240,190,90,.30); box-shadow: inset 0 0 0 3px #7A5512, inset 0 0 0 5px rgba(240,190,90,.6); }
+  .d-cell.gold::after { content: attr(data-k); position: absolute; top: 2px; left: 4px; font: 700 clamp(8px, 2vw, 11px)/1 Georgia, serif; color: #7A5512; }
+  .d-cell.gold.line { background: rgba(240,190,90,.42); }
+  .d-cell.gold.sel { background: rgba(246,178,60,.62); }
+
+  .d-vault { margin: 34px auto 0; padding: 22px 20px; max-width: 760px; border: 1px solid var(--gold); border-radius: 12px; background: rgba(14,12,18,.85); box-shadow: 0 0 28px rgba(246,178,60,.14); text-align: center; }
+  .v-kicker { margin: 0; font-family: var(--display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
+  .v-title { margin: 6px 0 8px; font-family: var(--display); font-size: clamp(22px, 4.6vw, 30px); color: var(--ivory); }
+  .v-how { margin: 0 auto 16px; max-width: 600px; color: var(--ash); line-height: 1.55; font-size: 15px; }
+  .v-scroll { overflow-x: auto; }
+  .v-table { margin: 0 auto; border-collapse: collapse; font-family: 'Palatino Linotype', Palatino, Georgia, serif; }
+  .v-table th, .v-table td { padding: 4px 9px; border: 1px solid rgba(185,143,82,.28); text-align: center; }
+  .v-table thead th { font-family: var(--display); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+  .v-table tbody th { color: var(--gold-hi); font-weight: 700; }
+  .v-table td { color: var(--ivory); font-weight: 700; font-size: 17px; }
+  .v-table td.on { background: rgba(246,178,60,.55); color: #1a1206; }
+  .v-code { display: flex; justify-content: center; gap: 8px; margin: 18px 0 8px; flex-wrap: wrap; }
+  .v-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .v-no { font: 700 11px Georgia, serif; color: var(--gold); }
+  .v-dig { width: 42px; height: 46px; text-align: center; font: 700 22px 'Palatino Linotype', Palatino, Georgia, serif; color: #1a1206; background: #f3ead6; border: 3px solid #7A5512; border-radius: 6px; }
+  .v-dig.bad { border-color: #a4183a; background: #f6d3da; }
+  .v-let { font: 700 22px 'Palatino Linotype', Palatino, Georgia, serif; color: var(--gold-hi); min-height: 26px; }
+  .v-word { min-height: 24px; margin: 4px 0 12px; font-family: var(--display); letter-spacing: .18em; color: var(--gold-hi); }
+  .v-msg { min-height: 20px; margin: 10px 0 0; color: var(--gold-hi); font-style: italic; }
+  .v-fine { margin: 14px 0 0; font-size: 13.5px; color: var(--ash); }
+  .v-fine a { color: var(--gold); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
   .d-print { display: none; }
 
+  @media (max-width: 560px) {   /* the decoder must fit a phone without sideways scrolling */
+    .d-vault { padding: 18px 10px; }
+    .v-sq { display: none; }
+    .v-table th, .v-table td { padding: 3px 0; width: 13%; }
+    .v-table tbody th, .v-table thead th:first-child { width: 16%; font-size: 10px; }
+    .v-table { width: 100%; }
+    .v-dig { width: 38px; height: 42px; }
+    .v-code { gap: 5px; }
+  }
   @media (max-width: 760px) {
     .daily { padding-top: 80px; }
     .d-layout { grid-template-columns: 1fr; gap: 14px; }
@@ -276,6 +444,17 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     .p-grid td { width: .72in; height: .72in; border: 1px solid #555; text-align: center; vertical-align: middle; font: 700 26pt 'Palatino Linotype', Palatino, 'Book Antiqua', Arial, sans-serif; font-variant-numeric: lining-nums; color: #000; }
     .p-grid td.br { border-right: 3px solid #000; }
     .p-grid td.bb { border-bottom: 3px solid #000; }
+    .d-vault { display: none !important; }
+    /* with gold squares the grid shrinks so the decoder fits under it on one Letter page */
+    .d-print:has(.p-vault) .p-grid td { width: .56in; height: .56in; font-size: 21pt; }
+    .d-print:has(.p-vault) { padding: .2in; }
+    .p-grid td.gold { position: relative; }
+    .p-ring { position: absolute; inset: 4pt; border: 2.5pt double #000; }
+    .p-ring i { position: absolute; top: 1pt; left: 2pt; font: 700 8pt Georgia, serif; font-style: normal; }
+    .p-vault { margin: .12in auto 0; }
+    .p-vhow { font: 10.5pt Georgia, serif; margin: 0 0 .06in; }
+    .p-dec { border-collapse: collapse; margin: 0 auto; }
+    .p-dec th, .p-dec td { border: 1px solid #555; padding: 0 7pt; font: 700 10.5pt Georgia, serif; text-align: center; line-height: 1.25; }
     .p-url { font: 12pt Georgia, serif; margin: .25in 0 .05in; }
     .p-brand { font: italic 11pt Georgia, serif; margin: 0; }
   }

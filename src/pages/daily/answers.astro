@@ -1,0 +1,97 @@
+---
+// /daily/answers/ — every daily Pinterest puzzle's answer, newest first (Dan, 2026-10-27: "a page for all the
+// Pinterest posts' solutions if they get stuck"). Which puzzles show is decided IN THE BROWSER (America/New_York, plus
+// the one day the pins run ahead), so the list never advertises a puzzle before its pin. noindex, out of the sitemap.
+// An answer grid shows the gold squares ringed and numbered; the decoding itself stays on the puzzle's own page.
+import Layout from '../../layouts/Layout.astro';
+import daily from '../../data/daily_puzzles.json';
+import dailyKeys from '../../data/daily_keys.json';
+const TIER = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+const list = [...daily.puzzles].reverse().map((p) => ({
+  s: p.serial, u: p.slug, d: p.date, t: TIER[p.tier], g: p.givens, a: p.solution, k: (dailyKeys.puzzles[p.serial] || {}).cells || [],
+}));
+---
+<Layout
+  title="Daily Sudoku Answers — Every Pinterest Puzzle's Solution · PuzzleSecret"
+  description="The solution to every free daily sudoku from PuzzleSecret's Pinterest, newest first."
+  noindex={true}
+>
+  <main class="da">
+    <p class="da-kicker">Stuck? It happens to everyone</p>
+    <h1>Daily Sudoku Answers</h1>
+    <p class="da-lede">The answer to every puzzle we have posted on Pinterest, newest first. Tap a puzzle to see its solved grid.
+      The numbered gold squares are the ones that spell the vault word; turn their digits into letters on the
+      puzzle's own page.</p>
+    <ol class="da-list" id="daList"></ol>
+    <p class="da-empty" id="daEmpty" hidden>No answers yet. Check back after the first puzzle is posted.</p>
+  </main>
+  <script type="application/json" id="daData" set:html={JSON.stringify(list)} />
+  <script is:inline>
+    (function () {
+      var data = JSON.parse(document.getElementById('daData').textContent);
+      var ol = document.getElementById('daList');
+      var today;
+      try { today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()); }
+      catch (e) { today = new Date().toISOString().slice(0, 10); }
+      var t = new Date(today + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1);    // the pins run one day ahead
+      var limit = t.toISOString().slice(0, 10);
+      var shown = data.filter(function (p) { return p.d <= limit; });
+      document.getElementById('daEmpty').hidden = shown.length > 0;
+      function nice(d) { return new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }); }
+      function grid(p) {
+        var tbl = document.createElement('table'); tbl.className = 'da-grid';
+        for (var r = 0; r < 9; r++) {
+          var tr = document.createElement('tr');
+          for (var c = 0; c < 9; c++) {
+            var i = r * 9 + c, td = document.createElement('td');
+            td.textContent = p.a[i];
+            if (p.g[i] !== '0') td.className = 'g';
+            var k = p.k.indexOf(i);
+            if (k >= 0) { td.className = 'k'; td.setAttribute('data-k', String(k + 1)); }
+            if (c % 3 === 2 && c < 8) td.className += ' br';
+            if (r % 3 === 2 && r < 8) td.className += ' bb';
+            tr.appendChild(td);
+          }
+          tbl.appendChild(tr);
+        }
+        return tbl;
+      }
+      shown.forEach(function (p) {
+        var li = document.createElement('li'); li.className = 'da-item';
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'da-btn'; b.setAttribute('aria-expanded', 'false');
+        b.textContent = p.t + ' No. ' + p.s + ' · ' + nice(p.d);
+        var box = document.createElement('div'); box.className = 'da-box'; box.hidden = true;
+        b.addEventListener('click', function () {
+          if (!box.firstChild) {
+            box.appendChild(grid(p));
+            var a = document.createElement('a'); a.href = '/daily/' + p.u + '/';
+            a.textContent = p.k.length ? 'Decode the vault word on the puzzle’s page →' : 'Open this puzzle →';
+            a.className = 'da-link'; box.appendChild(a);
+          }
+          box.hidden = !box.hidden; b.setAttribute('aria-expanded', String(!box.hidden));
+        });
+        li.appendChild(b); li.appendChild(box); ol.appendChild(li);
+      });
+    })();
+  </script>
+  <style>
+    .da { max-width: 760px; margin: 0 auto; padding: 100px 20px 70px; }
+    .da-kicker { margin: 0; font-family: var(--display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); text-align: center; }
+    .da h1 { margin: 8px 0 10px; text-align: center; font-family: var(--display); font-size: clamp(30px, 6vw, 44px); color: var(--ivory); }
+    .da-lede { margin: 0 auto 26px; max-width: 620px; text-align: center; color: var(--ash); line-height: 1.6; }
+    .da-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .da-btn { width: 100%; min-height: 46px; padding: 12px 16px; text-align: left; font-family: var(--display); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--ivory); background: rgba(255,255,255,.04); border: 1px solid rgba(185,143,82,.3); border-radius: 8px; cursor: pointer; }
+    .da-btn:hover, .da-btn[aria-expanded="true"] { border-color: var(--gold); color: var(--gold-hi); }
+    .da-box { padding: 14px 0 6px; text-align: center; }
+    .da-box :global(.da-grid) { margin: 0 auto; border-collapse: collapse; background: #f3ead6; border: 3px solid #241a10; }
+    .da-box :global(.da-grid td) { width: 34px; height: 34px; text-align: center; font: 700 18px 'Palatino Linotype', Palatino, Georgia, serif; color: #2a64b0; border: 1px solid #b5a58c; position: relative; }
+    .da-box :global(.da-grid td.g) { color: #17110b; }
+    .da-box :global(.da-grid td.k) { color: #17110b; background: rgba(240,190,90,.45); box-shadow: inset 0 0 0 2px #7A5512; }
+    .da-box :global(.da-grid td.k::after) { content: attr(data-k); position: absolute; top: 1px; left: 3px; font: 700 9px Georgia, serif; color: #7A5512; }
+    .da-box :global(.da-grid td.br) { border-right: 3px solid #241a10; }
+    .da-box :global(.da-grid td.bb) { border-bottom: 3px solid #241a10; }
+    .da-box :global(.da-link) { display: inline-block; margin-top: 12px; color: var(--gold); }
+    .da-empty { text-align: center; color: var(--ash); }
+    @media (max-width: 420px) { .da-box :global(.da-grid td) { width: 30px; height: 30px; font-size: 16px; } }
+  </style>
+</Layout>

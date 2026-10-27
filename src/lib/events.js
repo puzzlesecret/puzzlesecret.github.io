@@ -98,6 +98,10 @@ export const CLIENT_EV = Object.freeze({
   GUEST_SOLVED:     'guest.solved',        // all four pinned: the full position is showing (once/session)
   GUEST_COPY:       'guest.copy',          // "Copy the position" pressed (only possible with all four)
 
+  // the daily Pinterest puzzles' vault word (2026-10-27): six gold squares + a decoder on /daily/<slug>/
+  DAILY_DECODE:     'daily.decode',        // the decoder spelled a full word; extra = solved | revealed | typed (how the digits got there)
+  GUEST_CARD:       'guest.card',          // a guest was shown "the other words are in the book"; extra = daily | gift | door2 | passport
+
   // each time the tab hides — the last one is the story's last line
   SESSION_DEPTH:    'session.depth',       // extra = "3D · 4 rooms · 12m · last the library"
 });
@@ -194,6 +198,8 @@ export function parts(ev, extra) {
     case CLIENT_EV.GUEST_BOARD:      return ['🪧', 'checks the pinboard' + e];   // not 📌 — that icon means Pinterest in the arrival guesses
     case CLIENT_EV.GUEST_SOLVED:     return ['🎯', 'pins all four pieces — the full position is on the board'];
     case CLIENT_EV.GUEST_COPY:       return ['📋', 'copies the position'];
+    case CLIENT_EV.DAILY_DECODE:     return ['🔤', 'decodes a daily puzzle’s vault word' + (extra ? ' (' + extra + ')' : '')];
+    case CLIENT_EV.GUEST_CARD:       return ['📖', 'is shown "the other words are in the book"' + (extra ? ' · ' + extra : '')];
 
     // session
     case CLIENT_EV.SESSION_DEPTH:    return ['👣', 'steps away' + e];   // sent on every tab-hide; the last one is the exit
@@ -254,6 +260,8 @@ export const EXTRA_RULES = Object.freeze({
   [CLIENT_EV.OUTBOUND_AMAZON]: new RegExp('^' + PAGES + '$'),
   [CLIENT_EV.GUEST_SCRAP]:     /^[0-4] of 4$/,   // 0 only if the browser blocks storage
   [CLIENT_EV.GUEST_BOARD]:     /^[0-4] of 4 pinned$/,
+  [CLIENT_EV.DAILY_DECODE]:    /^(solved|revealed|typed)$/,
+  [CLIENT_EV.GUEST_CARD]:      /^(daily|gift|door2|passport)$/,
   [CLIENT_EV.SESSION_DEPTH]:   new RegExp('^(3D|painted) · \\d{1,3} rooms · \\d{1,4}m · last ' + ROOMS + '$'),
 });
 // Length caps — a pre-slice before the grammar, so a 10 KB body never reaches a regex.

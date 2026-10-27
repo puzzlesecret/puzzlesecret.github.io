@@ -25,7 +25,7 @@ const PS_EV = Object.freeze({
   PLAY_START: 'play.start', PLAY_SOLVED: 'play.solved', PLAY_OFFER: 'play.offer',
   LEARN_START: 'learn.start', LEARN_MID: 'learn.mid', LEARN_DONE: 'learn.done',
   PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
-  GUEST_SCRAP: 'guest.scrap', GUEST_BOARD: 'guest.board', GUEST_SOLVED: 'guest.solved', GUEST_COPY: 'guest.copy',
+  GUEST_SCRAP: 'guest.scrap', GUEST_BOARD: 'guest.board', GUEST_SOLVED: 'guest.solved', GUEST_COPY: 'guest.copy', DAILY_DECODE: 'daily.decode', GUEST_CARD: 'guest.card',
   SESSION_DEPTH: 'session.depth',
 });
 function psEvent(ev, extra) {
@@ -2199,6 +2199,7 @@ function openReward(act) {
   psEvent(PS_EV['REWARD_OPEN_' + act]);
   psTouch('reward-' + act);
   document.getElementById('rwAsk').hidden = !RW.ask;
+  if (window.psGuest) window.psGuest.fill(document.getElementById('rwGuest'), act === 'I' ? 'gift' : 'none');
   rewardEl.hidden = false;
   burstConfetti();
   playUnlock();
@@ -2282,6 +2283,7 @@ function openWordbox(key) {
   psEvent(PS_EV.WORDBOX_OPEN, key);
   psTouch('wordbox-' + key);
   if (GUEST && key === 'door2') { guestDoorLine(); return; }
+  if (key === 'door2' && window.psGuest && window.psGuest.door2(document.getElementById('wbKicker'), document.getElementById('wbLine'))) { showCaption(window.psGuest.line('door2'), 9000); return; }
   keeper(DOORS[key].vo);
 }
 function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
@@ -2329,6 +2331,7 @@ async function submitWord() {
   if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
   const D = DOORS[wbTarget];
   if (j.ok) holdReward(j.act, j.rewardUrl);       // any true word banks its gift
+  if (j.ok && window.psGuest) window.psGuest.note(j);   // a guest key vs a book word (public/js/guest-key.js)
   if (j.ok && !(j.room && j.room.id)) { try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {} }   // a book word ends any guest room for the next load
   if (j.ok && j.act === D.act) {
     const key = wbTarget;

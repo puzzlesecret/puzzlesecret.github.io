@@ -1,0 +1,60 @@
+---
+// The optional email box on the daily puzzles (Dan, 2026-10-27). It joins the same list as /newsletter (the Keeper's
+// Dispatch) and tells /api/subscribe it came from a daily puzzle. Never a gate, never on the way into the vault; the
+// 13+ checkbox is kept exactly as on /newsletter.
+---
+<aside class="ds" aria-labelledby="dsTitle">
+  <p class="ds-kicker">Free puzzles by email</p>
+  <h2 class="ds-title" id="dsTitle">Want the next one in your inbox?</h2>
+  <p class="ds-text">Join the Keeper's Dispatch for free puzzles by email. Optional, no spam, one-click unsubscribe.</p>
+  <form class="ds-form" id="dsForm">
+    <input type="email" id="dsEmail" placeholder="Your email address" required autocomplete="email" aria-label="Email address" />
+    <button type="submit" class="ds-btn">Send me puzzles</button>
+  </form>
+  <label class="ds-age"><input type="checkbox" id="dsAge" /> <span>I am 13 years of age or older.</span></label>
+  <p class="ds-msg" id="dsMsg" role="status" aria-live="polite"></p>
+  <p class="ds-fine">We only keep your address to send the Dispatch. <a href="/privacy">Privacy</a>.</p>
+</aside>
+
+<script>
+  const form = document.getElementById('dsForm') as HTMLFormElement | null;
+  const input = document.getElementById('dsEmail') as HTMLInputElement | null;
+  const age = document.getElementById('dsAge') as HTMLInputElement | null;
+  const msg = document.getElementById('dsMsg');
+  const btn = form?.querySelector('button');
+  const say = (t: string) => { if (msg) msg.textContent = t; };
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = (input?.value || '').trim();
+    if (!email) return;
+    if (!age?.checked) { say('Please confirm you are 13 or older first.'); return; }
+    if (btn) btn.disabled = true;
+    say('Sending…');
+    try {
+      const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, from: 'daily' }) });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok) { say('You are on the list. Watch for the Dispatch.'); if (input) input.value = ''; }
+      else if (data.reason === 'bad_email') say('That address does not look right. Check it and try again.');
+      else if (data.reason === 'slow_down') say('Too many tries. Wait a moment and try again.');
+      else say('That did not go through just now. Please try again later.');
+    } catch { say('Could not connect. Check your connection and try again.'); }
+    finally { if (btn) btn.disabled = false; }
+  });
+</script>
+
+<style>
+  .ds { max-width: 640px; margin: 0 auto 50px; padding: 20px; text-align: center; border: 1px solid rgba(185,143,82,.3); border-radius: 12px; background: rgba(14,12,18,.8); }
+  .ds-kicker { margin: 0; font-family: var(--display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
+  .ds-title { margin: 6px 0 6px; font-family: var(--display); font-size: clamp(20px, 4vw, 26px); color: var(--ivory); }
+  .ds-text { margin: 0 0 14px; color: var(--ash); }
+  .ds-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto 10px; }
+  .ds-form input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid rgba(185,143,82,.4); border-radius: 8px; background: rgba(10,10,12,.8); color: var(--gold-hi); font-size: 15px; }
+  .ds-btn { padding: 12px 18px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; }
+  .ds-age { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--gold-hi); cursor: pointer; }
+  .ds-age input { width: 16px; height: 16px; accent-color: var(--gold); }
+  .ds-msg { min-height: 20px; margin: 8px 0 0; color: var(--gold-hi); font-style: italic; }
+  .ds-fine { margin: 6px 0 0; font-size: 12.5px; color: var(--ash); }
+  .ds-fine a { color: var(--gold); }
+  @media (max-width: 560px) { .ds-form { flex-direction: column; } }
+  @media print { .ds { display: none; } }
+</style>

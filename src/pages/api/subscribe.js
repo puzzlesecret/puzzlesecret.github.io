@@ -39,9 +39,16 @@ const json = (obj, status = 200) =>
     headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
   });
 
+const FROM = {
+  newsletter: { source: 'puzzlesecret.com/newsletter', said: '' },
+  daily: { source: 'puzzlesecret.com/daily', said: ' from a daily puzzle' },
+};
+
 export async function POST({ request, clientAddress }) {
-  let email = '';
-  try { email = (await request.json()).email; } catch { /* ignore */ }
+  let email = '', from = '';
+  try { const b = await request.json(); email = b.email; from = String(b.from || ''); } catch { /* ignore */ }
+  // Where the sign-up box was (a fixed list; anything else counts as the newsletter page). 2026-10-27: the box on the daily puzzles.
+  const where = Object.hasOwn(FROM, from) ? FROM[from] : FROM.newsletter;   // hasOwn: "constructor" must not resolve
   email = String(email || '').trim().toLowerCase();
 
   if (rateLimited(clientAddress || 'unknown')) return json({ ok: false, reason: 'slow_down' }, 429);
@@ -57,10 +64,10 @@ export async function POST({ request, clientAddress }) {
         'content-type': 'application/json',
         ...(AUTH ? { authorization: AUTH } : {}),
       },
-      body: JSON.stringify({ email, source: 'puzzlesecret.com/newsletter', ts: new Date().toISOString() }),
+      body: JSON.stringify({ email, source: where.source, ts: new Date().toISOString() }),
     });
     if (!res.ok) return json({ ok: false, reason: 'provider_error' }, 502);
-    { const at = email.indexOf('@'); await notify(`\u2709\uFE0F ${email[0]}***${email.slice(at)} joined the dispatch`); } return json({ ok: true });
+    { const at = email.indexOf('@'); await notify(`\u2709\uFE0F ${email[0]}***${email.slice(at)} joined the dispatch${where.said}`); } return json({ ok: true });
   } catch {
     return json({ ok: false, reason: 'provider_error' }, 502);
   }
