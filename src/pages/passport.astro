@@ -46,6 +46,7 @@ import Layout from '../layouts/Layout.astro';
           <p class="howto-foot">Every stamp starts with the book. Nothing here can be bought, only cracked.</p>
         </div>
 
+        <div id="pGuest"></div>  <!-- a guest key's "the other words are in the book" card (public/js/guest-key.js) -->
         <h2 class="stamps-kicker" id="stampsKicker">Your stamps · <span id="stampsInline">0 of 3</span></h2>
         <div class="stamps-grid">
           <!-- Stamp 1 -->
@@ -167,6 +168,10 @@ import Layout from '../layouts/Layout.astro';
   </main>
 
   <!-- passport.view (once per session) — events.js + Amazon click delegation come from Layout.astro -->
+  <script is:inline>
+    // A visitor whose only stamp came from a guest key: show where the other words are. Nothing for book owners.
+    window.addEventListener('load', function () { if (window.psGuest) window.psGuest.fill(document.getElementById('pGuest'), 'passport'); });
+  </script>
   <script is:inline defer>
     document.addEventListener('DOMContentLoaded', function () {
       try { window.psEventOnce && window.psEventOnce('passport.view'); } catch (e) {}

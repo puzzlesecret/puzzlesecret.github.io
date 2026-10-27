@@ -589,6 +589,7 @@
     btn.onclick = function () { try { window.psBeacon && window.psBeacon('reward.click.' + act); } catch (e) {} };   // beacon: iOS may open the PDF in-tab
     try { window.psEvent && window.psEvent('reward.open.' + act); } catch (e) {}
     const ask = $('rwAsk'); if (ask) ask.hidden = !RW.ask;
+    if (window.psGuest) window.psGuest.fill($('rwGuest'), act === 'I' ? 'gift' : 'none');
     $('reward').hidden = false;
     burstConfetti(); playUnlock();
     if (!rewardsGiven[act]) { keeper(RW.vo); rewardsGiven[act] = true; }
@@ -640,6 +641,7 @@
       const a = document.createElement('a'); a.href = GUEST.door2LinkHref; a.textContent = GUEST.door2LinkText; a.className = 'wb-book'; line.appendChild(a);
       caption(GUEST.door2Line, 9000); return;
     }
+    if (key === 'door2' && window.psGuest && window.psGuest.door2($('wbKicker'), $('wbLine'))) { caption(window.psGuest.line('door2'), 9000); return; }
     keeper(DOORS[key].vo);
   }
   function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
@@ -674,6 +676,7 @@
     if (j.ok) {
       const act = j.act;
       holdReward(act, j.rewardUrl);
+      if (window.psGuest) window.psGuest.note(j);   // a guest key vs a book word (guest-key.js)
       if (!(j.room && j.room.id)) { try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {} }   // a book word ends any guest room for the next load
       if (act === 'IV') { fourthWord = wbWord; try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); if (Array.isArray(j.lines) && j.lines.length) localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); } catch (e) {} }
       if (act !== DOORS[wbTarget].act) wbMsg.textContent = 'A true word — but for another door. I will open that one.';

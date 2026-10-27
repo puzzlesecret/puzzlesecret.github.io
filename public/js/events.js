@@ -57,6 +57,8 @@
     GUEST_BOARD:      'guest.board',
     GUEST_SOLVED:     'guest.solved',
     GUEST_COPY:       'guest.copy',
+    DAILY_DECODE:     'daily.decode',
+    GUEST_CARD:       'guest.card',
     SESSION_DEPTH:    'session.depth',
   });
 
