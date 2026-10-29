@@ -58,7 +58,7 @@ daily.puzzles.forEach((p) => counts[p.tier]++);
         const li = document.createElement('li');
         const link = document.createElement('a');
         link.href = '/daily/' + p.u + '/';
-        link.textContent = p.t.charAt(0).toUpperCase() + p.t.slice(1) + ' Sudoku No. ' + p.s;
+        link.textContent = p.t.charAt(0).toUpperCase() + p.t.slice(1) + ' Sudoku No. ' + p.s.replace('-', '');
         const tag = document.createElement('span');
         tag.className = 'dh-tier ' + p.t; tag.textContent = p.t;
         li.append(link, tag); ul.appendChild(li);

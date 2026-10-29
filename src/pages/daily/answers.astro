@@ -59,7 +59,7 @@ const list = [...daily.puzzles].reverse().map((p) => ({
       shown.forEach(function (p) {
         var li = document.createElement('li'); li.className = 'da-item';
         var b = document.createElement('button'); b.type = 'button'; b.className = 'da-btn'; b.setAttribute('aria-expanded', 'false');
-        b.textContent = p.t + ' No. ' + p.s + ' · ' + nice(p.d);
+        b.textContent = p.t + ' No. ' + p.s.replace('-', '') + ' · ' + nice(p.d);
         var box = document.createElement('div'); box.className = 'da-box'; box.hidden = true;
         b.addEventListener('click', function () {
           if (!box.firstChild) {
