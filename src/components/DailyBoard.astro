@@ -67,13 +67,13 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       <!-- Reveal sits apart, marked as a spoiler, and asks again in its own box before showing anything -->
       <div class="d-spoil">
         <span class="d-spoil-tag" aria-hidden="true">⚠ Spoiler</span>
-        <button type="button" class="d-spoil-btn" id="dReveal">reveal the full solution</button>
+        <button type="button" class="d-spoil-btn" id="dReveal">reveal the solution</button>
       </div>
       <dialog class="d-dlg" id="dRevealDlg" aria-labelledby="dDlgTitle" aria-describedby="dDlgText">
         <div class="d-dlg-in">
         <p class="d-dlg-tag">⚠ Spoiler alert</p>
         <h2 class="d-dlg-title" id="dDlgTitle">Show every answer?</h2>
-        <p class="d-dlg-text" id="dDlgText">This fills in the whole grid with the solution{vkey ? ', including all six gold squares' : ''}. You can tap <b>Start over</b> afterwards to play it again.</p>
+        <p class="d-dlg-text" id="dDlgText">{vkey ? 'This fills in every square except the six gold squares. Those, and the vault word, stay yours to find.' : 'This fills in the whole grid with the solution.'} You can tap <b>Start over</b> afterwards to play it again.</p>
         <div class="d-dlg-row">
           <button type="button" class="d-dlg-keep" id="dDlgKeep" autofocus>Keep solving</button>
           <button type="button" class="d-dlg-show" id="dDlgShow">Yes, show the solution</button>
@@ -81,13 +81,16 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
         </div>
       </dialog>
 
-      <aside class="d-book" id="dBook">
-        <p class="d-book-line">Liked this one? <em>Sudoku with a Secret</em>, Volume 1, has 200 more — easy to hard — and a hidden escape room inside the book.</p>
-        <a class="d-buy" href={AMAZON_URL} target="_blank" rel="noopener">See the book on Amazon ↗</a>
-        <p class="d-fine">Or <a href="/newsletter">get free puzzles by email</a> — always optional. <a href="/daily/">More daily puzzles</a>.</p>
-      </aside>
     </div>
   </div>
+
+  <!-- Dan 2026-10-28: the book is one short band under the game, not a wordy box among the tools -->
+  <aside class="d-book" id="dBook">
+    <img class="d-book-cover" src="/art/cover-v1-360.webp" width="46" height="60" alt="" loading="lazy" />
+    <p class="d-book-line"><b>Liked this one?</b> 200 more puzzles, and an escape room hidden in the book.</p>
+    <a class="d-buy" href={AMAZON_URL} target="_blank" rel="noopener">See it on Amazon ↗</a>
+  </aside>
+  <p class="d-fine"><a href="/daily/">More daily puzzles</a> · <a href="/newsletter">Free puzzles by email</a></p>
 
   {vkey && (
     <section class="d-vault" id="dVault" aria-labelledby="vTitle">
@@ -121,7 +124,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       </div>
       <p class="v-msg" id="vMsg" role="status" aria-live="polite"></p>
       <div id="vBridge"></div>
-      <p class="v-fine">Stuck? The <b>spoiler</b> link under the puzzle reveals the solution, gold squares too. Every daily puzzle's answer is on
+      <p class="v-fine">Stuck? The <b>spoiler</b> link under the puzzle fills in every square except the gold ones. Every daily puzzle's answer is on
         <a href="/daily/answers/">the answers page</a>.</p>
     </section>
   )}
@@ -158,6 +161,10 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     let vals = givens.split('').map(Number);
     let notes = Array.from({ length: 81 }, () => new Set());
     let sel = -1, pencil = false, revealed = false, solvedShown = false;
+    // Dan 2026-10-28: Reveal solves the sudoku but never the vault word, so the six gold squares are left
+    // empty and stay playable after a reveal.
+    const goldSet = new Set(vkey ? vkey.cells : []);
+    const locked = (i) => given[i] || (revealed && !goldSet.has(i));
     let match = false;   // same-number highlight: off unless this visitor turned it on (remembered on this device only)
     try { match = localStorage.getItem('ps_daily_match') === '1'; } catch (e) {}
     const hist = [];
@@ -168,6 +175,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
         s.v.split('').forEach((d, i) => { if (!given[i]) vals[i] = Number(d); });
         (s.n || []).forEach((str, i) => { if (!given[i] && str) notes[i] = new Set(str.split('').map(Number)); });
         revealed = !!s.r;
+        if (revealed) (vkey ? vkey.cells : []).forEach((c) => { vals[c] = 0; });   // a revealed board never keeps the gold digits
       }
     } catch (e) {}
     function save() {
@@ -182,7 +190,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
         el.classList.toggle('sel', i === sel);
         el.classList.toggle('line', sel >= 0 && i !== sel && (r === Math.floor(sel / 9) || c === sel % 9));
         el.classList.toggle('same', match && sv > 0 && vals[i] === sv);
-        el.classList.toggle('revealed', revealed && !given[i]);
+        el.classList.toggle('revealed', revealed && !given[i] && !goldSet.has(i));
         if (given[i]) return;
         el.classList.remove('err');
         if (vals[i]) { el.textContent = vals[i]; el.classList.add('filled'); }
@@ -266,9 +274,9 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       return { fromBoard };
     })() : null;
 
-    function push() { hist.push({ v: vals.slice(), n: notes.map((s) => new Set(s)) }); if (hist.length > 200) hist.shift(); }
+    function push() { hist.push({ v: vals.slice(), n: notes.map((s) => new Set(s)), r: revealed }); if (hist.length > 200) hist.shift(); }
     function put(n) {
-      if (sel < 0 || given[sel] || revealed) return;
+      if (sel < 0 || locked(sel)) return;
       push();
       if (pencil) { vals[sel] = 0; notes[sel].has(n) ? notes[sel].delete(n) : notes[sel].add(n); }
       else { notes[sel].clear(); vals[sel] = vals[sel] === n ? 0 : n; }
@@ -288,8 +296,8 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     cells.forEach((el, i) => el.addEventListener('click', () => { sel = i; render(); }));
     grid.addEventListener('focus', () => { if (sel < 0) { sel = given.indexOf(false); render(); } });
     document.querySelectorAll('.d-num').forEach((b) => b.addEventListener('click', () => put(Number(b.dataset.n))));
-    document.getElementById('dUndo').addEventListener('click', () => { const h = hist.pop(); if (!h) return; vals = h.v; notes = h.n; save(); render(); });
-    document.getElementById('dErase').addEventListener('click', () => { if (sel < 0 || given[sel] || revealed) return; push(); vals[sel] = 0; notes[sel].clear(); save(); render(); });
+    document.getElementById('dUndo').addEventListener('click', () => { const h = hist.pop(); if (!h) return; vals = h.v; notes = h.n; revealed = !!h.r; save(); render(); });
+    document.getElementById('dErase').addEventListener('click', () => { if (sel < 0 || locked(sel)) return; push(); vals[sel] = 0; notes[sel].clear(); save(); render(); });
     const mb = document.getElementById('dMatch');
     function paintMatch() { mb.setAttribute('aria-pressed', String(match)); mb.textContent = 'Highlight matches: ' + (match ? 'On' : 'Off'); }
     paintMatch();
@@ -306,14 +314,20 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     });
     const dlg = document.getElementById('dRevealDlg');
     function showSolution() {
-      push(); revealed = true; vals = solution.split('').map(Number); notes = notes.map(() => new Set());
-      save(); render(); say('Here is the solution. Solved squares are shown in blue.');
+      push(); revealed = true;
+      vals = solution.split('').map((d, i) => (goldSet.has(i) ? 0 : Number(d)));
+      notes = notes.map((n, i) => (goldSet.has(i) ? n : new Set()));
+      save(); render();
+      // after the dialog has handed focus back, so the browser's own focus scroll cannot cut this one short
+      setTimeout(() => document.getElementById('dBook').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+      say(goldSet.size ? 'Here is the solution, in blue, except the six gold squares. Those, and the vault word, are yours to find.'
+                       : 'Here is the solution. Solved squares are shown in blue.');
       document.getElementById('dBook').classList.add('peak');
     }
     document.getElementById('dReveal').addEventListener('click', () => {
       if (revealed) return;
       if (dlg && dlg.showModal) { dlg.showModal(); document.getElementById('dDlgKeep').focus(); }
-      else if (confirm('Spoiler alert: show every answer, including the gold squares?')) showSolution();   // very old browsers
+      else if (confirm('Spoiler alert: show the solution?')) showSolution();   // very old browsers
     });
     document.getElementById('dDlgKeep').addEventListener('click', () => dlg.close());
     document.getElementById('dDlgShow').addEventListener('click', () => { dlg.close(); showSolution(); });
@@ -371,7 +385,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       sel = r * 9 + c; render(); e.preventDefault();
     });
     render();
-    if (revealed) say('Solution shown. Tap “Start over” to play it yourself.');
+    if (revealed) say(goldSet.size ? 'Solution shown, except the gold squares. Tap “Start over” to play it yourself.' : 'Solution shown. Tap “Start over” to play it yourself.');
   })();
 </script>
 
@@ -414,8 +428,9 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   .d-strong { border-color: rgba(246,178,60,.55); color: var(--gold-hi); }
 
   /* the spoiler strip: quiet, apart from the tools, clearly marked */
-  .d-spoil { margin-top: 6px !important; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 2px; padding: 8px 12px; border: 1px dashed rgba(214,90,90,.45); border-radius: 8px; }
-  .d-spoil-tag { font-family: var(--display); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #e08a7a; }
+  .d-spoil { margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 14px; border: 2px solid #c8483a; border-radius: 8px; background: rgba(200,72,58,.06); }
+  .d-spoil-btn { white-space: nowrap; }
+  .d-spoil-tag { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .16em; text-transform: uppercase; color: #ef7f6c; }
   .d-spoil-btn { min-height: 44px; padding: 4px 6px; font: italic 13px/1.2 Georgia, serif; color: var(--ash); background: none; border: 0; border-bottom: 1px solid rgba(154,146,127,.35); cursor: pointer; }
   .d-spoil-btn:hover, .d-spoil-btn:focus-visible { color: #f0a493; border-color: #e08a7a; outline: none; }
   .d-dlg { position: fixed; inset: 0; margin: auto; height: fit-content; max-height: calc(100vh - 32px); overflow: auto; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; padding: 0; color: var(--ivory); background: #121018; border: 1px solid #c0584a; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.7); text-align: center; }
@@ -430,12 +445,14 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   .d-dlg-show { flex: 1 1 140px; min-height: 46px; font-family: var(--display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #f0a493; background: none; border: 1px solid #c0584a; border-radius: 8px; cursor: pointer; }
   .d-dlg-keep:focus-visible, .d-dlg-show:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
 
-  .d-book { margin-top: 6px; padding: 16px 18px; border: 1px solid rgba(185,143,82,.3); border-radius: 10px; background: rgba(14,12,18,.8); transition: border-color .3s, box-shadow .3s; }
+  .d-book { display: flex; align-items: center; gap: 16px; margin: 26px 0 0; padding: 12px 18px; border: 1px solid rgba(185,143,82,.3); border-radius: 10px; background: rgba(14,12,18,.8); transition: border-color .3s, box-shadow .3s; }
+  .d-book-cover { flex: none; width: 46px; height: 60px; border-radius: 3px; box-shadow: 0 4px 14px rgba(0,0,0,.6); }
   .d-book.peak { border-color: var(--gold); box-shadow: 0 0 24px rgba(246,178,60,.25); }
-  .d-book-line { margin: 0 0 12px; color: var(--ivory); line-height: 1.5; }
-  .d-book-line em { color: var(--gold-hi); }
+  .d-book-line { flex: 1; margin: 0; color: var(--ivory); line-height: 1.45; }
+  .d-book-line b { color: var(--gold-hi); font-weight: 600; }
   .d-buy { display: inline-block; padding: 11px 18px; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-radius: 6px; text-decoration: none; }
-  .d-fine { margin: 12px 0 0; font-size: 14px; color: var(--ash); }
+  .d-book .d-buy { flex: none; white-space: nowrap; }
+  .d-fine { margin: 10px 0 0; text-align: center; font-size: 14px; color: var(--ash); }
   .d-fine a { color: var(--gold); }
 
   /* gold squares: a dark bronze ring (readable on the cream board and in print), a pale gold wash, the square's number */
@@ -479,6 +496,9 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     .v-code { gap: 5px; }
   }
   @media (max-width: 760px) {
+    .d-book { flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+    .d-book-line { flex: 1 1 0; min-width: 0; }
+    .d-book .d-buy { flex: 1 1 100%; text-align: center; }
     .daily { padding-top: 80px; }
     .d-layout { grid-template-columns: 1fr; gap: 14px; }
     .d-pad { grid-template-columns: repeat(9, 1fr); gap: 4px; }
@@ -489,7 +509,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     @page { size: letter; margin: .5in; }
     :global(body) { background: #fff !important; }
     :global(.chrome), :global(.global-foot), :global(.menu-drawer) { display: none !important; }
-    .d-head, .d-layout { display: none !important; }
+    .d-head, .d-layout, .d-book, .d-fine { display: none !important; }
     .daily { padding: 0; max-width: none; }
     .d-print { display: block; color: #000; text-align: center; border: 1px solid #000; padding: .3in; }
     .p-title { font: 700 22pt Georgia, serif; margin: 0 0 .2in; letter-spacing: .06em; }

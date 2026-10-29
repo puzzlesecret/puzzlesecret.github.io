@@ -2,14 +2,17 @@
 // /daily/answers/ — every daily Pinterest puzzle's answer, newest first (Dan, 2026-10-27: "a page for all the
 // Pinterest posts' solutions if they get stuck"). Which puzzles show is decided IN THE BROWSER (America/New_York, plus
 // the one day the pins run ahead), so the list never advertises a puzzle before its pin. noindex, out of the sitemap.
-// An answer grid shows the gold squares ringed and numbered; the decoding itself stays on the puzzle's own page.
+// An answer grid shows the gold squares ringed but EMPTY (Dan 2026-10-28: the vault word is never handed out);
+// their digits are blanked here at build time, so they are not in the page data either.
 import Layout from '../../layouts/Layout.astro';
 import daily from '../../data/daily_puzzles.json';
 import dailyKeys from '../../data/daily_keys.json';
 const TIER = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
-const list = [...daily.puzzles].reverse().map((p) => ({
-  s: p.serial, u: p.slug, d: p.date, t: TIER[p.tier], g: p.givens, a: p.solution, k: (dailyKeys.puzzles[p.serial] || {}).cells || [],
-}));
+const list = [...daily.puzzles].reverse().map((p) => {
+  const k = (dailyKeys.puzzles[p.serial] || {}).cells || [];
+  const a = p.solution.split('').map((d, i) => (k.includes(i) ? '0' : d)).join('');   // gold squares blanked
+  return { s: p.serial, u: p.slug, d: p.date, t: TIER[p.tier], g: p.givens, a, k };
+});
 ---
 <Layout
   title="Daily Sudoku Answers — Every Daily Puzzle's Solution · PuzzleSecret"
@@ -20,8 +23,7 @@ const list = [...daily.puzzles].reverse().map((p) => ({
     <p class="da-kicker">Stuck? It happens to everyone</p>
     <h1>Daily Sudoku Answers</h1>
     <p class="da-lede">The answer to every daily puzzle we have posted, newest first. Tap a puzzle to see its solved grid.
-      The numbered gold squares are the ones that spell the vault word; turn their digits into letters on the
-      puzzle's own page.</p>
+      The numbered gold squares are left empty: those, and the vault word, are yours to find.</p>
     <ol class="da-list" id="daList"></ol>
     <p class="da-empty" id="daEmpty" hidden>No answers yet. Check back after the first puzzle is posted.</p>
   </main>
@@ -44,7 +46,7 @@ const list = [...daily.puzzles].reverse().map((p) => ({
           var tr = document.createElement('tr');
           for (var c = 0; c < 9; c++) {
             var i = r * 9 + c, td = document.createElement('td');
-            td.textContent = p.a[i];
+            td.textContent = p.a[i] === '0' ? '' : p.a[i];
             if (p.g[i] !== '0') td.className = 'g';
             var k = p.k.indexOf(i);
             if (k >= 0) { td.className = 'k'; td.setAttribute('data-k', String(k + 1)); }
@@ -65,7 +67,7 @@ const list = [...daily.puzzles].reverse().map((p) => ({
           if (!box.firstChild) {
             box.appendChild(grid(p));
             var a = document.createElement('a'); a.href = '/daily/' + p.u + '/';
-            a.textContent = p.k.length ? 'Decode the vault word on the puzzle’s page →' : 'Open this puzzle →';
+            a.textContent = p.k.length ? 'Fill the gold squares on the puzzle’s page →' : 'Open this puzzle →';
             a.className = 'da-link'; box.appendChild(a);
           }
           box.hidden = !box.hidden; b.setAttribute('aria-expanded', String(!box.hidden));
