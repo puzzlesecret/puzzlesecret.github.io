@@ -3,16 +3,16 @@
 // straight to /daily/<serial>/. A puzzle that isn't out yet says when it will be (dates only, never
 // givens or solutions). No events of its own; the page it lands on logs page.view as usual.
 import daily from '../data/daily_puzzles.json';
-export interface Props { compact?: boolean }
-const { compact = false } = Astro.props;
+export interface Props { compact?: boolean; label?: string; hint?: string; go?: string }
+const { compact = false, label = 'Found one of our puzzles on Pinterest?', hint = 'Type its number.', go = 'Play it →' } = Astro.props;
 const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
 ---
 <form class={`lookup${compact ? ' compact' : ''}`} data-lookup autocomplete="off">
-  <label class="lk-label">Found one of our puzzles on Pinterest? <span>Type its number.</span></label>
+  <label class="lk-label">{label} <span>{hint}</span></label>
   <div class="lk-row">
     <input class="lk-in" name="n" type="text" inputmode="text" placeholder="e.g. M-001" maxlength="20"
            aria-label="Puzzle number, for example M-001" spellcheck="false" />
-    <button class="lk-go" type="submit">Play it →</button>
+    <button class="lk-go" type="submit">{go}</button>
   </div>
   <p class="lk-msg" role="status" aria-live="polite"></p>
 </form>
@@ -34,6 +34,8 @@ const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
       if (!d) { msg.textContent = 'There is no puzzle ' + serial + ' yet. Check the number on the pin and try again.'; return; }
       let today = '';
       try { today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()); } catch (e) {}
+      // Pins go up one day early (daily_prep.py LEAD_DAYS = 1), so tomorrow's puzzle is already on Pinterest.
+      if (today) { const t = new Date(today + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); today = t.toISOString().slice(0, 10); }
       if (today && d > today) {
         const nice = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
         msg.textContent = 'Puzzle ' + serial + ' comes out on ' + nice + '. Come back then!';

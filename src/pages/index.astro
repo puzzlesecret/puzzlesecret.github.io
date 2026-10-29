@@ -33,6 +33,7 @@ const ghosts = [
 // own HTML instead of using Layout.astro, so it needs its own <Analytics />.
 import Analytics from '@vercel/analytics/astro';
 import QuoteStrip from '../components/QuoteStrip.astro';
+import PuzzleLookup from '../components/PuzzleLookup.astro';
 
 // ---- SEO ----------------------------------------------------------------
 // The old title/description spoke only to people who ALREADY owned the book
@@ -259,6 +260,12 @@ const HOME_LD = {
             <span>·</span>
             <a href="/hints">Need a hint?</a>
           </p>
+          <!-- 2026-10-28: a Pinterest solver arrives here with six gold-square DIGITS, not a word. The decoder is on the
+               puzzle's own page, so this sends them there by the number printed on the pin (no new events). -->
+          <details class="pin-find reveal" style="--d:.66s">
+            <summary>From a Pinterest sudoku? Got six numbers, not a word?</summary>
+            <PuzzleLookup compact={true} label="Type the puzzle's number from the pin" hint="(like M-013). Its page turns your numbers into the word." go="Decode it →" />
+          </details>
         </div>
       </div>
 
@@ -1188,6 +1195,16 @@ const HOME_LD = {
       .side a { display: inline-block; padding-top: 9px; margin-bottom: 9px; text-shadow: 0 1px 8px #000; color: #cfc6b0; border-bottom: 1px solid rgba(154,146,127,.3); padding-bottom: 1px; transition: color .3s, border-color .3s; }
       .side a:hover { color: var(--gold-hi); border-color: var(--gold); }
       .side span { margin: 0 10px; opacity: .5; }
+      /* contain: inline-size, or the open box's long label widens the whole phone console past the screen */
+      .pin-find { margin: 2px auto 0; width: 100%; max-width: 460px; padding: 0 16px; box-sizing: border-box; text-align: center; contain: inline-size; }
+      .pin-find summary { display: inline-block; cursor: pointer; list-style: none; font-style: italic; font-size: 15px; color: #cfc6b0;
+                          text-shadow: 0 1px 8px #000; border-bottom: 1px dashed rgba(154,146,127,.45); padding: 6px 0 1px; }
+      .pin-find summary::-webkit-details-marker { display: none; }
+      .pin-find summary:hover, .pin-find[open] summary { color: var(--gold-hi); border-color: var(--gold); }
+      .pin-find summary:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
+      .pin-find .lookup { margin-top: 12px; text-align: left; }
+      .pin-find .lk-label { font-size: 15px; }
+      .pin-find .lk-in { font-size: 16px; letter-spacing: .04em; }
       /* the newcomer buy path — brighter than the other side links, it's the conversion */
       .side .side-buy { color: var(--gold-hi); border-color: rgba(246,178,60,.5); font-style: normal; }
       .side .side-buy:hover { color: #fff; border-color: var(--gold); }
