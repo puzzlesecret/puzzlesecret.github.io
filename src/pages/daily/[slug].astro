@@ -37,7 +37,7 @@ const ld = {
 ---
 <Layout title={title} description={description} ogImage={`/og/daily-${p.tier}.jpg`} noindex={true}>
   <script type="application/ld+json" set:html={JSON.stringify(ld)} />
-  <DailyBoard serial={p.serial} tier={p.tier} givens={p.givens} solution={p.solution} theme={p.theme} vkey={dailyKeys.puzzles[p.serial] || null} />
+  <DailyBoard serial={p.serial} date={p.date} tier={p.tier} givens={p.givens} solution={p.solution} theme={p.theme} vkey={dailyKeys.puzzles[p.serial] || null} />
   <DailySignup />
   <nav class="d-nav" aria-label="More daily puzzles">
     {prev ? <a href={`/daily/${prev}/`}>← Previous puzzle</a> : <span></span>}

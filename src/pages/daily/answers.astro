@@ -9,9 +9,11 @@ import daily from '../../data/daily_puzzles.json';
 import dailyKeys from '../../data/daily_keys.json';
 const TIER = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 const list = [...daily.puzzles].reverse().map((p) => {
-  const k = (dailyKeys.puzzles[p.serial] || {}).cells || [];
+  const raw = (dailyKeys.puzzles[p.serial] || {}).cells || [];
+  const n = p.tier === 'easy' || p.date < '2026-10-31';                 // medium/hard from Oct 31: unnumbered squares
+  const k = n ? raw : [...raw].sort((x, y) => x - y);                  // never leak the word order through the list
   const a = p.solution.split('').map((d, i) => (k.includes(i) ? '0' : d)).join('');   // gold squares blanked
-  return { s: p.serial, u: p.slug, d: p.date, t: TIER[p.tier], g: p.givens, a, k };
+  return { s: p.serial, u: p.slug, d: p.date, t: TIER[p.tier], g: p.givens, a, k, n };
 });
 ---
 <Layout
@@ -23,7 +25,7 @@ const list = [...daily.puzzles].reverse().map((p) => {
     <p class="da-kicker">Stuck? It happens to everyone</p>
     <h1>Daily Sudoku Answers</h1>
     <p class="da-lede">The answer to every daily puzzle we have posted, newest first. Tap a puzzle to see its solved grid.
-      The numbered gold squares are left empty: those, and the vault word, are yours to find.</p>
+      The gold squares are left empty: those, and the vault word, are yours to find.</p>
     <ol class="da-list" id="daList"></ol>
     <p class="da-empty" id="daEmpty" hidden>No answers yet. Check back after the first puzzle is posted.</p>
   </main>
@@ -49,7 +51,7 @@ const list = [...daily.puzzles].reverse().map((p) => {
             td.textContent = p.a[i] === '0' ? '' : p.a[i];
             if (p.g[i] !== '0') td.className = 'g';
             var k = p.k.indexOf(i);
-            if (k >= 0) { td.className = 'k'; td.setAttribute('data-k', String(k + 1)); }
+            if (k >= 0) { td.className = 'k'; if (p.n) td.setAttribute('data-k', String(k + 1)); }
             if (c % 3 === 2 && c < 8) td.className += ' br';
             if (r % 3 === 2 && r < 8) td.className += ' bb';
             tr.appendChild(td);
