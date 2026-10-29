@@ -1,6 +1,7 @@
 ---
 // "Have a game code?" (Dan 2026-10-28: no platform name, the same codes may run on Facebook, Snapchat...)
-// Dashes and zeros are optional: M-011, M011, M11, m 11, M0011, "No. M-11" and "medium 11" all mean M-011. Goes
+// Dashes and zeros are optional: M-011, M011, M11, m 11, M0011, "No. M-11" and "medium 11" all mean M-011.
+// Codes are SHOWN with no dash (M011, Dan 2026-10-28); the page addresses keep theirs (/daily/m-011/). Goes
 // straight to /daily/<serial>/. A puzzle that isn't out yet says when it will be (dates only, never
 // givens or solutions). No events of its own; the page it lands on logs page.view as usual.
 import daily from '../data/daily_puzzles.json';
@@ -11,8 +12,8 @@ const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
 <form class={`lookup${compact ? ' compact' : ''}`} data-lookup autocomplete="off">
   <label class="lk-label">{label} <span>{hint}</span></label>
   <div class="lk-row">
-    <input class="lk-in" name="n" type="text" inputmode="text" placeholder="e.g. M13" maxlength="20"
-           aria-label="Game code, for example M13" spellcheck="false" />
+    <input class="lk-in" name="n" type="text" inputmode="text" placeholder="e.g. M013" maxlength="20"
+           aria-label="Game code, for example M013" spellcheck="false" />
     <button class="lk-go" type="submit">{go}</button>
   </div>
   <p class="lk-msg" role="status" aria-live="polite"></p>
@@ -32,10 +33,11 @@ const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
       // "No. M-011" -> NOM011 -> M + 11; "M0011" -> M + 11
       // a letter O where a zero belongs ("MO13", read off a serif pin) counts as a zero
       if (!m) { m = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').match(/([EMH])[0O]*(\d{1,3})$/); if (m) { t = m[1]; n = m[2]; } }
-      if (!t || !parseInt(n, 10)) { msg.textContent = 'Game codes look like E12, M-013 or H5. It is printed on the puzzle, after the word EASY, MEDIUM or HARD.'; return; }
+      if (!t || !parseInt(n, 10)) { msg.textContent = 'Game codes look like E012, M013 or H005. It is printed on the puzzle, after the word EASY, MEDIUM or HARD.'; return; }
       const serial = t + '-' + String(parseInt(n, 10)).padStart(3, '0');
+      const shown = serial.replace('-', '');
       const d = dates[serial];
-      if (!d) { msg.textContent = 'There is no game ' + serial + ' yet. Check the code and try again.'; return; }
+      if (!d) { msg.textContent = 'There is no game ' + shown + ' yet. Check the code and try again.'; return; }
       let today = '';
       try { today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()); } catch (e) {}
       // Puzzles are posted ahead of their date (daily_prep.py LEAD_DAYS = 1, sometimes a day more by hand), so
@@ -43,10 +45,10 @@ const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
       if (today) { const t = new Date(today + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 2); today = t.toISOString().slice(0, 10); }
       if (today && d > today) {
         const nice = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-        msg.textContent = 'Puzzle ' + serial + ' comes out on ' + nice + '. Come back then!';
+        msg.textContent = 'Game ' + shown + ' comes out on ' + nice + '. Come back then!';
         return;
       }
-      msg.textContent = 'Opening ' + serial + '…';
+      msg.textContent = 'Opening ' + shown + '…';
       location.href = '/daily/' + serial.toLowerCase() + '/';
     });
   });
@@ -55,6 +57,7 @@ const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
   .lookup { margin: 22px 0; padding: 16px 18px; border: 1px solid rgba(185,143,82,.35); border-radius: 10px; background: rgba(14,12,18,.6); }
   .lk-label { display: block; font-size: 16px; color: var(--ivory, #f4ebd8); margin: 0 0 10px; }
   .lk-label span { color: var(--gold, #c9973f); }
+  .lookup { font-variant-numeric: lining-nums; }   /* a serif old-style 0 reads as the letter o in codes */
   .lk-row { display: flex; gap: 10px; }
   .lk-in { flex: 1; min-width: 0; padding: 12px 14px; font-size: 18px; letter-spacing: .08em; text-transform: uppercase;
            color: var(--ivory, #f4ebd8); background: #0b0907; border: 1px solid rgba(185,143,82,.5); border-radius: 6px; }

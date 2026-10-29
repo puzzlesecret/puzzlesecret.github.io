@@ -14,6 +14,7 @@ export interface Props {
   vkey?: { cells: number[]; cols: string[]; week: string } | null;
 }
 const { serial, tier, givens, solution, theme, vkey = null } = Astro.props;
+const code = serial.replace('-', '');   // shown as M013, no dash (Dan 2026-10-28); `serial` stays the internal id
 const goldNo = new Map((vkey?.cells || []).map((c, k) => [c, k + 1]));   // cell index -> square number 1..6
 const TIER_WORD = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[tier];
 const KEYS = { easy: 1, medium: 2, hard: 3 }[tier];
@@ -24,13 +25,13 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
 <section class="daily" style={`--seam:${SEAM}`} data-serial={serial}>
   <div class="d-head">
     <p class="d-kicker">Free printable sudoku with answers</p>
-    <h1 class="d-title">{TIER_WORD} Sudoku <span class="d-no">No. {serial}</span></h1>
+    <h1 class="d-title">{TIER_WORD} Sudoku <span class="d-no">No. {code}</span></h1>
     <p class="d-keys" aria-label={`Difficulty ${KEYS} of 3`}>{'🗝'.repeat(KEYS)}<span class="d-keys-off">{'🗝'.repeat(3 - KEYS)}</span></p>
   </div>
 
   <div class="d-layout">
     <div class="d-board-col">
-      <div class="d-grid" id="dGrid" tabindex="0" role="grid" aria-label={`${TIER_WORD} sudoku number ${serial}. Use arrow keys to move and digits to fill.`}>
+      <div class="d-grid" id="dGrid" tabindex="0" role="grid" aria-label={`${TIER_WORD} sudoku number ${code}. Use arrow keys to move and digits to fill.`}>
         {rows.flatMap((row, r) => row.map((ch, c) => (
           <div
             class:list={['d-cell', { given: ch !== '0', br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8, gold: goldNo.has(r * 9 + c) }]}
@@ -112,7 +113,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
 
   <!-- Print-only page: givens on a clean black-on-white grid, hairline frame, URL line -->
   <div class="d-print" aria-hidden="true">
-    <p class="p-title">{TIER_WORD.toUpperCase()} SUDOKU · No. {serial}</p>
+    <p class="p-title">{TIER_WORD.toUpperCase()} SUDOKU · No. {code}</p>
     <table class="p-grid">
       {rows.map((row, r) => (
         <tr>{row.map((ch, c) => <td class:list={{ br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8, gold: goldNo.has(r * 9 + c) }}>{ch !== '0' ? ch : goldNo.has(r * 9 + c) ? <span class="p-ring"><i>{goldNo.get(r * 9 + c)}</i></span> : ''}</td>)}</tr>
@@ -132,7 +133,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   </div>
 </section>
 
-<script define:vars={{ serial, givens, solution, tierWord: TIER_WORD, vkey }}>
+<script define:vars={{ serial, code, givens, solution, tierWord: TIER_WORD, vkey }}>
   (function () {
     const KEY = 'ps_daily_' + serial;
     const grid = document.getElementById('dGrid');
@@ -236,7 +237,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
         }
         opening = true; openBtn.disabled = true;
         let kept = false;
-        try { sessionStorage.setItem('ps_daily_word_v1', JSON.stringify({ w: w.toUpperCase(), s: serial })); kept = true; } catch (e) {}
+        try { sessionStorage.setItem('ps_daily_word_v1', JSON.stringify({ w: w.toUpperCase(), s: code })); kept = true; } catch (e) {}
         if (!kept) {   // storage blocked: leave the word on screen and let them walk over themselves
           msg.innerHTML = 'Your word is <b>' + w.split('').join(' ') + '</b>. Remember it, then <a href="/">go to the vault door →</a>';
           return;
@@ -297,7 +298,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       const x = cv.getContext('2d');
       x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
       x.fillStyle = '#111'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.font = 'bold 54px Georgia, serif'; x.fillText(tierWord.toUpperCase() + ' SUDOKU · No. ' + serial, S / 2, 80);
+      x.font = 'bold 54px Georgia, serif'; x.fillText(tierWord.toUpperCase() + ' SUDOKU · No. ' + code, S / 2, 80);
       for (let i = 0; i <= 9; i++) {
         x.lineWidth = i % 3 ? 2 : 6; x.strokeStyle = i % 3 ? '#777' : '#111';
         x.beginPath(); x.moveTo(pad + i * cw, top); x.lineTo(pad + i * cw, top + g); x.stroke();
@@ -345,7 +346,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   .d-kicker { font-family: var(--display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--ash); margin: 0 0 6px; }
   .d-title { font-family: var(--display); font-size: clamp(30px, 6vw, 48px); color: var(--ivory); margin: 0; letter-spacing: .04em; }
   .d-title::after { content: ''; display: block; width: 140px; height: 2px; margin: 12px auto 0; background: linear-gradient(90deg, transparent, var(--seam), transparent); box-shadow: 0 0 12px var(--seam); }
-  .d-no { display: block; font-size: .42em; color: var(--gold); letter-spacing: .14em; margin-top: 6px; }
+  .d-no { display: block; font-size: .42em; color: var(--gold); letter-spacing: .14em; margin-top: 6px; font-variant-numeric: lining-nums; }
   .d-keys { margin: 10px 0 0; font-size: 18px; letter-spacing: 6px; }
   .d-keys-off { opacity: .22; }
 

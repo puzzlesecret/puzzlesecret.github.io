@@ -24,12 +24,12 @@ export function getStaticPaths() {
 }
 const { p, prev, next, nextDate } = Astro.props;
 const TIER = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[p.tier];
-const title = `Free ${TIER} Sudoku No. ${p.serial} — Play Online or Print, With Answers · PuzzleSecret`;
-const description = `A free ${TIER.toLowerCase()} sudoku puzzle (No. ${p.serial}) with a unique solution. Play it online with pencil notes and error checking, print it, or reveal the answer.`;
+const title = `Free ${TIER} Sudoku No. ${p.serial.replace('-', '')} — Play Online or Print, With Answers · PuzzleSecret`;
+const description = `A free ${TIER.toLowerCase()} sudoku puzzle (No. ${p.serial.replace('-', '')}) with a unique solution. Play it online with pencil notes and error checking, print it, or reveal the answer.`;
 const ld = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: `${TIER} Sudoku No. ${p.serial}`,
+  name: `${TIER} Sudoku No. ${p.serial.replace('-', '')}`,
   description,
   isPartOf: { '@id': 'https://puzzlesecret.com/#website' },
   publisher: { '@id': 'https://puzzlesecret.com/#org' },
