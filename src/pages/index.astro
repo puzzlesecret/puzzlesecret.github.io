@@ -133,6 +133,31 @@ const HOME_LD = {
     <script is:inline src="/js/events.js" defer></script>
     <script is:inline src="/js/guest-key.js" defer></script>
     <script is:inline src="/js/amazon-store.js" defer></script>
+    <script is:inline>
+      // A word decoded on a daily puzzle page is carried here (sessionStorage, this tab only) so the solver can speak
+      // or type it at the real door. This script only shows it; it never sends it anywhere.
+      document.addEventListener('DOMContentLoaded', function () {
+        // ?code=M-013 (the pin's link): the game-code box arrives already filled in; nothing navigates by itself
+        try {
+          var c = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
+          var box = document.querySelector('.pin-find .lk-in');
+          var pre0 = document.getElementById('dailyWordPre');
+          if (box && /^[EMH]-?\d{1,4}$/.test(c)) {
+            box.value = c; document.querySelector('.pin-find').classList.add('has-code');
+            // the box sits below the fold on a phone, so point to it
+            if (pre0) { pre0.innerHTML = 'Here for game ' + c + '? <a href="#gameCode">Its free decoder is just below ↓</a>'; pre0.hidden = false; }
+          }
+        } catch (e) {}
+        var w = null;
+        try { w = JSON.parse(sessionStorage.getItem('ps_daily_word_v1') || 'null'); } catch (e) {}
+        var el = document.getElementById('dailyWord'), pre = document.getElementById('dailyWordPre');
+        if (!el || !w || !/^[A-Z]{4,6}$/.test(w.w || '') || !/^[EMH]-\d{3}$/.test(w.s || '')) return;
+        var spaced = w.w.split('').join(' ');
+        el.textContent = 'Your word from game ' + w.s + ': ' + spaced + '. Say it or type it above.';
+        el.hidden = false;
+        if (pre) { pre.textContent = 'Your word from game ' + w.s + ' is ' + spaced + '. Tap Enter the Vault, then say it to the Keeper.'; pre.hidden = false; }
+      });
+    </script>
   </head>
 
   <body>
@@ -224,6 +249,7 @@ const HOME_LD = {
               <span class="sp-lbl">Sound: on</span>
             </button>
             <p class="g-mute remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="linklike rem-link" href="/vault">Step back inside →</a></p>
+            <p class="g-mute daily-word-pre" id="dailyWordPre" hidden></p>
           </div>
 
           <!-- LIVE: the Keeper speaks + word slot -->
@@ -247,6 +273,7 @@ const HOME_LD = {
               </form>
               <p class="entry-hint">Tap <em>Speak</em> and say the word aloud — or type it in the boxes.</p>
               <p class="entry-hint remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="rem-link" href="/vault">Step back inside →</a></p>
+              <p class="entry-hint daily-word" id="dailyWord" hidden></p>
             </div>
           </div>
 
@@ -260,12 +287,11 @@ const HOME_LD = {
             <span>·</span>
             <a href="/hints">Need a hint?</a>
           </p>
-          <!-- 2026-10-28: a Pinterest solver arrives here with six gold-square DIGITS, not a word. The decoder is on the
-               puzzle's own page, so this sends them there by the number printed on the pin (no new events). -->
-          <details class="pin-find reveal" style="--d:.66s">
-            <summary>From a Pinterest sudoku? Got six numbers, not a word?</summary>
-            <PuzzleLookup compact={true} label="Type the puzzle's number from the pin" hint="(like M-013). Its page turns your numbers into the word." go="Decode it →" />
-          </details>
+          <!-- 2026-10-28 (Dan): every daily puzzle links HERE. A game code (printed on the puzzle) opens that puzzle and
+               its decoder; the decoded word comes back to this door. No platform name; no new events. -->
+          <div class="pin-find reveal" id="gameCode" style="--d:.66s">
+            <PuzzleLookup compact={true} label="Have a game code?" hint="Type it here, like M13." go="Play it →" />
+          </div>
         </div>
       </div>
 
@@ -776,6 +802,7 @@ const HOME_LD = {
       }
       function onCorrect(data) {
         misses = 0;
+        try { sessionStorage.removeItem('ps_daily_word_v1'); } catch (e) {}
         // the gift's address — handed out only for a true word, kept in this browser
         try { const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { r[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(r)); } } catch (e) {}
         // A GUEST ROOM (an outlet's own story inside Vault I) arrives only from the server, only on that
@@ -1197,12 +1224,12 @@ const HOME_LD = {
       .side span { margin: 0 10px; opacity: .5; }
       /* contain: inline-size, or the open box's long label widens the whole phone console past the screen */
       .pin-find { margin: 2px auto 0; width: 100%; max-width: 460px; padding: 0 16px; box-sizing: border-box; text-align: center; contain: inline-size; }
-      .pin-find summary { display: inline-block; cursor: pointer; list-style: none; font-style: italic; font-size: 15px; color: #cfc6b0;
-                          text-shadow: 0 1px 8px #000; border-bottom: 1px dashed rgba(154,146,127,.45); padding: 6px 0 1px; }
-      .pin-find summary::-webkit-details-marker { display: none; }
-      .pin-find summary:hover, .pin-find[open] summary { color: var(--gold-hi); border-color: var(--gold); }
-      .pin-find summary:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; }
-      .pin-find .lookup { margin-top: 12px; text-align: left; }
+      .pin-find .lookup { margin-top: 6px; padding: 12px 14px; text-align: left; }
+      .pin-find .lk-msg:empty { display: none; }
+      .pin-find.has-code .lookup { border-color: var(--gold); box-shadow: 0 0 22px rgba(246,178,60,.22); }
+      .daily-word-pre { color: var(--gold-hi) !important; font-style: normal; margin-top: 12px; }
+      .daily-word-pre a { color: var(--gold-hi); border-bottom: 1px solid rgba(246,178,60,.5); }
+      #gameCode { scroll-margin-top: 90px; }
       .pin-find .lk-label { font-size: 15px; }
       .pin-find .lk-in { font-size: 16px; letter-spacing: .04em; }
       /* the newcomer buy path — brighter than the other side links, it's the conversion */
