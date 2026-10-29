@@ -1,4 +1,5 @@
 ---
+import { createHash } from 'node:crypto';
 // One daily Pinterest puzzle, playable. A deliberate COPY of the /play board, not a refactor of it:
 // /play is embedded by the homepage five-a-day and the vault desk, and its saved progress is keyed
 // by bare id. This board keeps its own storage (ps_daily_*), no passport, and fires NO play.* events
@@ -12,10 +13,31 @@ export interface Props {
   solution: string;
   theme: string;
   vkey?: { cells: number[]; cols: string[]; week: string } | null;
+  date?: string;
 }
-const { serial, tier, givens, solution, theme, vkey = null } = Astro.props;
+const { serial, tier, givens, solution, theme, vkey: keyIn = null, date = '' } = Astro.props;
+// Dan 2026-10-29: EASY puzzles keep the numbered gold squares (the word reads straight out). MEDIUM and HARD from
+// 2026-10-31 show the gold squares with NO numbers and each decoder column is named by its square's ROW, in row order.
+// Their keys were re-paired (scripts/daily_keys/scramble_keys.py) so the word's letter order is NOT the top-to-bottom
+// order: reading the columns row by row gives the six letters scrambled, and the solver puts them in order. The browser
+// gets only the row-ordered columns, a SHA-256 of serial + ':' + word for "Check my order", and which letter comes
+// first (the hint after three wrong tries). M-012 and M-013 were pinned with numbers, so they stay numbered.
+const SCRAMBLE_FROM = '2026-10-31';
+const scramble = !!keyIn && tier !== 'easy' && date >= SCRAMBLE_FROM;
+let vkey = keyIn;
+if (scramble) {
+  const word = keyIn.cols.map((col, k) => col[Number(solution[keyIn.cells[k]]) - 1]).join('');
+  const order = [0, 1, 2, 3, 4, 5].sort((a, b) => keyIn.cells[a] - keyIn.cells[b]);   // top to bottom
+  vkey = {
+    cells: order.map((i) => keyIn.cells[i]), cols: order.map((i) => keyIn.cols[i]), week: keyIn.week,
+    rows: order.map((i) => Math.floor(keyIn.cells[i] / 9) + 1),
+    h: createHash('sha256').update(serial + ':' + word).digest('hex'),
+    first: order.indexOf(0),
+  };
+}
+const colName = (k) => (scramble ? 'Row ' + vkey.rows[k] : 'Square ' + (k + 1));
 const code = serial.replace('-', '');   // shown as M013, no dash (Dan 2026-10-28); `serial` stays the internal id
-const goldNo = new Map((vkey?.cells || []).map((c, k) => [c, k + 1]));   // cell index -> square number 1..6
+const goldNo = new Map((vkey?.cells || []).map((c, k) => [c, scramble ? '' : k + 1]));   // cell -> number 1..6 ('' = unnumbered)
 const TIER_WORD = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }[tier];
 const KEYS = { easy: 1, medium: 2, hard: 3 }[tier];
 const SEAM = { v1: '#f0b040', v2: '#3cdc82', v3: '#ec7896', v4: '#46d2eb', v5: '#f59628' }[theme] || '#f0b040';
@@ -31,14 +53,15 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
 
   <div class="d-layout">
     <div class="d-board-col">
-      <div class="d-grid" id="dGrid" tabindex="0" role="grid" aria-label={`${TIER_WORD} sudoku number ${code}. Use arrow keys to move and digits to fill.`}>
+      <div class:list={['d-grid', { rownums: scramble }]} id="dGrid" tabindex="0" role="grid" aria-label={`${TIER_WORD} sudoku number ${code}. Use arrow keys to move and digits to fill.`}>
         {rows.flatMap((row, r) => row.map((ch, c) => (
           <div
             class:list={['d-cell', { given: ch !== '0', br: c % 3 === 2 && c < 8, bb: r % 3 === 2 && r < 8, gold: goldNo.has(r * 9 + c) }]}
             role="gridcell"
             data-i={r * 9 + c}
-            data-k={goldNo.get(r * 9 + c)}
-            aria-label={`Row ${r + 1} column ${c + 1}${ch !== '0' ? ', given ' + ch : ', empty'}${goldNo.has(r * 9 + c) ? ', gold square ' + goldNo.get(r * 9 + c) : ''}`}
+            data-k={goldNo.get(r * 9 + c) || undefined}
+            data-r={scramble && c === 0 ? r + 1 : undefined}
+            aria-label={`Row ${r + 1} column ${c + 1}${ch !== '0' ? ', given ' + ch : ', empty'}${goldNo.has(r * 9 + c) ? ', gold square' + (goldNo.get(r * 9 + c) ? ' ' + goldNo.get(r * 9 + c) : '') : ''}`}
           >{ch !== '0' ? ch : ''}</div>
         )))}
       </div>
@@ -96,12 +119,18 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     <section class="d-vault" id="dVault" aria-labelledby="vTitle">
       <p class="v-kicker"><span aria-hidden="true">🔒</span> This sudoku opens a vault</p>
       <h2 class="v-title" id="vTitle">Six gold squares, one word</h2>
-      <p class="v-how">Solve the puzzle. Each numbered gold square holds a digit. Find that digit in the square's own column
-        below, and the six letters spell a word. Say the word at the door, and the first vault opens.</p>
+      {scramble ? (
+        <p class="v-how">Solve the puzzle. Each gold square holds a digit. Every column below is named by the <b>row</b> its
+          gold square sits in: find that digit in that column. The six letters come out scrambled, so put them in order
+          to make the word. Say the word at the door, and the first vault opens.</p>
+      ) : (
+        <p class="v-how">Solve the puzzle. Each numbered gold square holds a digit. Find that digit in the square's own column
+          below, and the six letters spell a word. Say the word at the door, and the first vault opens.</p>
+      )}
       <div class="v-scroll">
         <table class="v-table" id="vTable">
           <caption class="sr-only">Decoder: the digit in each gold square picks one letter from that square's column</caption>
-          <thead><tr><th scope="col">Digit</th>{vkey.cols.map((_, k) => <th scope="col"><span class="v-sq">Square </span>{k + 1}</th>)}</tr></thead>
+          <thead><tr><th scope="col">Digit</th>{vkey.cols.map((_, k) => <th scope="col">{scramble ? <span>Row {vkey.rows[k]}</span> : <><span class="v-sq">Square </span>{k + 1}</>}</th>)}</tr></thead>
           <tbody>
             {Array.from({ length: 9 }, (_, d) => (
               <tr><th scope="row">{d + 1}</th>{vkey.cols.map((col, k) => <td data-k={k + 1} data-d={d + 1}>{col[d]}</td>)}</tr>
@@ -111,13 +140,23 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       </div>
       <div class="v-code" role="group" aria-label="Your six gold-square digits">
         {vkey.cols.map((_, k) => (
-          <label class="v-slot"><span class="v-no">{k + 1}</span>
-            <input class="v-dig" data-k={k + 1} inputmode="numeric" maxlength="1" autocomplete="off" aria-label={`Digit in gold square ${k + 1}`} />
+          <label class="v-slot"><span class="v-no">{scramble ? 'row ' + vkey.rows[k] : k + 1}</span>
+            <input class="v-dig" data-k={k + 1} inputmode="numeric" maxlength="1" autocomplete="off" aria-label={`Digit in the gold square ${scramble ? 'in row ' + vkey.rows[k] : k + 1}`} />
             <span class="v-let" aria-hidden="true">·</span>
           </label>
         ))}
       </div>
       <p class="v-word" id="vWord" aria-live="polite"></p>
+      {scramble && (
+        <div class="v-order" id="vOrderBox" hidden>
+          <label class="v-order-lbl" for="vOrder">Put the six letters in order:</label>
+          <div class="v-order-row">
+            <input class="v-order-in" id="vOrder" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+            <button type="button" class="d-btn" id="vOrderCheck">Check my order</button>
+          </div>
+          <button type="button" class="v-hint" id="vHint" hidden>Stuck? Show the first letter</button>
+        </div>
+      )}
       <div class="d-actions">
         <button type="button" class="d-btn" id="vCheck">Check my gold squares</button>
         <button type="button" class="d-btn d-strong" id="vOpen" disabled>Take it to the vault door →</button>
@@ -139,9 +178,9 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
     </table>
     {vkey && (
       <div class="p-vault">
-        <p class="p-vhow">The six numbered ringed squares spell a word: find each square's digit in its own column. Say the word at puzzlesecret.com and the first vault opens.</p>
+        <p class="p-vhow">{scramble ? 'Each column is named by the row of its ringed square: find that square\'s digit in its column. The six letters come out scrambled; put them in order and say the word at puzzlesecret.com to open the first vault. Some letters make more than one word: check your order at puzzlesecret.com/daily/' + serial.toLowerCase() + '/.' : 'The six numbered ringed squares spell a word: find each square\'s digit in its own column. Say the word at puzzlesecret.com and the first vault opens.'}</p>
         <table class="p-dec">
-          <tr><th>Digit</th>{vkey.cols.map((_, k) => <th>Sq {k + 1}</th>)}</tr>
+          <tr><th>Digit</th>{vkey.cols.map((_, k) => <th>{scramble ? 'Row ' + vkey.rows[k] : 'Sq ' + (k + 1)}</th>)}</tr>
           {Array.from({ length: 9 }, (_, d) => <tr><th>{d + 1}</th>{vkey.cols.map((col) => <td>{col[d]}</td>)}</tr>)}
         </table>
       </div>
@@ -151,7 +190,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   </div>
 </section>
 
-<script define:vars={{ serial, code, givens, solution, tierWord: TIER_WORD, vkey }}>
+<script define:vars={{ serial, code, givens, solution, tierWord: TIER_WORD, vkey, scramble }}>
   (function () {
     const KEY = 'ps_daily_' + serial;
     const grid = document.getElementById('dGrid');
@@ -212,7 +251,9 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       const wordEl = document.getElementById('vWord'), msg = document.getElementById('vMsg');
       const openBtn = document.getElementById('vOpen');
       const typed = [false, false, false, false, false, false];   // a paper solver typed this slot; the board stops overwriting it
-      let decoded = false, opening = false;
+      let decoded = false, opening = false, ordered = '', lastLetters = '', misses = 0;   // ordered: what "Check my order" confirmed
+      const sq = (k) => (scramble ? 'in row ' + vkey.rows[k] : String(k + 1));   // how a message names gold square k
+      const orderBox = document.getElementById('vOrderBox'), orderIn = document.getElementById('vOrder');
       function digits() { return digs.map((d) => Number(d.value) || 0); }
       function word() { const ds = digits(); return ds.every((d) => d >= 1 && d <= 9) ? ds.map((d, k) => vkey.cols[k][d - 1]).join('') : ''; }
       function paint() {
@@ -221,9 +262,21 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
         tds.forEach((td) => td.classList.toggle('on', ds[Number(td.dataset.k) - 1] === Number(td.dataset.d)));
         digs.forEach((d) => d.classList.remove('bad'));
         const w = word();
-        wordEl.textContent = w ? 'Your word: ' + w.split('').join(' ') : '';
-        openBtn.disabled = !w || opening;
-        if (w && !decoded) {
+        if (scramble) {
+          if (w !== lastLetters) {   // a digit changed: any confirmed order (and the guess) no longer applies
+            lastLetters = w; ordered = ''; misses = 0;
+            if (orderIn) orderIn.value = '';
+            const hb = document.getElementById('vHint'); if (hb) hb.hidden = true;
+          }
+          wordEl.textContent = w ? 'Now put these six letters in order.' : '';
+          if (orderBox) orderBox.hidden = !w;
+          openBtn.disabled = !ordered || opening;
+          openBtn.classList.toggle('ready', !!ordered);
+        } else {
+          wordEl.textContent = w ? 'Your word: ' + w.split('').join(' ') : '';
+          openBtn.disabled = !w || opening;
+        }
+        if ((scramble ? ordered : w) && !decoded) {   // a scrambled puzzle counts as found once the order is right
           decoded = true;
           const how = revealed ? 'revealed' : typed.some(Boolean) ? 'typed' : 'solved';
           if (window.psEvent) window.psEvent('daily.decode', how);
@@ -244,20 +297,45 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       }));
       document.getElementById('vCheck').addEventListener('click', () => {
         const ds = digits(); const wrong = [];
-        vkey.cells.forEach((c, k) => { if (ds[k] && ds[k] !== Number(solution[c])) { wrong.push(k + 1); digs[k].classList.add('bad'); } });
+        vkey.cells.forEach((c, k) => { if (ds[k] && ds[k] !== Number(solution[c])) { wrong.push(sq(k)); digs[k].classList.add('bad'); } });
         const filled = ds.filter(Boolean).length;
         msg.textContent = wrong.length
-          ? 'Gold square ' + wrong.join(' and ') + (wrong.length === 1 ? ' does not' : ' do not') + ' match the answer. Recheck ' + (wrong.length === 1 ? 'it.' : 'them.')
+          ? (wrong.length === 1 ? 'The gold square ' + wrong[0] + ' does not' : 'The gold squares ' + wrong.join(' and ') + ' do not') + ' match the answer. Recheck ' + (wrong.length === 1 ? 'it.' : 'them.')
           : filled < 6 ? filled + ' of 6 gold squares filled, and right so far.' : 'All six gold squares are right.';
       });
       // Dan 2026-10-28: the word is never checked here and never walks straight into the vault. It goes to the
       // homepage door, so the solver speaks or types it there and gets the whole door (the Keeper, the swing).
+      if (scramble && orderIn) {
+        const letters = () => word().split('').sort().join('');
+        async function sha(t) {
+          const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+          return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join('');
+        }
+        orderIn.addEventListener('input', () => { orderIn.value = orderIn.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6); ordered = ''; msg.textContent = ''; paint(); });
+        const check = async () => {
+          const g = orderIn.value;
+          if (g.length !== 6 || g.split('').sort().join('') !== letters()) { msg.textContent = 'Use each of your six letters once: ' + word().split('').join(' ') + '.'; return; }
+          let ok = false;
+          try { ok = (await sha(serial + ':' + g)) === vkey.h; } catch (e) { msg.textContent = 'This browser cannot check the order here. Take your best guess to the door.'; ordered = g; paint(); return; }
+          if (ok) { ordered = g; msg.textContent = 'That is the word. Take it to the vault door.'; paint(); openBtn.focus(); return; }
+          ordered = ''; misses++;
+          msg.textContent = g === word() ? 'Not that order yet. Move the letters around.'
+                                         : 'Not that order. Some letters make more than one word, so try another.';
+          const hb = document.getElementById('vHint'); if (hb && misses >= 3) hb.hidden = false;
+          paint();
+        };
+        document.getElementById('vOrderCheck').addEventListener('click', check);
+        document.getElementById('vHint').addEventListener('click', () => {
+          const L = word(); if (L) msg.textContent = 'Hint: the word starts with ' + L[vkey.first] + '.';
+        });
+        orderIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+      }
       openBtn.addEventListener('click', () => {
-        const w = word(); if (!w || opening) return;
+        const w = scramble ? ordered : word(); if (!w || opening) return;
         const ds = digits(); const wrong = [];
-        vkey.cells.forEach((c, k) => { if (ds[k] !== Number(solution[c])) { wrong.push(k + 1); digs[k].classList.add('bad'); } });
+        vkey.cells.forEach((c, k) => { if (ds[k] !== Number(solution[c])) { wrong.push(sq(k)); digs[k].classList.add('bad'); } });
         if (wrong.length) {   // a wrong word would only meet a shut door; say which square first
-          msg.textContent = 'Not quite: gold square ' + wrong.join(' and ') + (wrong.length === 1 ? ' does not' : ' do not') + ' match the answer. Fix ' + (wrong.length === 1 ? 'it' : 'them') + ' first.';
+          msg.textContent = 'Not quite: ' + (wrong.length === 1 ? 'the gold square ' + wrong[0] + ' does not' : 'the gold squares ' + wrong.join(' and ') + ' do not') + ' match the answer. Fix ' + (wrong.length === 1 ? 'it' : 'them') + ' first.';
           return;
         }
         opening = true; openBtn.disabled = true;
@@ -356,7 +434,7 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
         const cx = pad + (c % 9) * cw, cy = top + Math.floor(c / 9) * cw;
         x.strokeStyle = '#7A5512'; x.lineWidth = 5; x.strokeRect(cx + 9, cy + 9, cw - 18, cw - 18);
         x.lineWidth = 2; x.strokeRect(cx + 17, cy + 17, cw - 34, cw - 34);
-        x.fillStyle = '#7A5512'; x.font = 'bold 22px Georgia, serif'; x.fillText(String(k + 1), cx + 26, cy + 30);
+        if (!scramble) { x.fillStyle = '#7A5512'; x.font = 'bold 22px Georgia, serif'; x.fillText(String(k + 1), cx + 26, cy + 30); }
         x.fillStyle = '#111';
       });
       x.font = '34px Georgia, serif'; x.fillText('Play free + answers: puzzlesecret.com/daily/' + serial.toLowerCase() + '/', S / 2, top + g + 70);
@@ -474,7 +552,20 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
   .v-table td.on { background: rgba(246,178,60,.55); color: #1a1206; }
   .v-code { display: flex; justify-content: center; gap: 8px; margin: 18px 0 8px; flex-wrap: wrap; }
   .v-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .v-no { font: 700 11px Georgia, serif; color: var(--gold); }
+  .v-no { font: 700 11px Georgia, serif; color: var(--gold); white-space: nowrap; }
+  .v-order { margin: 6px auto 14px; max-width: 420px; }
+  .v-order-lbl { display: block; margin-bottom: 8px; color: var(--ivory); font-size: 15px; }
+  .v-order-row { display: flex; gap: 8px; }
+  .v-order-in { flex: 1; min-width: 0; padding: 10px 8px; font: 700 20px/1 Georgia, serif; letter-spacing: .14em; text-transform: uppercase; text-align: center;
+                color: var(--ivory); background: #0b0907; border: 1px solid rgba(185,143,82,.55); border-radius: 6px; }
+  .v-order-in:focus { outline: 2px solid var(--gold-hi); outline-offset: 1px; }
+  .v-order-row .d-btn { flex: none; padding: 10px 14px; }
+  .v-hint { margin-top: 8px; min-height: 36px; font: italic 14px Georgia, serif; color: var(--gold); background: none; border: 0; border-bottom: 1px solid rgba(185,143,82,.5); cursor: pointer; }
+  #vOpen:disabled { opacity: .45; cursor: not-allowed; }
+  #vOpen.ready { color: #1a1206; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-color: var(--gold); }
+  .d-grid.rownums { margin-left: 16px; }
+  .d-grid.rownums .d-cell[data-r] { position: relative; overflow: visible; }
+  .d-grid.rownums .d-cell[data-r]::before { content: attr(data-r); position: absolute; left: -17px; top: 50%; transform: translateY(-50%); font: 700 11px Georgia, serif; color: var(--gold); }
   .v-dig { width: 42px; height: 46px; text-align: center; font: 700 22px 'Palatino Linotype', Palatino, Georgia, serif; color: #1a1206; background: #f3ead6; border: 3px solid #7A5512; border-radius: 6px; }
   .v-dig.bad { border-color: #a4183a; background: #f6d3da; }
   .v-let { font: 700 22px 'Palatino Linotype', Palatino, Georgia, serif; color: var(--gold-hi); min-height: 26px; }
