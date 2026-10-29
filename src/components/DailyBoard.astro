@@ -101,11 +101,11 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
       <p class="v-word" id="vWord" aria-live="polite"></p>
       <div class="d-actions">
         <button type="button" class="d-btn" id="vCheck">Check my gold squares</button>
-        <button type="button" class="d-btn d-strong" id="vOpen" disabled>Open the vault →</button>
+        <button type="button" class="d-btn d-strong" id="vOpen" disabled>Take it to the vault door →</button>
       </div>
       <p class="v-msg" id="vMsg" role="status" aria-live="polite"></p>
       <div id="vBridge"></div>
-      <p class="v-fine">Stuck? <b>Reveal solution</b> above fills the gold squares for you. Every Pinterest puzzle's answer is on
+      <p class="v-fine">Stuck? <b>Reveal solution</b> above fills the gold squares for you. Every daily puzzle's answer is on
         <a href="/daily/answers/">the answers page</a>.</p>
     </section>
   )}
@@ -224,27 +224,27 @@ const rows = Array.from({ length: 9 }, (_, r) => givens.slice(r * 9, r * 9 + 9).
           ? 'Gold square ' + wrong.join(' and ') + (wrong.length === 1 ? ' does not' : ' do not') + ' match the answer. Recheck ' + (wrong.length === 1 ? 'it.' : 'them.')
           : filled < 6 ? filled + ' of 6 gold squares filled, and right so far.' : 'All six gold squares are right.';
       });
-      openBtn.addEventListener('click', async () => {
+      // Dan 2026-10-28: the word is never checked here and never walks straight into the vault. It goes to the
+      // homepage door, so the solver speaks or types it there and gets the whole door (the Keeper, the swing).
+      openBtn.addEventListener('click', () => {
         const w = word(); if (!w || opening) return;
-        opening = true; openBtn.disabled = true; openBtn.textContent = 'The vault is listening…'; msg.textContent = '';
-        let data = null;
-        try {
-          const res = await fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ word: w, vid: window.psVid ? window.psVid() : '', at: 'daily' }) });
-          data = await res.json();
-        } catch (e) {}
-        if (data && data.ok) {
-          // the same hand-off the front door makes: the gift's address, any guest room, the guest flag, then the vault
-          try { const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}'); if (data.rewardUrl) { r[data.act] = data.rewardUrl; localStorage.setItem('ps_rewards_v1', JSON.stringify(r)); } } catch (e) {}
-          try { if (data.room && data.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(data.room)); else sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {}
-          if (window.psGuest) window.psGuest.note(data);
-          msg.textContent = 'The word was true. The door is opening…';
-          setTimeout(() => { window.location.href = '/vault?from=door&act=' + encodeURIComponent(data.act || 'I'); }, 700);
+        const ds = digits(); const wrong = [];
+        vkey.cells.forEach((c, k) => { if (ds[k] !== Number(solution[c])) { wrong.push(k + 1); digs[k].classList.add('bad'); } });
+        if (wrong.length) {   // a wrong word would only meet a shut door; say which square first
+          msg.textContent = 'Not quite: gold square ' + wrong.join(' and ') + (wrong.length === 1 ? ' does not' : ' do not') + ' match the answer. Fix ' + (wrong.length === 1 ? 'it' : 'them') + ' first.';
           return;
         }
-        opening = false; openBtn.textContent = 'Open the vault →'; paint();
-        msg.textContent = data ? 'The door stayed shut. Tap “Check my gold squares” to find the one that is off.' : 'The vault cannot hear you right now. Try again in a moment.';
+        opening = true; openBtn.disabled = true;
+        let kept = false;
+        try { sessionStorage.setItem('ps_daily_word_v1', JSON.stringify({ w: w.toUpperCase(), s: serial })); kept = true; } catch (e) {}
+        if (!kept) {   // storage blocked: leave the word on screen and let them walk over themselves
+          msg.innerHTML = 'Your word is <b>' + w.split('').join(' ') + '</b>. Remember it, then <a href="/">go to the vault door →</a>';
+          return;
+        }
+        msg.textContent = 'Your word is ' + w.split('').join(' ') + '. Taking you to the door…';
+        setTimeout(() => { window.location.href = '/'; }, 900);
       });
+      window.addEventListener('pageshow', (e) => { if (e.persisted) { opening = false; msg.textContent = ''; paint(); } });   // came back with Back
       return { fromBoard };
     })() : null;
 
