@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import DailySignup from '../components/DailySignup.astro';
 import webPuzzles from '../data/web_puzzles.json';
 ---
 
@@ -175,6 +176,9 @@ import webPuzzles from '../data/web_puzzles.json';
 
     <p class="book-line">Liked these? The real hunt is in the book: <a href="https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20" target="_blank" rel="noopener">Sudoku with a Secret, $14.99 paperback on Amazon ↗</a> · <a href="/escape-room-sudoku-book">how the secret works</a></p>
 
+    <!-- The quiet email box (2026-11-09): optional, below the board, never a gate. -->
+    <div class="play-signup"><DailySignup from="play" title="Want new puzzles by email?" /></div>
+
     <!-- Victory Modal -->
     <div class="victory-modal" id="vicModal" hidden>
       <div class="v-card">
@@ -203,7 +207,7 @@ import webPuzzles from '../data/web_puzzles.json';
           <a class="btn-next" id="nudgeBuy" href="https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20" target="_blank" rel="noopener">Get the book on Amazon ↗</a>
           <button class="btn-sec" id="nudgeClose">Keep playing free</button>
         </div>
-        <p class="nudge-fine">Or join <a href="/newsletter">the Keeper's list</a> for ten free puzzles a month. Email always optional.</p>
+        <p class="nudge-fine">Or join <a href="/newsletter">the Keeper's list</a> for a few free puzzles by email every month or so. Email always optional.</p>
       </div>
     </div>
   </main>

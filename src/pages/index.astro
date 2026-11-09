@@ -34,6 +34,7 @@ const ghosts = [
 import Analytics from '@vercel/analytics/astro';
 import QuoteStrip from '../components/QuoteStrip.astro';
 import PuzzleLookup from '../components/PuzzleLookup.astro';
+import DailySignup from '../components/DailySignup.astro';
 
 // ---- SEO ----------------------------------------------------------------
 // The old title/description spoke only to people who ALREADY owned the book
@@ -341,8 +342,8 @@ const HOME_LD = {
             </div>
           </article>
           <article class="card">
-            <h3>Ten free puzzles a month</h3>
-            <p>Join the Keeper's list for fresh puzzles and first word on the next volume. Optional, always.</p>
+            <h3>Free puzzles by email</h3>
+            <p>Join the Keeper's list for a few fresh puzzles every month or so, and first word on the next volume. Optional, always.</p>
             <a class="btn ghost" href="/newsletter">The Keeper's list</a>
           </article>
         </div>
@@ -362,6 +363,11 @@ const HOME_LD = {
           <figure class="mini v4"><img src="/teasers/v4.webp" alt="Volume IV — The Silent Signal" loading="lazy" /><figcaption>IV · The Silent Signal</figcaption></figure>
           <figure class="mini v5"><img src="/teasers/v5.webp" alt="Volume V — The Hollow Oak" loading="lazy" /><figcaption>V · The Hollow Oak</figcaption></figure>
         </div>
+      </div>
+
+      <!-- The quiet email box (2026-11-09). Optional, below everything, never on the way to the door. -->
+      <div class="home-signup">
+        <DailySignup from="home" kicker="The Keeper's Dispatch" title="Hear first when the next vault opens" />
       </div>
 
       <footer class="foot">
@@ -1352,6 +1358,7 @@ const HOME_LD = {
       .mini figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px; font-family: var(--display); font-size: 12px; letter-spacing: .08em; color: var(--ivory); background: linear-gradient(transparent, rgba(0,0,0,.85)); }
       .v2 figcaption { color: #a9e6c0; } .v3 figcaption { color: #f2b6c6; } .v4 figcaption { color: #a9d9e6; } .v5 figcaption { color: #eccf8f; }
 
+      .home-signup { padding-top: 10px; }
       .foot { border-top: 1px solid rgba(185,143,82,.12); padding: 40px 24px; text-align: center; }
       .wordmark { font-family: var(--display); font-weight: 700; letter-spacing: .3em; font-size: 15px; color: var(--ash); }
       .wordmark span { color: var(--gold); }

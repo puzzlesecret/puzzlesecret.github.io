@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import SeriesStrip from '../components/SeriesStrip.astro';
+import DailySignup from '../components/DailySignup.astro';
 import webPuzzles from '../data/web_puzzles.json';
 import { buildMoves } from '../lib/guided-solve.js';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
@@ -353,6 +354,8 @@ const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
       </div>
     </section>
     <SeriesStrip />
+    <!-- The quiet email box (2026-11-09): optional, after the lesson, never a gate. -->
+    <div class="htp-signup"><DailySignup from="howto" title="Want a few practice puzzles by email?" /></div>
 
     <div class="stick" id="stick" hidden>
       <img src="/art/cover-v1-360.webp" width="36" height="47" alt="" loading="lazy" />
