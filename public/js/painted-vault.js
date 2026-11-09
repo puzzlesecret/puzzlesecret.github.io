@@ -199,8 +199,8 @@
   const REWARDS = {
     I:   { kicker: "THE KEEPER'S FIRST GIFT", title: 'FIFTY PUZZLES, YOURS', text: "No name, no price. Fifty easy puzzles from the Keeper's own desk — the first door is open.", btn: 'Download the 50 puzzles (PDF)', vo: 'reward1' },
     II:  { kicker: 'THE SECOND GIFT', title: 'ONE HUNDRED MORE', text: 'A hundred medium puzzles, bound for the readers of my letter. The library approves of you.', btn: 'Download the 100 puzzles (PDF)', vo: 'reward2' },
-    III: { kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON', text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.', btn: 'Download the 200 puzzles (PDF)', vo: 'finale', ask: true },
-    IV:  { kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES', text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.", btn: 'Download the 20 Master Puzzles (PDF)', vo: 'sanctum', ask: true },
+    III: { kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON', text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.', btn: 'Download the 200 puzzles (PDF)', vo: 'finale' },
+    IV:  { kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES', text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.", btn: 'Download the 20 Master Puzzles (PDF)', vo: 'sanctum' },
   };
   // The seven framed lines arrive from the server on a true fourth word and are kept in this
   // browser only; nothing in this file carries the gilded capitals in order.
@@ -588,7 +588,7 @@
     // Rebind on every open — the previous act's click handler is replaced, keeping the pipe tidy.
     btn.onclick = function () { try { window.psBeacon && window.psBeacon('reward.click.' + act); } catch (e) {} };   // beacon: iOS may open the PDF in-tab
     try { window.psEvent && window.psEvent('reward.open.' + act); } catch (e) {}
-    const ask = $('rwAsk'); if (ask) ask.hidden = !RW.ask;
+    // No review ask on a gift card (Option B, 2026-11-09): it lives only on the front door, on a later visit.
     if (window.psGuest) window.psGuest.fill($('rwGuest'), act === 'I' ? 'gift' : 'none');
     $('reward').hidden = false;
     burstConfetti(); playUnlock();

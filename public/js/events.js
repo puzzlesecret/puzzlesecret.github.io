@@ -59,6 +59,7 @@
     GUEST_COPY:       'guest.copy',
     DAILY_DECODE:     'daily.decode',
     GUEST_CARD:       'guest.card',
+    REVIEW_ASK:       'review.ask',
     SESSION_DEPTH:    'session.depth',
   });
 

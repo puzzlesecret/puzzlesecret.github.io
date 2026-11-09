@@ -232,16 +232,8 @@ import Analytics from '@vercel/analytics/astro';
       <p id="rwText">No name, no price. Fifty easy puzzles from the Keeper's own desk —
          the first door is open.</p>
       <a class="gold-btn" id="rwBtn" href="#" download>Download the 50 puzzles (PDF)</a>
-      <!-- Shown only on the deepest vaults (III, IV). The puzzles above download either
-           way - this is never a gate, and it never asks for a rating or a star count. -->
-      <div id="rwAsk" hidden>
-        <p class="ask-text">Dan here — the human who actually built this. The puzzles above
-          are yours either way. But if the hunt was worth your time, an honest review helps a
-          self-published book find the next solver.</p>
-        <a class="ask-btn" id="rwAskBtn"
-           href="https://www.amazon.com/review/create-review?asin=B0HB9K8PXC"
-           target="_blank" rel="noopener noreferrer">Leave an honest review →</a>
-      </div>
+      <!-- No review ask on any gift card (Dan 2026-11-09, Option B). The neutral ask shows only on
+           the front door, on a later visit, to a browser that spoke a book word (public/js/review-ask.js). -->
       <div id="rwGuest"></div>  <!-- a guest key's "the other words are in the book" card (public/js/guest-key.js) -->
       <button id="rewardClose" class="ghost-btn">Keep exploring →</button>
     </div>
@@ -505,26 +497,6 @@ import Analytics from '@vercel/analytics/astro';
     #cbInput:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 16px rgba(246,178,60,0.3); }
     #cbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
     @media (max-width: 480px) { .tile { width: 38px; height: 48px; font-size: 21px; } }
-
-    /* --- the review ask: deliberately quieter than the gift above it ---------------
-       It sits BELOW the download, is separated by a hairline, and never mentions a
-       rating. The reward is unconditional; this is a request, not a toll. */
-    #rwAsk[hidden] { display: none; }
-    #rwAsk {
-      margin: 18px 0 14px; padding-top: 16px;
-      border-top: 1px solid rgba(232,213,174,0.16);
-    }
-    #rwAsk .ask-text {
-      font-size: 14px; font-style: normal; line-height: 1.5;
-      color: rgba(232,213,174,0.62); margin-bottom: 14px;
-    }
-    #rwAsk .ask-btn {
-      display: block; font-family: Cinzel, serif; font-size: 12px; letter-spacing: 0.16em;
-      color: rgba(232,213,174,0.8); background: none;
-      border: 1px solid rgba(232,213,174,0.3); border-radius: 4px;
-      padding: 12px 10px; text-decoration: none; min-height: 44px;
-    }
-    #rwAsk .ask-btn:hover { color: var(--gold); border-color: rgba(246,178,60,0.55); }
 
     /* ---- the study's own pieces ---- */
     #studyCount {

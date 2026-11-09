@@ -29,7 +29,13 @@
     note: function (resp) {
       if (!resp || !resp.ok) return;
       if (resp.guest === 'pinterest' || resp.guest === 'outlet') { if (get('ps_owner_v1') !== '1') set('ps_guest_v1', resp.guest); }
-      else { set('ps_owner_v1', '1'); del('ps_guest_v1'); }
+      else {
+        set('ps_owner_v1', '1'); del('ps_guest_v1');
+        // When this browser FIRST spoke one of the book's own words (ms). review-ask.js waits a day from here
+        // before the front door may show its quiet review note; the session flag keeps it off this visit.
+        if (!get('ps_book_v1')) set('ps_book_v1', String(Date.now()));
+        try { sessionStorage.setItem('ps_book_sess', '1'); } catch (e) {}
+      }
     },
     /* 'pinterest' | 'outlet' | null */
     kind: function () {
