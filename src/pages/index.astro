@@ -132,6 +132,7 @@ const HOME_LD = {
     <!-- The Keeper's event helper: `arrive` once per session + Amazon click-through ping. -->
     <script is:inline src="/js/events.js" defer></script>
     <script is:inline src="/js/guest-key.js" defer></script>
+    <script is:inline src="/js/review-ask.js" defer></script>
     <script is:inline src="/js/amazon-store.js" defer></script>
     <script is:inline>
       // A word decoded on a daily puzzle page is carried here (sessionStorage, this tab only) so the solver can speak
@@ -285,6 +286,13 @@ const HOME_LD = {
             <span>·</span>
             <a href="/hints">Need a hint?</a>
           </p>
+          <!-- The quiet review note (Option B, Dan 2026-11-09): only for a browser that spoke one of the BOOK's words,
+               only on a later visit, never beside a gift, never tied to one. Shown by public/js/review-ask.js. -->
+          <aside class="review-ask" id="reviewAsk" aria-label="A note from the author" hidden>
+            <button type="button" class="ra-x" aria-label="Dismiss this note">×</button>
+            <p class="ra-text">Reviews, positive or negative, help other readers decide whether a book is for them. If you have a minute, I'd value your honest review.</p>
+            <p class="ra-foot"><a class="ra-link" href="https://www.amazon.com/review/create-review?asin=B0HB9K8PXC" target="_blank" rel="noopener noreferrer">Leave a review on Amazon →</a> <span class="ra-sign">— Dan</span></p>
+          </aside>
           <!-- 2026-10-28 (Dan): every daily puzzle links HERE. A game code (printed on the puzzle) opens that puzzle and
                its decoder; the decoded word comes back to this door. No platform name; no new events. -->
           <div class="pin-find reveal" id="gameCode" style="--d:.66s">
@@ -1229,6 +1237,18 @@ const HOME_LD = {
       .side a { display: inline-block; padding-top: 9px; margin-bottom: 9px; text-shadow: 0 1px 8px #000; color: #cfc6b0; border-bottom: 1px solid rgba(154,146,127,.3); padding-bottom: 1px; transition: color .3s, border-color .3s; }
       .side a:hover { color: var(--gold-hi); border-color: var(--gold); }
       .side span { margin: 0 10px; opacity: .5; }
+      /* the quiet review note: plainer than the book card above it, no gold fill, no button */
+      .review-ask[hidden] { display: none; }
+      .review-ask { position: relative; max-width: 460px; width: 100%; box-sizing: border-box; margin: 6px auto 10px; padding: 12px 40px 12px 16px; border: 1px solid rgba(207,198,176,.22); border-radius: 12px; background: rgba(10,10,12,.66); backdrop-filter: blur(6px); text-align: left; }
+      .ra-text { margin: 0 0 8px; font-size: 15px; line-height: 1.45; color: #d9d0b9; }
+      .ra-foot { margin: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; font-size: 15px; }
+      .ra-link { color: #e9e1cc; border-bottom: 1px solid rgba(207,198,176,.4); padding-bottom: 1px; }
+      .ra-link:hover { color: var(--gold-hi); border-color: var(--gold); }
+      .ra-sign { font-style: italic; color: #b8af99; }
+      .ra-x { position: absolute; top: 4px; right: 4px; width: 36px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: #b8af99; font-size: 22px; line-height: 1; cursor: pointer; border-radius: 8px; }
+      .ra-x:hover { color: var(--gold-hi); }
+      .ra-x:focus-visible, .ra-link:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+      @media (max-width: 480px) { .review-ask { margin: 4px 16px 10px; width: auto; } .ra-text, .ra-foot { font-size: 14px; } }
       /* contain: inline-size, or the open box's long label widens the whole phone console past the screen */
       .pin-find { margin: 2px auto 0; width: 100%; max-width: 460px; padding: 0 16px; box-sizing: border-box; text-align: center; contain: inline-size; }
       .pin-find .lookup { margin-top: 6px; padding: 12px 14px; text-align: left; }

@@ -102,6 +102,9 @@ export const CLIENT_EV = Object.freeze({
   DAILY_DECODE:     'daily.decode',        // the decoder spelled a full word; extra = solved | revealed | typed (how the digits got there)
   GUEST_CARD:       'guest.card',          // a guest was shown "the other words are in the book"; extra = daily | gift | door2 | passport
 
+  // the quiet review note on the front door (2026-11-09, Option B): book-word browsers only, a later visit, no gift on screen
+  REVIEW_ASK:       'review.ask',          // extra = shown | clicked | dismissed
+
   // each time the tab hides — the last one is the story's last line
   SESSION_DEPTH:    'session.depth',       // extra = "3D · 4 rooms · 12m · last the library"
 });
@@ -200,6 +203,9 @@ export function parts(ev, extra) {
     case CLIENT_EV.GUEST_COPY:       return ['📋', 'copies the position'];
     case CLIENT_EV.DAILY_DECODE:     return ['🔤', 'decodes a daily puzzle’s vault word' + (extra ? ' (' + extra + ')' : '')];
     case CLIENT_EV.GUEST_CARD:       return ['📖', 'is shown "the other words are in the book"' + (extra ? ' · ' + extra : '')];
+    case CLIENT_EV.REVIEW_ASK:       return ['✍️', extra === 'clicked' ? 'clicks "Leave a review on Amazon" on the front-door note'
+                                              : extra === 'dismissed' ? 'dismisses the review note on the front door'
+                                              : 'is shown the quiet review note on the front door'];
 
     // session
     case CLIENT_EV.SESSION_DEPTH:    return ['👣', 'steps away' + e];   // sent on every tab-hide; the last one is the exit
@@ -262,6 +268,7 @@ export const EXTRA_RULES = Object.freeze({
   [CLIENT_EV.GUEST_BOARD]:     /^[0-4] of 4 pinned$/,
   [CLIENT_EV.DAILY_DECODE]:    /^(solved|revealed|typed)$/,
   [CLIENT_EV.GUEST_CARD]:      /^(daily|gift|door2|passport)$/,
+  [CLIENT_EV.REVIEW_ASK]:      /^(shown|clicked|dismissed)$/,
   [CLIENT_EV.SESSION_DEPTH]:   new RegExp('^(3D|painted) · \\d{1,3} rooms · \\d{1,4}m · last ' + ROOMS + '$'),
 });
 // Length caps — a pre-slice before the grammar, so a 10 KB body never reaches a regex.
