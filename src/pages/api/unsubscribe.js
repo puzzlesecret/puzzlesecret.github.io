@@ -8,7 +8,8 @@
 // DELIBERATELY POST-ONLY. Mail clients and corporate security appliances prefetch
 // every GET link in a message; if removal happened on GET, those scanners would
 // silently unsubscribe people who never clicked. The emailed link therefore points
-// at the /unsubscribed PAGE, which performs this POST on the reader's behalf.
+// at the /unsubscribed PAGE, where the reader presses ONE confirm button that performs this POST (2026-11-09:
+// no longer fired on page load, so a forwarded issue can't let the next reader silently remove the subscriber).
 export const prerender = false;
 
 const HOOK = import.meta.env.UNSUB_WEBHOOK ?? process.env.UNSUB_WEBHOOK;
@@ -49,7 +50,7 @@ export async function POST({ request, clientAddress }) {
 
   // The no-JS path is a browser navigation, so it must answer with a page, not JSON.
   const fail = (reason, status) => isForm
-    ? Response.redirect(new URL('/unsubscribed?state=error', request.url), 303)
+    ? Response.redirect(new URL('/unsubscribed/?state=error', request.url), 303)
     : json({ ok: false, reason }, status);
 
   if (rateLimited(clientAddress || 'unknown')) return fail('slow_down', 429);
@@ -66,9 +67,22 @@ export async function POST({ request, clientAddress }) {
   }
 
   return isForm
-    ? Response.redirect(new URL('/unsubscribed?state=done', request.url), 303)
+    ? Response.redirect(new URL('/unsubscribed/?state=done', request.url), 303)
     : json({ ok: true });
 }
 
-// Health check — reports whether removal is wired, never leaks the webhook URL.
-export const GET = () => json({ ok: true, service: 'unsubscribe', configured: !!HOOK });
+// A GET never removes anyone (see the note at the top). But the mailer's footer pointed HERE until 2026-11-09
+// (dispatch-mailer.gs footer_ built /api/unsubscribe?t=…), so a reader who clicked it got raw JSON — a dead link.
+// With a token, send the reader on to the /unsubscribed page and its one confirm button; any copy of the old
+// footer still in someone's inbox now works. Without a token it stays the health check, which reports whether
+// removal is wired and never leaks the webhook URL.
+export const GET = ({ request }) => {
+  const t = (new URL(request.url).searchParams.get('t') || '').trim();
+  if (t && t.length <= 200) {
+    return new Response(null, {
+      status: 303,
+      headers: { location: `/unsubscribed/?t=${encodeURIComponent(t)}`, 'cache-control': 'no-store' },
+    });
+  }
+  return json({ ok: true, service: 'unsubscribe', configured: !!HOOK });
+};

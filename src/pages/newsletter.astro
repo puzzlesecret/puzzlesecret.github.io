@@ -2,12 +2,12 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="The Keeper's Dispatch · Newsletter" description="Join the Keeper's list for ten free printable Sudoku puzzles every month and early word on upcoming volumes.">
+<Layout title="The Keeper's Dispatch · Newsletter" description="Join the Keeper's list for a few free printable Sudoku puzzles every month or so, and early word on upcoming volumes. No spam, unsubscribe anytime.">
   <main class="page-newsletter">
     <div class="news-hero">
       <p class="eyebrow">The Dispatch</p>
-      <h1>Ten Free Puzzles Every Month</h1>
-      <p class="lede">Join the Keeper's inner circle. Delivered directly to your inbox on the 1st of every month. No spam, no tracking, optional always.</p>
+      <h1>Free Puzzles by Email</h1>
+      <p class="lede">Join the Keeper's list: a few free printable puzzles every month or so. No spam, no tracking pixels, unsubscribe anytime. Optional, always.</p>
     </div>
 
     <section class="wrap news-body">
@@ -15,7 +15,7 @@ import Layout from '../layouts/Layout.astro';
         <div class="card-inner">
           <div class="seal-mark">✦</div>
           <h2>Join the Keeper's List</h2>
-          <p>Receive exclusive bonus puzzles, series lore, and first notification when Volume II (The Corsair's Chart) launches.</p>
+          <p>Free printable puzzles, a little of the Keeper's story, and first word when the next volume is ready.</p>
 
           <form class="news-form" id="newsForm">
             <input type="email" id="emailInput" placeholder="Enter your email address" class="n-input" required autocomplete="email" />
@@ -30,9 +30,9 @@ import Layout from '../layouts/Layout.astro';
           <div id="newsMsg" class="n-msg"></div>
 
           <ul class="promise-list">
-            <li>✓ 10 printable Sudoku puzzles every month (Easy, Med, Hard)</li>
-            <li>✓ Zero email gating for book vault rewards (vault rewards are always free)</li>
-            <li>✓ Unsubscribe with a single click anytime</li>
+            <li>✓ A few printable Sudoku puzzles every month or so (easy to hard)</li>
+            <li>✓ Zero email gating for book vault rewards (vault rewards never need an email)</li>
+            <li>✓ No spam. Unsubscribe anytime: one link, one button</li>
           </ul>
         </div>
       </div>
@@ -76,7 +76,7 @@ import Layout from '../layouts/Layout.astro';
         const data = await res.json().catch(() => ({}));
 
         if (data.ok) {
-          say('✓ You are on the Keeper&rsquo;s list. Watch for the Dispatch on the 1st.', 'ok');
+          say('✓ You are on the Keeper&rsquo;s list. Watch for the next Dispatch.', 'ok');
           if (input) input.value = '';
         } else if (data.reason === 'not_configured') {
           say(

@@ -1,14 +1,26 @@
 ---
-// The landing page every Dispatch unsubscribe link points at.
+// The landing page every Dispatch unsubscribe link points at (dispatch-mailer.gs footer_ → /unsubscribed/?t=…;
+// links to the old /api/unsubscribe?t=… address are forwarded here too).
 //
-// The removal itself is a POST to /api/unsubscribe, fired here on the reader's
-// behalf, because mail clients and security appliances prefetch GET links — a
-// GET-triggered removal would unsubscribe people who never clicked. Humans get
-// their one click; scanners change nothing.
+// ONE CONFIRM BUTTON, NEVER REMOVAL ON PAGE LOAD (fixed 2026-11-09). Mail clients and security appliances
+// prefetch links, and a forwarded issue carries the original reader's link — so loading this page changes
+// nothing. The reader presses one button, which POSTs to /api/unsubscribe. CAN-SPAM allows a single page with
+// one action. Works with or without JavaScript: the page is rendered on request (prerender = false), so the
+// token and the ?state= coming back from the no-JS form post are both in the HTML.
 import Layout from '../layouts/Layout.astro';
 
-// ?state=done / ?state=error come back from the no-JS <form> fallback below.
-const state = Astro.url.searchParams.get('state') || '';
+export const prerender = false;
+
+const q = Astro.url.searchParams;
+const token = (q.get('t') || '').trim().slice(0, 200);
+// ?state=done / ?state=error come back from the no-JS <form> post.
+const state = q.get('state') || '';
+const DONE = 'Your address has been struck from the register. No further Dispatch will reach you.';
+const ERR = 'The register could not be reached just now. Please press the button once more.';
+const ASK = 'Press the button below and your address is struck from the Keeper’s register. Nothing else to fill in.';
+const NOTOKEN = 'That link is missing its token. Reply to any Dispatch with the word “unsubscribe” and it will be handled by hand.';
+const status = state === 'done' ? DONE : state === 'error' ? ERR : token ? ASK : NOTOKEN;
+const showButton = state !== 'done' && !!token;
 ---
 
 <Layout
@@ -22,75 +34,54 @@ const state = Astro.url.searchParams.get('state') || '';
         <div class="seal-mark">✦</div>
         <h1>The Keeper's Dispatch</h1>
 
-        <p class="status" id="status" data-state={state}>
-          {state === 'done'
-            ? 'Your address has been struck from the register. No further Dispatch will reach you.'
-            : state === 'error'
-              ? 'The register could not be reached just now. Please try the button below once more.'
-              : 'Striking your address from the register…'}
-        </p>
+        <p class="status" id="status" data-state={state}>{status}</p>
 
-        <noscript>
-          <form method="POST" action="/api/unsubscribe" class="unsub-form">
-            <input type="hidden" name="t" value={Astro.url.searchParams.get('t') || ''} />
-            <button type="submit" class="n-btn">Confirm Unsubscribe</button>
+        {showButton && (
+          <form method="POST" action="/api/unsubscribe" class="unsub-form" id="unsubForm">
+            <input type="hidden" name="t" value={token} />
+            <button type="submit" class="n-btn" id="unsubBtn">Unsubscribe me</button>
           </form>
-        </noscript>
-
-        <div id="retry" class="unsub-form" hidden>
-          <button type="button" class="n-btn" id="retryBtn">Try Again</button>
-        </div>
+        )}
 
         <p class="tail">
-          The vaults stay open regardless — every bonus puzzle pack at
-          <a href="/vault">the Keeper's Vault</a> is free and was never gated behind email.
+          The vaults stay open regardless — the free puzzles on <a href="/play">the play page</a> and every
+          vault gift were never gated behind email.
         </p>
       </div>
     </div>
   </main>
 
   <script>
-    // Removal runs here, not on page request, so link scanners cannot unsubscribe
-    // a reader who only received the mail.
+    // With JavaScript the same button posts in place (no page reload). Without it, the form above posts
+    // and /api/unsubscribe redirects back here with ?state=done or ?state=error.
+    const form = document.getElementById('unsubForm') as HTMLFormElement | null;
     const el = document.getElementById('status');
-    const retry = document.getElementById('retry');
-    const token = new URLSearchParams(location.search).get('t') || '';
-
-    const say = (msg, failed) => {
-      el.textContent = msg;
-      el.dataset.state = failed ? 'error' : 'done';
-      retry.hidden = !failed;
-    };
-
-    async function unsubscribe() {
-      if (!token) {
-        say('That link is missing its token. Reply to any Dispatch and it will be handled by hand.', false);
-        retry.hidden = true;
-        return;
-      }
-      el.textContent = 'Striking your address from the register…';
+    const btn = document.getElementById('unsubBtn') as HTMLButtonElement | null;
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!el || !btn) return;
+      const t = (form.querySelector('input[name="t"]') as HTMLInputElement | null)?.value || '';
+      btn.disabled = true;
       el.dataset.state = '';
-      retry.hidden = true;
+      el.textContent = 'Striking your address from the register…';
       try {
         const res = await fetch('/api/unsubscribe', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ t: token }),
+          body: JSON.stringify({ t }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (data && data.ok) {
-          say('Your address has been struck from the register. No further Dispatch will reach you.', false);
-        } else {
-          say('The register could not be reached just now. Please try again.', true);
+          el.dataset.state = 'done';
+          el.textContent = 'Your address has been struck from the register. No further Dispatch will reach you.';
+          form.hidden = true;
+          return;
         }
-      } catch {
-        say('The register could not be reached just now. Please try again.', true);
-      }
-    }
-
-    document.getElementById('retryBtn').addEventListener('click', unsubscribe);
-    // Skip the call when the no-JS form already did the work.
-    if (!['done', 'error'].includes(el.dataset.state)) unsubscribe();
+      } catch { /* fall through */ }
+      el.dataset.state = 'error';
+      el.textContent = 'The register could not be reached just now. Please press the button once more.';
+      btn.disabled = false;
+    });
   </script>
 
   <style>
@@ -106,10 +97,14 @@ const state = Astro.url.searchParams.get('state') || '';
     .status[data-state="error"] { color: #e08d7a; }
 
     .unsub-form { margin-top: 22px; }
-    .n-btn { padding: 14px 24px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; transition: transform .2s; }
+    .unsub-form[hidden] { display: none; }
+    .n-btn { padding: 14px 24px; min-height: 44px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; transition: transform .2s; }
     .n-btn:hover { transform: translateY(-1px); }
+    .n-btn:disabled { opacity: .6; cursor: default; }
 
     .tail { margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.06); font-size: 14px; color: var(--ash-dim); line-height: 1.6; }
     .tail a { color: var(--brass-hi); }
+
+    @media (max-width: 520px) { .parchment-card { padding: 36px 20px; } }
   </style>
 </Layout>

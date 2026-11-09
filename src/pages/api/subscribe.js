@@ -42,12 +42,18 @@ const json = (obj, status = 200) =>
 const FROM = {
   newsletter: { source: 'puzzlesecret.com/newsletter', said: '' },
   daily: { source: 'puzzlesecret.com/daily', said: ' from a daily puzzle' },
+  // 2026-11-09: the same quiet box on more pages (src/components/DailySignup.astro, `from` prop).
+  play: { source: 'puzzlesecret.com/play', said: ' from /play' },
+  howto: { source: 'puzzlesecret.com/how-to-play-sudoku', said: ' from how-to-play' },
+  cheatsheet: { source: 'puzzlesecret.com/sudoku-cheat-sheet', said: ' from the cheat sheet' },
+  home: { source: 'puzzlesecret.com/', said: ' from the homepage' },
+  vault: { source: 'puzzlesecret.com/vault', said: ' on the way out of the vault' },
 };
 
 export async function POST({ request, clientAddress }) {
   let email = '', from = '';
   try { const b = await request.json(); email = b.email; from = String(b.from || ''); } catch { /* ignore */ }
-  // Where the sign-up box was (a fixed list; anything else counts as the newsletter page). 2026-10-27: the box on the daily puzzles.
+  // Where the sign-up box was (a fixed list; anything else counts as the newsletter page). 2026-10-27: the box on the daily puzzles; 2026-11-09: more pages.
   const where = Object.hasOwn(FROM, from) ? FROM[from] : FROM.newsletter;   // hasOwn: "constructor" must not resolve
   email = String(email || '').trim().toLowerCase();
 

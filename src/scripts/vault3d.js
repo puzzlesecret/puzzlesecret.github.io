@@ -1990,7 +1990,8 @@ let down = null, dragging = false;
 const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden
   || !document.getElementById('lockbox').hidden || !document.getElementById('tilecard').hidden || !document.getElementById('roundEnd').hidden
   || !document.getElementById('pageview').hidden || !document.getElementById('desk').hidden
-  || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden;
+  || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden
+  || !(document.getElementById('farewell')?.hidden ?? true);
 
 function pick(clientX, clientY, targets) {
   ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
@@ -2566,6 +2567,9 @@ function activate(kind, hitObj) {
     goThen(-1.6, -2.6, () => openBookcase());
   } else if (kind === 'exit') {
     goThen(0, 3.05, () => {
+      // 2026-11-09: once per tab, a book visitor leaving by the door sees the optional farewell card (vault.astro)
+      // with the email box and a "Continue" button that goes on to the landing. Guests never see it.
+      if (!GUEST && window.__vaultFarewell && window.__vaultFarewell('/')) return;
       showCaption('Back to the beginning. The door remembers you.', 2400);
       fadeEl.classList.remove('clear');
       setTimeout(() => { window.location.href = GUEST ? GUEST.home : '/'; }, 900);
@@ -2946,7 +2950,7 @@ const DESK_LINES = [
   'I write the date on the back of every page. Today’s is the newest.',
   'One page. Then the rest of your day.',
   'The ink was still wet when I left this one. Careful.',
-  'The best solvers look twice before they write once.',
+  'The best puzzlers look twice before they write once.',
   'Today the grid is generous. Tomorrow, less so.',
   'I set this one twice. The first attempt had two answers, and went into the fire.',
   'You may sit as long as you like. The vault does not close.',

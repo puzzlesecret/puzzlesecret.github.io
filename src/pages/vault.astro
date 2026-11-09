@@ -1,5 +1,6 @@
 ---
 import FlatVault from '../components/FlatVault.astro';
+import DailySignup from '../components/DailySignup.astro';
 // VAULT I — THE WRITER'S STUDY. First-person walkable 3D room (Three.js r155).
 // Look reference: assets/vault_concepts/vault1_writers_study_v4.jpg (Dan-approved).
 // Movement: drag to look, tap floor to walk, W/▲/scroll glides forward (no free WASD).
@@ -292,6 +293,50 @@ import Analytics from '@vercel/analytics/astro';
 
   <FlatVault />
 
+  <!-- THE FAREWELL (2026-11-09) — shown once per tab when a book visitor leaves by "the landing" or the 3D exit
+       door. Optional email box + a Continue button; never on a gift card, never on the way in, never for guests.
+       Leaving needs nothing typed: Continue goes straight on. -->
+  <div id="farewell" hidden>
+    <div class="fw-card">
+      <DailySignup
+        from="vault"
+        compact
+        kicker="Before you go"
+        title="The Keeper writes now and then"
+        text="A few free puzzles by email every month or so, and first word when the next vault opens. Optional. Your stamps and pages are kept either way."
+        button="Send me puzzles"
+      />
+      <div class="fw-actions">
+        <a class="gold-btn" id="fwGo" href="/">Continue to the landing</a>
+        <button type="button" class="ghost-btn" id="fwStay">Stay in the vault</button>
+      </div>
+    </div>
+  </div>
+  <script is:inline>
+    (function () {
+      var fw = document.getElementById('farewell'), go = document.getElementById('fwGo'), stay = document.getElementById('fwStay');
+      if (!fw || !go || !stay) return;
+      var guest = function () { try { return !!JSON.parse(sessionStorage.getItem('ps_guest_room_v1') || 'null'); } catch (e) { return false; } };
+      var seen = function () { try { return sessionStorage.getItem('ps_farewell_v1') === '1'; } catch (e) { return true; } };
+      // Returns true when the card was shown (the caller then stays put); false means "just leave".
+      window.__vaultFarewell = function (href) {
+        if (guest() || seen()) return false;
+        try { sessionStorage.setItem('ps_farewell_v1', '1'); } catch (e) {}
+        go.href = href || '/';
+        fw.hidden = false;
+        return true;
+      };
+      document.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('#backlink, .pv-back') : null;
+        if (!a || (a.getAttribute('href') || '') !== '/') return;   // guest rooms rewrite these links; leave those alone
+        if (window.__vaultFarewell('/')) e.preventDefault();
+      }, true);
+      stay.addEventListener('click', function () { fw.hidden = true; });
+      // typing an address must never walk the player or light the painted room's hotspots
+      fw.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Escape') fw.hidden = true; });
+    })();
+  </script>
+
   <canvas id="confetti"></canvas>
   <div id="fade"></div>
 
@@ -465,6 +510,16 @@ import Analytics from '@vercel/analytics/astro';
       min-height: 44px;   /* thumb-sized on touch screens */
     }
     .ghost-btn:hover { color: var(--gold); border-color: rgba(246,178,60,0.5); }
+
+    /* ---- the farewell card (optional email box on the way out) ---- */
+    #farewell { position: fixed; inset: 0; z-index: 30; display: flex; overflow-y: auto; padding: 16px;
+      background: rgba(4,2,0,0.72); backdrop-filter: blur(3px); }
+    #farewell[hidden] { display: none; }
+    .fw-card { margin: auto; max-width: 460px; width: 100%; text-align: center;
+      background: linear-gradient(180deg, #1d1207, #120a04); border: 1px solid rgba(246,178,60,0.45); border-radius: 8px;
+      padding: 26px 20px 20px; box-shadow: 0 0 60px rgba(246,178,60,0.18), 0 18px 50px rgba(0,0,0,0.7); }
+    .fw-actions { margin-top: 18px; }
+    .fw-actions .gold-btn { margin-bottom: 10px; }
 
     /* ---- word entry ---- */
     #wordbox { position: fixed; inset: 0; z-index: 16; display: flex; align-items: center;
@@ -680,7 +735,7 @@ import Analytics from '@vercel/analytics/astro';
        one more; Back pops it and closes the overlay; closing by button pops it quietly. With
        nothing open, Back lands on base → one warning; Back again within 12 s really leaves. */
     (function () {
-      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel', 'lockbox', 'tilecard', 'roundEnd'];
+      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel', 'lockbox', 'tilecard', 'roundEnd', 'farewell'];
       var el = function (id) { return document.getElementById(id); };
       var anyOpen = function () { return IDS.some(function (id) { var e = el(id); return e && !e.hidden; }); };
       var pushed = false, quiet = 0, warned = false, warnT = null;

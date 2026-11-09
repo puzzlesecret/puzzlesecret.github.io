@@ -63,8 +63,8 @@ paper escape room.
   the five-volume roadmap.
 - [Hint chamber](https://puzzlesecret.com/hints): progressive, spoiler-free hints.
 - [FAQ](https://puzzlesecret.com/faq): answers about the book, the vaults, and the rewards.
-- [Free monthly puzzle dispatch](https://puzzlesecret.com/newsletter): ten free printable
-  puzzles a month; email optional everywhere else on the site.
+- [Free puzzle dispatch](https://puzzlesecret.com/newsletter): a few free printable
+  puzzles by email every month or so; email optional everywhere else on the site.
 
 ## Author
 
