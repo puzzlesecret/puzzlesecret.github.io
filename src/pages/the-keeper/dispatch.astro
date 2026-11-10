@@ -1,0 +1,58 @@
+---
+// The Keeper's letters: the running story from the Keeper's Dispatch newsletter, one chapter after another,
+// so a newcomer can catch up. Text lives in src/data/dispatch_chapters.js (generated from
+// marketing/newsletter/story/CHAPTERS.md). Lives under /the-keeper/ so the Telegram page name is "the-keeper"
+// and no event list needs a new entry.
+import Layout from '../../layouts/Layout.astro';
+import DailySignup from '../../components/DailySignup.astro';
+import { CHAPTERS } from '../../data/dispatch_chapters.js';
+
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const fmt = (t: string) => esc(t).replace(/\*([^*]+)\*/g, '<em>$1</em>');
+const isSign = (t: string) => t.trim() === '— K.';
+---
+
+<Layout title="The Keeper's Letters · The story so far · PuzzleSecret" description="A story told a chapter at a time in the Keeper's Dispatch: a letter slides under the Keeper's door, signed with a compass rose. Read it from the beginning.">
+  <main class="kd">
+    <header class="kd-hero">
+      <p class="kd-eyebrow">The Keeper's Dispatch</p>
+      <h1>The Keeper's Letters</h1>
+      <p class="kd-lede">The story so far, from the beginning. A letter slides under the Keeper's door, signed with a compass rose, and he has to work out who sent it. New chapters come out in the newsletter first.</p>
+      <nav class="kd-toc" aria-label="Chapters">
+        {CHAPTERS.map((c) => <a href={`#chapter-${c.num.toLowerCase()}`}>Chapter {c.num} · {c.title}</a>)}
+      </nav>
+    </header>
+
+    {CHAPTERS.map((c) => (
+      <article class="kd-ch" id={`chapter-${c.num.toLowerCase()}`}>
+        <p class="kd-num">Chapter {c.num}</p>
+        <h2>{c.title}</h2>
+        {c.paras.map((p) => <p class={isSign(p) ? 'kd-sign' : undefined} set:html={fmt(p)} />)}
+      </article>
+    ))}
+
+    <section class="kd-next">
+      <p class="kd-nextline">Chapter IV comes out in the Keeper's Dispatch first. Sign up and it lands in your inbox before it shows up here.</p>
+      <DailySignup from="home" kicker="Chapter IV" title="Get the next chapter first" text="Join the Keeper's Dispatch: the next chapter of the story and a few free puzzles every month or so. Optional, no spam, unsubscribe anytime." button="Send me the next one" />
+      <p class="kd-links"><a href="/the-keeper/">More about the Keeper</a> · <a href="/">The vault door</a></p>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .kd { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; color: #e9dfc8; }
+  .kd-hero { text-align: center; margin-bottom: 40px; }
+  .kd-eyebrow { color: #c9a24a; letter-spacing: 4px; text-transform: uppercase; font-size: 13px; margin: 0 0 8px; }
+  .kd h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(30px, 6vw, 44px); color: #f3e8cf; margin: 0 0 12px; }
+  .kd-lede { font-style: italic; color: #cbbd9c; margin: 0 auto 20px; max-width: 34em; }
+  .kd-toc { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .kd-toc a, .kd-links a { color: #c9a24a; }
+  .kd-ch { border-top: 1px solid #5a4520; padding-top: 28px; margin-top: 28px; font-family: Georgia, 'Times New Roman', serif; font-size: 18px; line-height: 1.7; }
+  .kd-num { color: #c9a24a; letter-spacing: 3px; text-transform: uppercase; font-size: 13px; margin: 0; }
+  .kd-ch h2 { font-size: 28px; color: #f3e8cf; margin: 4px 0 20px; font-weight: normal; }
+  .kd-ch p { margin: 0 0 16px; }
+  .kd-sign { text-align: right; font-style: italic; color: #c9a24a; }
+  .kd-next { border-top: 1px solid #5a4520; margin-top: 36px; padding-top: 24px; text-align: center; }
+  .kd-links { margin-top: 20px; font-size: 15px; }
+  .kd-nextline { font-size: 18px; color: #f3e8cf; font-family: Georgia, serif; }
+</style>

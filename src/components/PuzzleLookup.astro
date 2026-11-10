@@ -43,7 +43,9 @@ const dates = Object.fromEntries(daily.puzzles.map((p) => [p.serial, p.date]));
       // Puzzles are posted ahead of their date (daily_prep.py LEAD_DAYS = 1, sometimes a day more by hand), so
       // anything up to two days out is already out there.
       if (today) { const t = new Date(today + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + 2); today = t.toISOString().slice(0, 10); }
-      if (today && d > today) {
+      // The Keeper's Dispatch hands subscribers a few puzzles before their date; their printed codes must open early.
+      const EARLY = ['E-027', 'M-021', 'H-024'];   // Dispatch, November 2026
+      if (today && d > today && !EARLY.includes(serial)) {
         const nice = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
         msg.textContent = 'Game ' + shown + ' comes out on ' + nice + '. Come back then!';
         return;
