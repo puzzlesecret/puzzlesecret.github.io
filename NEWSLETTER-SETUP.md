@@ -94,13 +94,25 @@ dropped every new subscriber from every issue.
 
 ## What the reader sees when they unsubscribe
 
-Every issue carries a per-subscriber link to `/unsubscribed?t=<token>`. That page performs
-the removal itself, then confirms it.
+Every issue carries a per-subscriber link to `/unsubscribed/?t=<token>`. That page shows
+**one button**; pressing it removes the address and confirms it. (Fixed 2026-11-09: until then
+the mailer footer linked to `/api/unsubscribe?t=…`, which answered a click with raw JSON and
+removed nobody. The site now also forwards that old address to the page, so a stale link works.)
 
-The removal is a **POST**, never a GET, and this matters: mail clients and corporate security
-appliances prefetch every GET link in a message. Had removal happened on GET, those scanners
-would silently unsubscribe readers who never clicked. Humans still get one click; scanners
-change nothing. There is a `<noscript>` button for anyone without JavaScript.
+The removal is a **POST**, never a GET, and never on page load: mail clients and corporate
+security appliances prefetch links, and a forwarded issue carries the original reader's link.
+Loading the page changes nothing; the button does. The page is rendered on request, so the
+button works without JavaScript too.
+
+**Send failures (fixed 2026-11-09).** Only an address MailApp refuses outright ("Invalid email")
+is marked `bounced`. A quota trip stops the run; any other error leaves the subscriber active
+and un-stamped so the next run retries. Real bounces arrive later as mailer-daemon mail in the
+puzzlesecretvault inbox; set that row's Status to `bounced` by hand.
+
+**Seeds.** `addVaultSeed()` adds puzzlesecretvault@gmail.com as a `seed` row; `sendToSeeds()`
+mails the armed draft only to seed rows with their real tokens (subject prefixed `[SEED]`).
+`sendDispatch()` always skips seeds. Use a seed copy to click Unsubscribe → press the button →
+run `listStats()` and see the seed flip to `unsubscribed`, before the list gets anything.
 
 The token is an opaque UUID stored in the Sheet, so unsubscribe links cannot be guessed and
 no email address ever travels inside a URL.
@@ -130,13 +142,16 @@ Test rows were deleted afterwards; the list is empty.
 
 Live copy on the page commits to all of these. The system above satisfies them; keep them true:
 
-- Ten printable Sudoku puzzles every month (Easy / Medium / Hard)
-- Delivered **on the 1st of every month**
-- One-click unsubscribe, effective immediately
-- No email gating on vault rewards — those stay free and open
+(Softened 2026-11-09: the page used to promise ten puzzles on the 1st of every month, and no
+issue had ever gone out.)
 
-If a month's puzzles are not ready, move the date on the page before the 1st rather than
-sending late.
+- A few printable Sudoku puzzles every month or so (easy to hard)
+- No spam; unsubscribe anytime: one link, one button
+- No email gating on vault rewards
+
+Sign-up boxes (all `src/components/DailySignup.astro`, `from` → Source column): `/newsletter`,
+daily puzzle pages (`daily`), `/play`, `/how-to-play-sudoku` (`howto`), `/sudoku-cheat-sheet`
+(`cheatsheet`), the homepage (`home`), and the vault's once-per-tab farewell card (`vault`).
 
 ---
 

@@ -26,6 +26,7 @@ const PS_EV = Object.freeze({
   LEARN_START: 'learn.start', LEARN_MID: 'learn.mid', LEARN_DONE: 'learn.done',
   PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
   GUEST_SCRAP: 'guest.scrap', GUEST_BOARD: 'guest.board', GUEST_SOLVED: 'guest.solved', GUEST_COPY: 'guest.copy', DAILY_DECODE: 'daily.decode', GUEST_CARD: 'guest.card',
+  REVIEW_ASK: 'review.ask',
   SESSION_DEPTH: 'session.depth',
 });
 function psEvent(ev, extra) {
@@ -1990,7 +1991,8 @@ let down = null, dragging = false;
 const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox').hidden
   || !document.getElementById('lockbox').hidden || !document.getElementById('tilecard').hidden || !document.getElementById('roundEnd').hidden
   || !document.getElementById('pageview').hidden || !document.getElementById('desk').hidden
-  || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden;
+  || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden
+  || !(document.getElementById('farewell')?.hidden ?? true);
 
 function pick(clientX, clientY, targets) {
   ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
@@ -2110,13 +2112,11 @@ const REWARDS = {
     kicker: 'THE GRAND VAULT IS YOURS', title: 'TWO HUNDRED — AND THE HUNT GOES ON',
     text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.',
     btn: 'Download the 200 puzzles (PDF)', vo: 'finale',
-    ask: true,   // they finished the hard act - the one moment worth asking
   },
   IV: {
     kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES',
     text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.",
     btn: 'Download the 20 Master Puzzles (PDF)', vo: 'fourth',
-    ask: true,   // found the hidden fourth word - the most invested solver there is
   },
 };
 const rewardsGiven = {};
@@ -2198,7 +2198,8 @@ function openReward(act) {
   b.onclick = () => psBeacon(PS_EV['REWARD_CLICK_' + act], '');   // beacon: iOS may open the PDF in-tab and abort a plain fetch
   psEvent(PS_EV['REWARD_OPEN_' + act]);
   psTouch('reward-' + act);
-  document.getElementById('rwAsk').hidden = !RW.ask;
+  // No review ask on a gift card, ever (Dan 2026-11-09, Option B): the neutral ask lives only on the
+  // front door, on a LATER visit, for a book-word holder (public/js/review-ask.js).
   if (window.psGuest) window.psGuest.fill(document.getElementById('rwGuest'), act === 'I' ? 'gift' : 'none');
   rewardEl.hidden = false;
   burstConfetti();
@@ -2566,6 +2567,9 @@ function activate(kind, hitObj) {
     goThen(-1.6, -2.6, () => openBookcase());
   } else if (kind === 'exit') {
     goThen(0, 3.05, () => {
+      // 2026-11-09: once per tab, a book visitor leaving by the door sees the optional farewell card (vault.astro)
+      // with the email box and a "Continue" button that goes on to the landing. Guests never see it.
+      if (!GUEST && window.__vaultFarewell && window.__vaultFarewell('/')) return;
       showCaption('Back to the beginning. The door remembers you.', 2400);
       fadeEl.classList.remove('clear');
       setTimeout(() => { window.location.href = GUEST ? GUEST.home : '/'; }, 900);
@@ -2946,7 +2950,7 @@ const DESK_LINES = [
   'I write the date on the back of every page. Today’s is the newest.',
   'One page. Then the rest of your day.',
   'The ink was still wet when I left this one. Careful.',
-  'The best solvers look twice before they write once.',
+  'The best puzzlers look twice before they write once.',
   'Today the grid is generous. Tomorrow, less so.',
   'I set this one twice. The first attempt had two answers, and went into the fire.',
   'You may sit as long as you like. The vault does not close.',

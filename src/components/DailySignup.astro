@@ -1,60 +1,86 @@
 ---
-// The optional email box on the daily puzzles (Dan, 2026-10-27). It joins the same list as /newsletter (the Keeper's
-// Dispatch) and tells /api/subscribe it came from a daily puzzle. Never a gate, never on the way into the vault; the
-// 13+ checkbox is kept exactly as on /newsletter.
+// The optional email box (Dan, 2026-10-27 on the daily puzzles; 2026-11-09 also on /play, /how-to-play-sudoku,
+// /sudoku-cheat-sheet, the homepage and the vault's farewell card). It joins the same list as /newsletter (the
+// Keeper's Dispatch) and tells /api/subscribe which box it was (a fixed list there; anything else counts as the
+// newsletter page). Never a gate, never on the way into the vault, never on a gift card; the 13+ checkbox is kept
+// exactly as on /newsletter. Several boxes may share a page: the script below wires every one it finds.
+interface Props {
+  from?: 'daily' | 'play' | 'howto' | 'cheatsheet' | 'home' | 'vault';
+  kicker?: string;
+  title?: string;
+  text?: string;
+  button?: string;
+  compact?: boolean;
+}
+const {
+  from = 'daily',
+  kicker = 'Free puzzles by email',
+  title = 'Want the next one in your inbox?',
+  text = "Join the Keeper's Dispatch: a few free puzzles by email every month or so. Optional, no spam, unsubscribe anytime.",
+  button = 'Send me puzzles',
+  compact = false,
+} = Astro.props;
+const uid = `ds-${from}`;
 ---
-<aside class="ds" aria-labelledby="dsTitle">
-  <p class="ds-kicker">Free puzzles by email</p>
-  <h2 class="ds-title" id="dsTitle">Want the next one in your inbox?</h2>
-  <p class="ds-text">Join the Keeper's Dispatch for free puzzles by email. Optional, no spam, one-click unsubscribe.</p>
-  <form class="ds-form" id="dsForm">
-    <input type="email" id="dsEmail" placeholder="Your email address" required autocomplete="email" aria-label="Email address" />
-    <button type="submit" class="ds-btn">Send me puzzles</button>
+<aside class:list={['ds', { 'ds-compact': compact }]} aria-labelledby={`${uid}-title`}>
+  <p class="ds-kicker">{kicker}</p>
+  <h2 class="ds-title" id={`${uid}-title`}>{title}</h2>
+  <p class="ds-text">{text}</p>
+  <form class="ds-form" data-ds-from={from}>
+    <input type="email" class="ds-email" placeholder="Your email address" required autocomplete="email" aria-label="Email address" />
+    <button type="submit" class="ds-btn">{button}</button>
   </form>
-  <label class="ds-age"><input type="checkbox" id="dsAge" /> <span>I am 13 years of age or older.</span></label>
-  <p class="ds-msg" id="dsMsg" role="status" aria-live="polite"></p>
+  <label class="ds-age"><input type="checkbox" class="ds-agebox" /> <span>I am 13 years of age or older.</span></label>
+  <p class="ds-msg" role="status" aria-live="polite"></p>
   <p class="ds-fine">We only keep your address to send the Dispatch. <a href="/privacy">Privacy</a>.</p>
 </aside>
 
 <script>
-  const form = document.getElementById('dsForm') as HTMLFormElement | null;
-  const input = document.getElementById('dsEmail') as HTMLInputElement | null;
-  const age = document.getElementById('dsAge') as HTMLInputElement | null;
-  const msg = document.getElementById('dsMsg');
-  const btn = form?.querySelector('button');
-  const say = (t: string) => { if (msg) msg.textContent = t; };
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = (input?.value || '').trim();
-    if (!email) return;
-    if (!age?.checked) { say('Please confirm you are 13 or older first.'); return; }
-    if (btn) btn.disabled = true;
-    say('Sending…');
-    try {
-      const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, from: 'daily' }) });
-      const data = await res.json().catch(() => ({}));
-      if (data.ok) { say('You are on the list. Watch for the Dispatch.'); if (input) input.value = ''; }
-      else if (data.reason === 'bad_email') say('That address does not look right. Check it and try again.');
-      else if (data.reason === 'slow_down') say('Too many tries. Wait a moment and try again.');
-      else say('That did not go through just now. Please try again later.');
-    } catch { say('Could not connect. Check your connection and try again.'); }
-    finally { if (btn) btn.disabled = false; }
+  document.querySelectorAll<HTMLFormElement>('form.ds-form[data-ds-from]').forEach((form) => {
+    if (form.dataset.wired) return;
+    form.dataset.wired = '1';
+    const box = form.closest('.ds');
+    const input = form.querySelector<HTMLInputElement>('.ds-email');
+    const age = box?.querySelector<HTMLInputElement>('.ds-agebox');
+    const msg = box?.querySelector('.ds-msg');
+    const btn = form.querySelector('button');
+    const from = form.dataset.dsFrom || 'newsletter';
+    const say = (t: string) => { if (msg) msg.textContent = t; };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (input?.value || '').trim();
+      if (!email) return;
+      if (!age?.checked) { say('Please confirm you are 13 or older first.'); return; }
+      if (btn) btn.disabled = true;
+      say('Sending…');
+      try {
+        const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, from }) });
+        const data = await res.json().catch(() => ({}));
+        if (data.ok) { say('You are on the list. Watch for the Dispatch.'); if (input) input.value = ''; }
+        else if (data.reason === 'bad_email') say('That address does not look right. Check it and try again.');
+        else if (data.reason === 'slow_down') say('Too many tries. Wait a moment and try again.');
+        else say('That did not go through just now. Please try again later.');
+      } catch { say('Could not connect. Check your connection and try again.'); }
+      finally { if (btn) btn.disabled = false; }
+    });
   });
 </script>
 
 <style>
-  .ds { max-width: 640px; margin: 0 auto 50px; padding: 20px; text-align: center; border: 1px solid rgba(185,143,82,.3); border-radius: 12px; background: rgba(14,12,18,.8); }
-  .ds-kicker { margin: 0; font-family: var(--display); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
-  .ds-title { margin: 6px 0 6px; font-family: var(--display); font-size: clamp(20px, 4vw, 26px); color: var(--ivory); }
-  .ds-text { margin: 0 0 14px; color: var(--ash); }
+  .ds { width: calc(100% - 32px); max-width: 640px; margin: 30px auto 50px; padding: 20px; text-align: center; border: 1px solid rgba(185,143,82,.3); border-radius: 12px; background: rgba(14,12,18,.8); box-sizing: border-box; }
+  .ds-compact { margin: 0 auto; padding: 4px 0 0; border: none; background: none; }
+  .ds-kicker { margin: 0; font-family: var(--display, Cinzel, serif); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold, #f6b23c); }
+  .ds-title { margin: 6px 0 6px; font-family: var(--display, Cinzel, serif); font-size: clamp(20px, 4vw, 26px); color: var(--ivory, #f3ead8); }
+  .ds-compact .ds-title { font-size: clamp(17px, 3.6vw, 21px); }
+  .ds-text { margin: 0 0 14px; color: var(--ash, #c9bfae); }
   .ds-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto 10px; }
-  .ds-form input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid rgba(185,143,82,.4); border-radius: 8px; background: rgba(10,10,12,.8); color: var(--gold-hi); font-size: 15px; }
-  .ds-btn { padding: 12px 18px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); color: #1a1206; font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; }
-  .ds-age { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--gold-hi); cursor: pointer; }
-  .ds-age input { width: 16px; height: 16px; accent-color: var(--gold); }
-  .ds-msg { min-height: 20px; margin: 8px 0 0; color: var(--gold-hi); font-style: italic; }
-  .ds-fine { margin: 6px 0 0; font-size: 12.5px; color: var(--ash); }
-  .ds-fine a { color: var(--gold); }
+  .ds-form input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid rgba(185,143,82,.4); border-radius: 8px; background: rgba(10,10,12,.8); color: var(--gold-hi, #ffd37a); font-size: 16px; }
+  .ds-btn { padding: 12px 18px; min-height: 44px; background: linear-gradient(180deg, var(--gold-hi, #ffd37a), var(--gold, #f6b23c)); color: #1a1206; font-family: var(--display, Cinzel, serif); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; border: none; border-radius: 8px; cursor: pointer; }
+  .ds-age { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--gold-hi, #ffd37a); cursor: pointer; }
+  .ds-age input { width: 16px; height: 16px; accent-color: var(--gold, #f6b23c); }
+  .ds-msg { min-height: 20px; margin: 8px 0 0; color: var(--gold-hi, #ffd37a); font-style: italic; }
+  .ds-fine { margin: 6px 0 0; font-size: 12.5px; color: var(--ash, #c9bfae); }
+  .ds-fine a { color: var(--gold, #f6b23c); }
   @media (max-width: 560px) { .ds-form { flex-direction: column; } }
   @media print { .ds { display: none; } }
 </style>

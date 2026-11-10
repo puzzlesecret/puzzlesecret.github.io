@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import DailySignup from '../components/DailySignup.astro';
 import webPuzzles from '../data/web_puzzles.json';
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";
 
@@ -66,6 +67,8 @@ const DESC = "A free two-page printable for Sudoku beginners: the one rule, the 
     </article>
 
     <p class="after"><a href="/how-to-play-sudoku#first-puzzle">See every move of this puzzle explained</a> &middot; <a href="/daily/">Print today&rsquo;s free puzzle</a> &middot; <a href={AMAZON_URL} target="_blank" rel="sponsored noopener">Get the book on Amazon ↗</a></p>
+    <!-- The quiet email box (2026-11-09): optional, hidden when printing, never a gate. -->
+    <div class="cs-signup"><DailySignup from="cheatsheet" title="Want more puzzles to print?" /></div>
   </main>
 
   <script is:inline>document.getElementById('printBtn').addEventListener('click', function () { window.print(); });</script>
