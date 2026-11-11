@@ -4,7 +4,7 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
-import { notify, solverTag, place, isBot } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 
 // Spoken words are the one place a stranger's typed letters reach Telegram (bare A-Z,
 // 4-12 long; a true word only ever echoes one of the hashed words below). A human at a door misses a handful of times; a script at the 25-per-10s
@@ -237,7 +237,8 @@ export async function POST({ request, clientAddress }) {
     await notify(line);
     return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined, guest: guestKind(hit) });
   }
-  if (!isBot(request)) {
+  // A miss from a quiet country is not relayed (a TRUE word above always is).
+  if (!isBot(request) && !quietPlace(request)) {
     const n = missCount(ip);
     if (n <= MISS_MAX) await notify(`\u274C ${tag} \u00b7 ${geo} \u00b7 guessed \u201c${w}\u201d${at}`);
     else if (n === MISS_MAX + 1) await notify(`\u{1F910} ${tag} \u00b7 ${geo} \u00b7 ${MISS_MAX} misses in ten minutes \u2014 the Keeper stops repeating them for a while`);

@@ -19,7 +19,7 @@
 // /api/reward when a PDF actually streams. Anything in SERVER_EV is refused as a probe.
 export const prerender = false;
 
-import { notify, solverTag, place, safeExtra, isBot } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place, safeExtra, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 import { ALLOW, EXTRA_ALLOWED, validExtra, keeperLine, CLIENT_EV } from '../../lib/events.js';
 import { guessSource, returningNote } from '../../lib/traffic-guess.js';
 
@@ -107,8 +107,9 @@ export async function POST({ request, clientAddress }) {
   const ev = String(body && body.ev || '');
   // 1. Unknown event → 204 silence (no probe confirmation).
   if (!ALLOW.has(ev)) return NOOP204();
-  // 2. Crawlers and headless audits are not visitors.
-  if (isBot(request)) return NOOP204();
+  // 2. Crawlers and headless audits are not visitors — and neither, in practice, is traffic
+  //    from a quiet country (see QUIET_COUNTRIES in keeper-telegram.js).
+  if (isBot(request) || quietPlace(request)) return NOOP204();
   const ip = clientAddress || 'unknown';
   // 3. Per-IP burst gate.
   if (ipBurst(ip)) return NOOP204();
