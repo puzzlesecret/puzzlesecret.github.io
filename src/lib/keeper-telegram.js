@@ -65,6 +65,16 @@ export function isBot(request) {
   try { return BOT_UA.test(request.headers.get('user-agent') || ''); } catch { return false; }
 }
 
+// Quiet countries (Dan, 2026-11-11): nearly everything arriving from these is a crawler or a
+// scanner posing as a normal browser, which the user-agent sniff above cannot see. Their
+// browsing lines (arrivals, page views, vault events, wrong guesses) are dropped. What still
+// comes through is only what the server itself verified: a TRUE word, a reward download, a
+// carving, a newsletter sign-up. To quiet another country, add its two-letter code here.
+const QUIET_COUNTRIES = new Set(['CN']);
+export function quietPlace(request) {
+  try { return QUIET_COUNTRIES.has((request.headers.get('x-vercel-ip-country') || '').toUpperCase()); } catch { return false; }
+}
+
 // A shared, global flood breaker — a hard ceiling that trips a 60-second silent mute if
 // the process would otherwise send too many messages. This is defence-in-depth against a
 // rate-limit bypass (serverless Maps don't survive cold starts, so the per-key limiter is

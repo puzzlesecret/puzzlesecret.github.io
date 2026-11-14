@@ -5,7 +5,8 @@
    Loaded on every page (Layout.astro, index.astro, vault.astro). On load it does two
    things by itself, so no page has to remember:
      1. sends `arrive` once per session (entry page, referring site, phone/desktop);
-     2. wires the site-wide Amazon click-through ping. */
+     2. wires the site-wide Amazon click-through ping.
+   Nothing leaves the page until the tab has seen a real input — see "the human gate". */
 (function (root) {
   var CLIENT_EV = Object.freeze({
     ARRIVE:           'arrive',
@@ -84,16 +85,41 @@
     return JSON.stringify(body);
   }
 
-  // Client → /api/event. Non-blocking, silent on any failure. Never awaited by callers.
-  function psEvent(ev, extra) {
+  // ── the human gate (Dan, 2026-11-11) ──────────────────────────────────────
+  // Bots that pose as a normal browser load a page and never touch it. So nothing is sent
+  // until this tab has seen one thing only a person does: a tap, a click, a key press, a
+  // mouse move, a wheel or a touch scroll. Lines raised before that (the arrival, a page
+  // view) wait in memory and go out, in order, the moment it happens; if it never happens
+  // they are never sent. Programmatic scrolling does not count. Once a tab has been proven
+  // human it stays proven for the session, so later pages send straight away.
+  var human = false, waiting = [];
+  try { human = sessionStorage.getItem('ps_human') === '1'; } catch (e) {}
+  function send(ev, extra) {
     try {
       fetch('/api/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: payload(ev, extra) })
         .catch(function () {});
     } catch (e) { /* best-effort */ }
   }
+  function proveHuman() {
+    if (human) return;
+    human = true;
+    try { sessionStorage.setItem('ps_human', '1'); } catch (e) {}
+    var q = waiting; waiting = [];
+    for (var i = 0; i < q.length; i++) send(q[i][0], q[i][1]);
+  }
+  if (!human) ['pointerdown', 'keydown', 'mousemove', 'wheel', 'touchstart'].forEach(function (n) {
+    addEventListener(n, proveHuman, { passive: true, capture: true, once: true });
+  });
+
+  // Client → /api/event. Non-blocking, silent on any failure. Never awaited by callers.
+  function psEvent(ev, extra) {
+    if (!human) { if (waiting.length < 20) waiting.push([ev, extra]); return; }
+    send(ev, extra);
+  }
 
   // Same, but survives the page going away (link click, tab close, iOS backgrounding).
   function psBeacon(ev, extra) {
+    if (!human) return;                       // the page is leaving and nobody ever touched it
     try {
       var body = payload(ev, extra);
       if (navigator.sendBeacon) { navigator.sendBeacon('/api/event', new Blob([body], { type: 'application/json' })); return; }

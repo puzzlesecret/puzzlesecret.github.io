@@ -2,7 +2,7 @@
 // the client sends its self-assigned random id and which mode it is in (3D/painted).
 export const prerender = false;
 
-import { notify, solverTag, place, isBot } from '../../lib/keeper-telegram.js';
+import { notify, solverTag, place, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 
 const buckets = new Map();
 function rateLimited(ip) {
@@ -22,7 +22,7 @@ const json = (obj, status = 200) =>
 const MODE = { painted: 'the painted vault', flat: 'the painted vault', '3d': 'the 3D vault' };
 
 export async function POST({ request, clientAddress }) {
-  if (isBot(request)) return json({ ok: true });
+  if (isBot(request) || quietPlace(request)) return json({ ok: true });   // quiet countries: see keeper-telegram.js
   if (rateLimited(clientAddress || 'unknown')) return json({ ok: true });
   let body = {};
   try { body = await request.json(); } catch { /* ignore */ }
