@@ -685,6 +685,11 @@ import Analytics from '@vercel/analytics/astro';
     .scrap-note-p { font-size: 13px; font-style: italic; color: #5a4a2a; margin: 10px 0 0; }
     .scrap-wrap .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.45); }
     #scrapCopy[data-done="1"] { background: rgba(246,178,60,.35); color: #2c2011; border-color: #b8760c; }
+    /* "Fold it away" sits BELOW the parchment, on the dark room, so the parchment-brown rule above made it
+       near-invisible (Dan, 2026-11-14: players may not see it under the scrap). Light lettering, ~20% brighter
+       than the standard ghost button, so it reads as the way out. */
+    #scrapClose { color: rgba(232,213,174,0.88); border-color: rgba(232,213,174,0.5); background: rgba(10,7,3,0.35); }
+    #scrapClose:hover { color: var(--gold); border-color: rgba(246,178,60,0.7); }
     .wb-book { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .nb-card { animation: none; } }
 
