@@ -657,16 +657,159 @@ deskShadow.rotation.x = -Math.PI / 2; deskShadow.position.set(0, 0.012, -0.35); 
 // three crumpled rejects near the walls — each unfolds into a draft with TWO answers.
 // In a GUEST ROOM they are four crumpled scraps instead, each holding a piece of the note.
 const rejects = [];
-(GUEST ? [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5], [2.6, 2.7]] : [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]]).forEach(([x, z], i) => {
-  // A guest's scraps are the whole game and are found on phones in a field: bigger, and they glow
-  // (the glow sprite is a child, so a tap on it resolves to the scrap). 2026-10-01 phone test.
-  const r0 = GUEST ? 0.12 : 0.07;
-  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(r0, 0), M.paperB);
-  w.position.set(x, r0, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
-  w.userData = GUEST ? { kind: 'scrap', idx: i, label: GUEST.scrapLabel } : { kind: 'reject', idx: i, label: 'A crumpled page' };
-  if (GUEST) w.userData.glow = sprite(0.75, 0, 0, 0, w, 0.42);   // dimmed below once `study` has loaded
+if (!GUEST) [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z], i) => {
+  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), M.paperB);
+  w.position.set(x, 0.07, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
+  w.userData = { kind: 'reject', idx: i, label: 'A crumpled page' };
   rejects.push(w);
 });
+
+/* ---- A GUEST ROOM's four scraps, and the furniture they hide behind (Dan, 2026-11-14) ----
+   Dan: smaller, real balled-up paper, and "slightly harder but not too hard": one in the open by the
+   barrel (the warm-up), one behind the sea chest, one under the desk, one behind the map cabinet.
+   The GPSr still points at the nearest piece, so nobody is stranded. Everything here is guest-only;
+   the book's own study is untouched. Positions were checked by seven critiques and a headless
+   click test (props are in `interactables`, so they block a tap aimed at a scrap behind them). */
+const guestProps = [], guestObstacles = [];
+if (GUEST) {
+  // seeded so every visit sees the same four balls, each crumpled differently
+  const rng = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const unit = (r) => { const v = new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1); return v.lengthSq() < 1e-4 ? v.set(0, 1, 0) : v.normalize(); };
+  // A paper ball is flat planes and sharp folds, not a lumpy rock: each fold plane cuts a straight
+  // valley across the sphere. The offset depends only on the vertex DIRECTION, so the duplicated
+  // corners of the non-indexed icosahedron all move together and the mesh never cracks.
+  function crumpledPaper(r0, seed) {
+    const r = rng(seed);
+    const folds = Array.from({ length: 8 }, () => ({ n: unit(r), c: 0.18 + r() * 0.14, a: 0.28 + r() * 0.2 }));
+    const tips = Array.from({ length: 3 }, () => unit(r));
+    const geo = new THREE.IcosahedronGeometry(r0, 2);
+    const pos = geo.attributes.position, d = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      d.fromBufferAttribute(pos, i).normalize();
+      let s = 1;
+      for (const f of folds) s -= f.a * Math.max(0, f.c - Math.abs(d.dot(f.n)));
+      for (const t of tips) s += 1.1 * Math.max(0, d.dot(t) - 0.86);
+      s = Math.max(0.62, s);
+      pos.setXYZ(i, d.x * r0 * s, d.y * r0 * s * 0.8, d.z * r0 * s);   // a ball dropped on the floor settles a little
+    }
+    geo.computeVertexNormals(); geo.computeBoundingBox();
+    return geo;
+  }
+  // written-on paper: faint ruled lines and pencil strokes over the whole tile, so it reads as a used page
+  const scrapTex = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#efe8d6'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(120,140,170,0.35)'; g.lineWidth = 1;
+    for (let y = 10; y < h; y += 12) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    const r = rng(7);
+    g.strokeStyle = 'rgba(40,30,22,0.55)'; g.lineWidth = 1.4;
+    for (let k = 0; k < 14; k++) {
+      const x0 = r() * w, y0 = Math.floor(r() * 10) * 12 + 8, len = 14 + r() * 40;
+      g.globalAlpha = 0.45 + r() * 0.5; g.beginPath(); g.moveTo(x0, y0);
+      for (let x = x0; x < x0 + len; x += 4) g.lineTo(x, y0 - 2 + r() * 3);
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  }, 2, 2);
+  const scrapMat = new THREE.MeshStandardMaterial({ map: scrapTex, color: 0xfff4e2, roughness: 0.92, metalness: 0, flatShading: true, emissive: 0x1c160c, emissiveIntensity: 0.25 });
+  const contact = (w, d, x, z, ry = 0, parent = scene) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = ry; m.position.set(x, 0.011, z); m.raycast = () => {}; parent.add(m); return m;
+  };
+  // [x, z]: 0 by the barrel (open) · 1 behind the sea chest · 2 under the desk (desk-local 0.70, 0, 0.0) · 3 behind the map cabinet
+  [[-2.7, 3.15], [-3.47, -3.35], [1.139, -0.685], [3.72, 0.25]].forEach(([x, z], i) => {
+    const R0 = 0.1, rr = rng(101 + i * 17);
+    const geo = crumpledPaper(R0, 31 + i * 53);
+    const w = new THREE.Mesh(geo, scrapMat);
+    w.rotation.set((rr() - 0.5) * 0.35, rr() * Math.PI * 2, (rr() - 0.5) * 0.35);
+    w.position.set(x, -geo.boundingBox.min.y - 0.006, z); scene.add(w);
+    w.userData = { kind: 'scrap', idx: i, label: GUEST.scrapLabel };
+    // the glow guides the eye but never takes a tap (it poked out past the props' edges);
+    // an invisible ball a little bigger than the paper takes it instead
+    const gl = sprite(0.6, 0, 0, 0, w, 0.36); gl.raycast = () => {};
+    w.userData.glow = gl;                                            // dimmed below once `study` has loaded
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+    w.add(hit);
+    contact(0.3, 0.3, x, z);
+    guestObstacles.push({ x, z, r: 0.3 });                           // never stand ON a piece: it would be under your feet, off-screen
+    rejects.push(w);
+  });
+
+  const prop = (g, line, stand) => { g.userData = { kind: 'prop', label: line.label, line: line.say, stand }; guestProps.push(g); scene.add(g); return g; };
+  const pine = new THREE.MeshStandardMaterial({ map: woodMatTex, color: 0x8a6a44, roughness: 0.8 });
+
+  // SEA CHEST across the back-left corner — clear of the secret bookcase's swing (x ≥ -2.52 when open)
+  const chest = new THREE.Group(); chest.position.set(-3.05, 0, -2.85); chest.rotation.y = 0.7;
+  box(0.8, 0.4, 0.5, M.chestWood, 0, 0.2, 0, 0, chest);
+  const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 18, 1, false, 0, Math.PI), M.chestWood2);
+  dome.rotation.z = Math.PI / 2; dome.position.y = 0.4; chest.add(dome);
+  [-0.3, 0.3].forEach((bx) => {
+    box(0.06, 0.42, 0.52, M.gold, bx, 0.2, 0, 0, chest);
+    const arc = new THREE.Mesh(new THREE.CylinderGeometry(0.262, 0.262, 0.06, 18, 1, true, 0, Math.PI), M.gold);
+    arc.rotation.z = Math.PI / 2; arc.position.set(bx, 0.4, 0); chest.add(arc);
+  });
+  box(0.12, 0.14, 0.03, M.goldGlow, 0, 0.37, 0.26, 0, chest);       // the lock plate
+  box(0.82, 0.04, 0.52, M.woodDark, 0, 0.02, 0, 0, chest);          // plinth
+  contact(1.15, 0.8, 0, 0, 0, chest);
+  prop(chest, { label: 'A sea chest', say: 'Locked since before my time. Things roll behind it and stay there.' }, [-2.5, -3.35]);
+  guestObstacles.push({ x: -3.05, z: -2.85, r: 0.6 });
+
+  // MAP CABINET in the stone gap between the right-hand bookcases, pulled off the wall a hand's width
+  const cab = new THREE.Group(); cab.position.set(3.2, 0, 0.25);
+  box(0.45, 1.42, 0.9, M.wood, 0, 0.77, 0, 0, cab);                  // carcass (x = depth, toward the wall)
+  box(0.47, 0.08, 0.92, M.woodDark, 0, 0.04, 0, 0, cab);             // plinth
+  box(0.52, 0.06, 0.98, M.woodDark, -0.02, 1.51, 0, 0, cab);         // overhanging top
+  for (let k = 0; k < 7; k++) {                                      // seven shallow drawers, brass pulls
+    const y = 0.2 + k * 0.18, out = k === 2 ? 0.1 : 0;
+    box(0.025, 0.15, 0.82, M.woodDark, -0.235 - out, y, 0, 0, cab);
+    box(0.03, 0.025, 0.14, M.brass, -0.255 - out, y, 0, 0, cab);
+  }
+  const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.6, 12), new THREE.MeshStandardMaterial({ map: paperTexA, color: 0xcaa870, roughness: 0.9 }));
+  roll.rotation.x = Math.PI / 2; roll.position.set(-0.3, 0.6, 0.05); cab.add(roll);   // a chart rolled up in the open drawer
+  contact(0.7, 1.2, 0, 0, 0, cab);
+  prop(cab, { label: 'A map cabinet', say: 'My map cabinet. It never did sit flush to the wall.' }, [3.3, -0.55]);
+  guestObstacles.push({ x: 3.2, z: 0.25, r: 0.6 });
+
+  // BARREL in the front-left corner — the warm-up piece lies beside it
+  const barrel = new THREE.Group(); barrel.position.set(-3.15, 0, 3.05);
+  const prof = [[0.2, 0], [0.24, 0.12], [0.265, 0.35], [0.24, 0.58], [0.2, 0.7]].map(([r, y]) => new THREE.Vector2(r, y));
+  barrel.add(new THREE.Mesh(new THREE.LatheGeometry(prof, 20), M.chestWood));
+  const lidB = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), M.woodDark); lidB.rotation.x = -Math.PI / 2; lidB.position.y = 0.695; barrel.add(lidB);
+  [[0.1, 0.235], [0.35, 0.268], [0.6, 0.232]].forEach(([y, r]) => {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 6, 24), M.brass); hoop.rotation.x = Math.PI / 2; hoop.position.y = y; barrel.add(hoop);
+  });
+  contact(0.75, 0.75, 0, 0, 0, barrel);
+  prop(barrel, { label: 'A barrel', say: 'Rainwater, for the ink. I would not drink it.' }, [-2.25, 2.6]);
+  guestObstacles.push({ x: -3.15, z: 3.05, r: 0.4 });
+
+  // PACKING CRATES in the front-right corner — nothing behind them
+  const crates = new THREE.Group(); crates.position.set(2.85, 0, 3.0);
+  const crate = (s, x, y, z, ry) => {
+    const c = new THREE.Group(); c.position.set(x, y, z); c.rotation.y = ry; crates.add(c);
+    box(s, s, s, pine, 0, s / 2, 0, 0, c);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b2]) => box(0.05, s + 0.01, 0.05, M.woodDark, a * (s / 2 - 0.02), s / 2, b2 * (s / 2 - 0.02), 0, c));
+    const brace = box(0.05, s * 1.25, 0.02, M.woodDark, 0, s / 2, s / 2 + 0.006, 0, c); brace.rotation.z = Math.PI / 4;
+  };
+  crate(0.6, 0, 0, 0, 0.1); crate(0.46, 0.04, 0.6, -0.02, 0.36);
+  contact(0.95, 0.95, 0, 0, 0, crates);
+  prop(crates, { label: 'Packing crates', say: 'Old packing crates, nailed shut. Nothing for you in there.' }, [2.2, 2.4]);
+  guestObstacles.push({ x: 2.85, z: 3.0, r: 0.55 });
+
+  // THE DESK hides a piece underneath: panels close its front and left end (seen from the door, the
+  // floor under it was in plain view), the right end stays open to peek in. The desk itself now takes
+  // a tap — it means the logbook, exactly as the chair does — so a tap aimed through the top can't
+  // reach the piece. Kept at or below y 0.815 so the gift, the notebook and the candle stay tappable.
+  const deskHit = { kind: 'chair', label: "The Keeper's desk" };
+  const front = box(1.72, 0.515, 0.03, M.woodDark, 0, 0.3175, 0.40, 0, desk); front.userData = deskHit;
+  const endL = box(0.03, 0.515, 0.84, M.woodDark, -0.86, 0.3175, 0, 0, desk); endL.userData = deskHit;
+  // invisible stand-ins for the top slab and the apron, exactly their size, so they block only what
+  // they visibly hide (a full-depth block caught taps aimed under the overhang at the piece)
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const topHit = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.115, 1.04), hitMat);
+  topHit.position.set(0, 0.7575, 0); topHit.userData = deskHit; desk.add(topHit);
+  const apronHit = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.16, 0.8), hitMat);
+  apronHit.position.set(0, 0.655, 0); apronHit.userData = deskHit; desk.add(apronHit);
+  guestProps.push(front, endL, topHit, apronHit);
+}
 
 /* ---- pinboard of sudoku sheets (back wall, right — per concept) ---- */
 box(2.1, 1.5, 0.06, M.woodDark, 1.9, 2.15, -3.94);
@@ -1937,6 +2080,7 @@ const OBSTACLES = [
   { x: AX - 1.9, z: -23.6, r: 0.62 }, { x: AX + 1.75, z: -23.9, r: 0.62 }, // side chests
   { x: AX, z: -28.5, r: 0.65 },                                    // master pedestal
   { x: AX - 2.25, z: -30.25, r: 0.55 },                            // the Corsair's Chart easel
+  ...guestObstacles,                                               // a guest room's props + its four pieces (empty otherwise)
 ];
 /* How high the ground is under a given spot. Everything above y=0 is the vaults proper;
    only the stair, its tunnel and the sanctum go below, and only once the slab has moved.
@@ -1967,6 +2111,16 @@ function clampPos(p) {
     const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz);
     if (d < o.r && d > 1e-4) { p.x = o.x + dx / d * o.r; p.z = o.z + dz / d * o.r; }
   }
+  // A guest room's props stand near the walls, so a push out of one can land past the study's edge
+  // (into the gap behind the cabinet, say). Pull back inside, then out of any circle once more.
+  const S = ZONES[0];   // the study (its open back edge leads to the passage, so only the other three sides)
+  if (GUEST && p.z > S.minZ && (p.x < S.minX || p.x > S.maxX || p.z > S.maxZ)) {
+    p.x = THREE.MathUtils.clamp(p.x, S.minX, S.maxX); p.z = Math.min(p.z, S.maxZ);
+    for (const o of guestObstacles) {
+      const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz);
+      if (d < o.r && d > 1e-4) { p.x = o.x + dx / d * o.r; p.z = o.z + dz / d * o.r; }
+    }
+  }
   return p;
 }
 function moveTo(x, z, action = null) {
@@ -1984,7 +2138,7 @@ const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, unlitObj,
   hoodStand, pbChest, ...roundHits,
-  candle, ink, quill, board, sconce, sconceR, chair, notebook, easelS, ...rejects, ...wallCases,
+  candle, ink, quill, board, sconce, sconceR, chair, notebook, easelS, ...rejects, ...wallCases, ...guestProps,
   ...storyPages,
   ...sealPulse.filter(o => o.isMesh)];
 let down = null, dragging = false;
@@ -2534,6 +2688,8 @@ function activate(kind, hitObj) {
     return;
   }
   if (kind === 'reject') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openDraft(w.userData.idx)); return; }
+  // a guest room's furniture: walk round to where you can see behind it, then the Keeper says his line
+  if (kind === 'prop') { const u = hitObj.userData; goThen(u.stand[0], u.stand[1], () => showCaption(u.line, 5600)); return; }
   if (kind === 'scrap') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openScrap(w.userData.idx)); return; }
   if (kind === 'notebook') { goThen(-0.2, -1.9, () => openNotebook()); return; }
   if (kind === 'chartStudy') { goThen(2.3, -2.3, () => { showCaption(STUDY_SAY.chart, 8000); markFound('chart'); }); return; }
@@ -3517,6 +3673,7 @@ window.__vault = {
     return { room, rms: +mean.toFixed(4), transients: trans, tonalPeakRatio: +(Math.max(...bands) / med).toFixed(1) };
   },
   get yaw() { return yaw; }, set yaw(v) { yaw = v; },
+  get pitch() { return pitch; }, set pitch(v) { pitch = v; },
   info: () => renderer.info,
   step: (dt, n = 1) => { for (let i = 0; i < n; i++) tick(dt); }, // manual frame-step (headless verification)
 };
