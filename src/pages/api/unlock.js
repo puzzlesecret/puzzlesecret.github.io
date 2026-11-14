@@ -143,12 +143,12 @@ const HASHES = {
 const GUEST_ROOMS = {
   pinpoint: {
     id: 'pinpoint',
-    entry: 'PinPoint sent you, and you are exactly where I meant you to be. I tore a note into four and dropped the pieces on the floor of this study. Find all four and the board on the back wall gives you the cache. Nothing else in here is part of it.',
+    entry: 'PinPoint sent you, and you are exactly where I meant you to be. The cache is hidden somewhere in this study. Look around.',
     scrapLabel: 'A crumpled scrap',
     scrapLine: 'A piece of the note I tore. It pins itself to the board for you: nothing to carry.',
     allFound: 'All four pieces, pinned. Read the final co-ordinates off the board on the back wall, and mind the muggles on your way out.',
     retired: 'PinPoint asked me to keep a place here once. It is no longer kept. The study is still yours to look around.',
-    boardEmpty: 'Four empty pins. Every piece you find on the floor is pinned here for you.',
+    boardEmpty: 'Four empty pins. Every piece you find is pinned here for you.',
     exit: 'You are leaving with {n} of my four pieces unfound. The corridor will keep; the note will not.',
     door2Kicker: 'THE SECOND DOOR — NOT PART OF THE CACHE',
     door2Line: "This door is not part of PinPoint's cache: every piece of the note is in the study behind you.",
