@@ -146,6 +146,28 @@ import Analytics from '@vercel/analytics/astro';
           <p class="scrap-note-p">The pieces stay pinned for this visit. If you lose them, speak the word again and they come back.</p>
         </div>
         <p class="scrap-say" id="scrapSay"></p>
+        <!-- The PinPoint VISITORS' BOOK (Dan, 2026-11-14): optional, never part of the find. Initials,
+             a country and the nearest city of 15,000+ picked from a list — nothing typed freely. -->
+        <div class="vb" id="vb" hidden>
+          <form class="vb-form" id="vbForm" autocomplete="off" hidden>
+            <p class="vb-note">Optional, and not part of your find. Your initials and nearest city only, never your name or address. Everyone who visits can read it.</p>
+            <label class="vb-l" for="vbIni">Initials</label>
+            <input class="vb-in" id="vbIni" maxlength="3" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off" />
+            <label class="vb-l" for="vbCc">Country</label>
+            <select class="vb-in" id="vbCc"><option value="">Choose your country…</option></select>
+            <label class="vb-l" for="vbCity">Nearest city</label>
+            <input class="vb-in" id="vbCity" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Start typing, then pick one" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="vbSug" disabled />
+            <ul class="vb-sug" id="vbSug" role="listbox" aria-label="Cities" hidden></ul>
+            <div class="vb-btns">
+              <button class="ghost-btn vb-sign" id="vbSign" type="submit">Sign it</button>
+              <button class="ghost-btn" id="vbSkip" type="button">Not today</button>
+            </div>
+            <p class="vb-msg" id="vbMsg" aria-live="polite"></p>
+          </form>
+          <p class="vb-count" id="vbCount"></p>
+          <ol class="vb-list" id="vbList" aria-label="Visitors who signed" aria-live="off"></ol>
+          <p class="vb-credit">Places: GeoNames, CC BY 4.0</p>
+        </div>
       </div>
       <button id="scrapClose" class="ghost-btn" type="button">Fold it away →</button>
     </div>
@@ -690,6 +712,31 @@ import Analytics from '@vercel/analytics/astro';
        than the standard ghost button, so it reads as the way out. */
     #scrapClose { color: rgba(232,213,174,0.88); border-color: rgba(232,213,174,0.5); background: rgba(10,7,3,0.35); }
     #scrapClose:hover { color: var(--gold); border-color: rgba(246,178,60,0.7); }
+    /* the PinPoint Visitors' Book, inside the same parchment. The overlay scrolls at every size while it is
+       open (a phone held sideways, a keyboard up), and inputs are 16px so iOS does not zoom the page. */
+    #draft.scrap.vbook { align-items: flex-start; overflow-y: auto; }
+    #draft.scrap.vbook .scrap-wrap { margin: auto 0; padding: 8px 0; }
+    #draft.scrap.vbook .scrap-text { font-size: clamp(20px, 5vw, 32px); }
+    .vb[hidden], .vb-form[hidden], .vb-sug[hidden] { display: none !important; }
+    .vb { margin-top: 12px; text-align: left; }
+    .vb-note { font-size: 13.5px; font-style: italic; color: #5a4a2a; margin: 0 0 10px; line-height: 1.4; text-align: center; }
+    .vb-l { display: block; font-family: Cinzel, serif; font-size: 11px; letter-spacing: .2em; color: #6b4d1f; margin: 8px 0 3px; text-transform: uppercase; }
+    .vb-in { width: 100%; box-sizing: border-box; font-size: 16px; font-family: Georgia, serif; color: #1a1208; background: rgba(255,252,244,.75); border: 1px solid rgba(90,64,26,.5); border-radius: 3px; padding: 9px 10px; min-height: 44px; }
+    #vbIni { width: 6.5em; text-transform: uppercase; letter-spacing: .25em; font-weight: 700; }
+    .vb-in:disabled { opacity: .55; }
+    .vb-sug { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid rgba(90,64,26,.45); border-radius: 3px; background: #fbf5e6; max-height: 210px; overflow-y: auto; }
+    .vb-sug li { padding: 10px 12px; font-size: 16px; cursor: pointer; border-bottom: 1px solid rgba(90,64,26,.15); min-height: 24px; }
+    .vb-sug li[aria-selected="true"], .vb-sug li:hover { background: rgba(246,178,60,.35); }
+    .vb-btns { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .vb-sign { font-weight: 700; }
+    .vb-msg { min-height: 1.3em; font-size: 14px; font-style: italic; color: #7a2a14; text-align: center; margin: 8px 0 0; }
+    .vb-count { font-family: Cinzel, serif; font-size: 12px; letter-spacing: .12em; color: #6b4d1f; text-align: center; margin: 14px 0 6px; }
+    .vb-list { list-style: none; margin: 0; padding: 0; max-height: 34vh; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid rgba(90,64,26,.3); }
+    .vb-list li { padding: 7px 4px; border-bottom: 1px solid rgba(90,64,26,.15); font-size: 15px; color: #2c2011; overflow-wrap: anywhere; }
+    .vb-list li b { font-family: Cinzel, serif; letter-spacing: .12em; margin-right: 6px; }
+    .vb-list li i { color: #6b4d1f; font-size: 13px; }
+    .vb-list li.you { background: rgba(246,178,60,.25); }
+    .vb-credit { font-size: 11px; color: rgba(90,64,26,.75); text-align: center; margin: 8px 0 0; }
     .wb-book { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .nb-card { animation: none; } }
 

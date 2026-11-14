@@ -2960,7 +2960,10 @@ const scrapKick = document.getElementById('scrapKick'), scrapText = document.get
 const SLOT_HINTS = ['north, degrees', 'north, the rest', 'west, degrees', 'west, the rest'];
 function scrapsFound() { return GUEST ? GUEST.items.filter((id) => study.found.includes(id)) : []; }
 function fullPosition() { const f = GUEST.frags; return f.length === 4 ? (f[0] + f[1].replace(/^[NSEW]\s*…?/, '') + '  ' + f[2] + f[3].replace(/^[NSEW]\s*…?/, '')) : ''; }
-function showScrapOverlay() { draftEl.classList.add('scrap'); draftEl.hidden = false; }
+function showScrapOverlay() {
+  draftEl.classList.remove('vbook'); const vb = document.getElementById('vb'); if (vb) vb.hidden = true;   // only the visitors' book shows it
+  draftEl.classList.add('scrap'); draftEl.hidden = false;
+}
 function openScrap(idx) {
   if (!GUEST) return;
   if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
@@ -3012,22 +3015,141 @@ function openScrapBoard() {
        nothing until the note is whole; then a finder can sign it. Kept on this device only. --- */
 function setLogGlow() { if (logGlow) logGlow.material.opacity = (study.boardSolved && !study.logged) ? 0.6 : 0.0; }
 setLogGlow();
+/* ---- THE VISITORS' BOOK (Dan, 2026-11-14) — the desk's book, open to every visitor to read; a finder
+   with all four pieces may sign it: initials + country + the nearest city of 15,000+ picked from a list.
+   Optional and never part of the find (Groundspeak bans extra logging requirements), so every finder
+   gets the thanks whether they sign or not. Everything is built with text nodes, never innerHTML. --- */
+const vbEl = document.getElementById('vb'), vbForm = document.getElementById('vbForm'), vbIni = document.getElementById('vbIni');
+const vbCc = document.getElementById('vbCc'), vbCity = document.getElementById('vbCity'), vbSug = document.getElementById('vbSug');
+const vbMsg = document.getElementById('vbMsg'), vbCount = document.getElementById('vbCount'), vbList = document.getElementById('vbList');
+const vbSign = document.getElementById('vbSign');
+const vbState = { entries: null, total: 0, you: '', place: '', lists: {}, codes: null, sending: false, opts: [], active: -1 };
+let ccName = (cc) => cc;
+try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); ccName = (cc) => { try { return dn.of(cc) || cc; } catch (e) { return cc; } }; } catch (e) { /* old browser: codes */ }
+const fold = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function vbRow(e, mine) {
+  const li = document.createElement('li'); if (mine) li.className = 'you';
+  const b = document.createElement('b'); b.textContent = e.i; li.appendChild(b);
+  li.appendChild(document.createTextNode('near ' + e.p + ', ' + ccName(e.cc) + ' '));
+  const m = document.createElement('i'); m.textContent = e.m ? '· ' + e.m : ''; li.appendChild(m);
+  return li;
+}
+function vbRender() {
+  vbList.textContent = '';
+  const mine = study.signed && study.signed.i ? study.signed : null;
+  const rows = (vbState.entries || []).slice();
+  if (mine && !rows.some((e) => e.i === mine.i && e.p === mine.p && e.cc === mine.cc)) rows.unshift(mine);
+  rows.forEach((e) => vbList.appendChild(vbRow(e, mine && e.i === mine.i && e.p === mine.p && e.cc === mine.cc)));
+  const n = Math.max(vbState.total, rows.length);
+  if (vbState.entries === null) vbCount.textContent = 'Opening the book…';
+  else if (vbState.entries === false) vbCount.textContent = 'The pages are damp. The list will show when you have signal.';
+  else vbCount.textContent = n >= 5 ? n + ' visitors have signed' : n > 0 ? 'A few visitors have signed so far' : 'Nobody has signed yet. Be the first.';
+}
+async function vbLoad() {
+  try {
+    const r = await fetch('/api/visitors', { cache: 'no-store' }); const d = await r.json();
+    if (d && /^[A-Z]{2}$/.test(d.you || '')) vbState.you = d.you;
+    if (d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; vbState.total = Number(d.total) || d.entries.length; }
+    else vbState.entries = false;
+  } catch (e) { vbState.entries = false; }
+  vbRender();
+  if (vbState.you && !vbCc.value && vbState.codes && vbState.codes.includes(vbState.you)) { vbCc.value = vbState.you; vbCcChanged(); }
+}
+async function vbCodes() {
+  if (vbState.codes) return;
+  try { const c = await (await fetch('/data/places/index.json')).json(); if (Array.isArray(c)) vbState.codes = c.filter((x) => /^[A-Z]{2}$/.test(x)); } catch (e) { return; }
+  vbState.codes.map((cc) => [cc, ccName(cc)]).sort((a, b) => a[1].localeCompare(b[1], 'en')).forEach(([cc, nm]) => {
+    const o = document.createElement('option'); o.value = cc; o.textContent = nm; vbCc.appendChild(o);
+  });
+  if (vbState.you && vbState.codes.includes(vbState.you)) { vbCc.value = vbState.you; vbCcChanged(); }
+}
+async function vbCcChanged() {
+  const cc = vbCc.value; vbState.place = ''; vbCity.value = ''; vbSugHide();
+  vbCity.disabled = !cc; vbValidate();
+  if (cc && !vbState.lists[cc]) {
+    try { const l = await (await fetch('/data/places/' + cc + '.json')).json(); if (Array.isArray(l)) vbState.lists[cc] = l.map((p) => [p, fold(p)]); } catch (e) { vbMsg.textContent = 'The ink won’t take out here. Try again when you have signal.'; }
+  }
+}
+function vbSugHide() { vbSug.hidden = true; vbSug.textContent = ''; vbState.opts = []; vbState.active = -1; vbCity.setAttribute('aria-expanded', 'false'); }
+function vbPick(p) { vbState.place = p; vbCity.value = p; vbSugHide(); vbValidate(); }
+function vbSearch() {
+  vbState.place = ''; vbValidate();
+  const list = vbState.lists[vbCc.value] || [], q = fold(vbCity.value.trim());
+  if (!q) { vbSugHide(); return; }
+  const starts = [], words = [];
+  for (const [p, f] of list) {
+    if (f.startsWith(q)) starts.push(p); else if (f.includes(' ' + q) || f.includes('-' + q)) words.push(p);
+    if (starts.length >= 8) break;
+  }
+  const opts = starts.concat(words).slice(0, 8);
+  vbSug.textContent = ''; vbState.opts = opts; vbState.active = -1;
+  if (!opts.length) { const li = document.createElement('li'); li.textContent = 'No city of 15,000+ by that name. Try the nearest bigger one.'; li.setAttribute('aria-disabled', 'true'); vbSug.appendChild(li); }
+  opts.forEach((p, k) => {
+    const li = document.createElement('li'); li.textContent = p; li.id = 'vbOpt' + k; li.setAttribute('role', 'option');
+    li.addEventListener('pointerdown', (e) => { e.preventDefault(); vbPick(p); });
+    vbSug.appendChild(li);
+  });
+  vbSug.hidden = false; vbCity.setAttribute('aria-expanded', 'true');
+}
+function vbValidate() {
+  const ok = /^[A-Z]{2,3}$/.test(vbIni.value) && !!vbCc.value && !!vbState.place && !vbState.sending;
+  vbSign.disabled = !ok; return ok;
+}
+vbIni.addEventListener('input', () => { const v = vbIni.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); if (v !== vbIni.value) vbIni.value = v; vbMsg.textContent = ''; vbValidate(); });
+vbCc.addEventListener('change', vbCcChanged);
+vbCity.addEventListener('input', () => { vbMsg.textContent = ''; vbSearch(); });
+vbCity.addEventListener('keydown', (e) => {
+  const n = vbState.opts.length; if (!n || vbSug.hidden) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); vbState.active = (vbState.active + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+    [...vbSug.children].forEach((li, k) => li.setAttribute('aria-selected', k === vbState.active ? 'true' : 'false'));
+    vbCity.setAttribute('aria-activedescendant', 'vbOpt' + vbState.active);
+  } else if (e.key === 'Enter' && vbState.active >= 0) { e.preventDefault(); vbPick(vbState.opts[vbState.active]); }
+});
+[vbIni, vbCc, vbCity].forEach((el) => el.addEventListener('focus', () => { if (IS_TOUCH) setTimeout(() => el.scrollIntoView({ block: 'center' }), 300); }));
+document.getElementById('vbSkip').addEventListener('click', () => { vbForm.hidden = true; scrapSay.textContent = 'As you like. My thanks for the find. Now go and sign the real log, out where the note says.'; });
+vbForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!vbValidate()) { vbMsg.textContent = vbState.place ? 'Two or three letters for your initials, please.' : 'Pick your city from the list.'; return; }
+  const entry = { i: vbIni.value, p: vbState.place, cc: vbCc.value };
+  vbState.sending = true; vbValidate(); vbMsg.textContent = 'Writing…';
+  let d = null;
+  try { const r = await fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ initials: entry.i, cc: entry.cc, place: entry.p }) }); d = await r.json(); } catch (err) { d = null; }
+  vbState.sending = false;
+  if (d && d.ok) {
+    const now = new Date(); entry.m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getUTCMonth()] + ' ' + now.getUTCFullYear();
+    study.signed = entry; saveStudy();
+    vbForm.hidden = true; vbMsg.textContent = '';
+    scrapSay.textContent = 'Signed, and in ink. My thanks for the find. Now go and sign the real log, out where the note says.';
+    if (!d.dup) vbState.total += 1;
+    vbRender();
+    if (d.pending) setTimeout(() => { vbState.entries = null; vbLoad(); }, 4000);
+    return;
+  }
+  vbValidate();
+  const why = d && d.reason;
+  vbMsg.textContent = why === 'bad_initials' ? 'Those initials won’t go in my book. Try your own.'
+    : why === 'bad_place' || why === 'bad_country' ? 'Pick your city from the list.'
+    : why === 'slow_down' || why === 'full' ? 'The book is resting. Try again in a while.'
+    : 'The ink won’t take out here. Try again when you have signal.';
+});
 function openGuestLog() {
   if (!GUEST) return;
   goThen(0.2, -1.4, () => {
     if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
-    if (scrapsFound().length < 4) {
-      showCaption('My logbook is for finders. Gather all four pieces of the note, then sign it.', 6000);
-      return;
-    }
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    const first = !study.logged;
-    if (first) { study.logged = today; saveStudy(); }
+    const all = scrapsFound().length >= 4;
+    const first = all && !study.logged;
+    if (first) { study.logged = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); saveStudy(); }
     scrapBoard.hidden = true;
-    scrapKick.textContent = "THE KEEPER'S LOGBOOK";
-    scrapText.textContent = 'FOUND IT';
-    scrapSay.textContent = (first ? 'Signed on ' : 'You signed it on ') + study.logged + '. My thanks for the find. Now go and sign the real one, out where the note says.';
-    showScrapOverlay();
+    scrapKick.textContent = "THE KEEPER'S VISITORS' BOOK";
+    scrapText.textContent = all ? 'FOUND IT' : '';
+    scrapSay.textContent = !all
+      ? 'Finders may sign my visitors’ book once all four pieces are found. It is optional, and it is not your find.'
+      : study.signed ? 'You have signed my visitors’ book. My thanks for the find. Now go and sign the real log, out where the note says.'
+      : 'My thanks for the find. Leave your mark below if you like, then go and sign the real log, out where the note says.';
+    vbForm.hidden = !(all && !study.signed); vbMsg.textContent = '';
+    showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false;
+    vbRender(); vbLoad(); if (all && !study.signed) { vbCodes(); vbValidate(); }
     if (first && !REDUCED) burstConfetti();
     setLogGlow(); renderGpsr(true);
   });
@@ -3039,7 +3161,7 @@ scrapCopy.addEventListener('click', async () => {
   catch (e) { scrapCopy.textContent = 'Select and copy the line above'; }
   setTimeout(() => { scrapCopy.textContent = 'Copy the position'; delete scrapCopy.dataset.done; }, 2600);
 });
-document.getElementById('scrapClose').addEventListener('click', () => { draftEl.hidden = true; draftEl.classList.remove('scrap'); });
+document.getElementById('scrapClose').addEventListener('click', () => { draftEl.hidden = true; draftEl.classList.remove('scrap', 'vbook'); });
 document.getElementById('draftClose').addEventListener('click', () => { draftEl.classList.remove('scrap'); });
 function guestDoorLine() {
   document.getElementById('wbKicker').textContent = GUEST.door2Kicker;
@@ -3616,7 +3738,8 @@ let chestTickT = 0;
 })();
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (!lockboxEl.hidden) closeLock();
+  if (!draftEl.hidden && draftEl.classList.contains('scrap')) { draftEl.hidden = true; draftEl.classList.remove('scrap', 'vbook'); }
+  else if (!lockboxEl.hidden) closeLock();
   else if (!tilecardEl.hidden) closeCard(tilecardEl);
   else if (!roundEndEl.hidden) closeCard(roundEndEl);
   else if (round.on) endRound('quit');
@@ -3747,8 +3870,16 @@ function tick(dt) {
     walkRing.material.opacity = 0.65 + 0.25 * Math.sin(t * 6);
   }
   // glide toward target (tap / hold-to-walk)
-  const k = REDUCED ? 1 : Math.min(1, dt * 2.4);
-  player.pos.lerp(player.target, k);
+  if (GUEST && !REDUCED) {
+    // A guest room walks at half the old glide (Dan, 2026-11-14: "maybe 50% of the way it moves now"),
+    // capped at a steady 2 m/s: the old glide's speed grew with the distance left, so a long tap or
+    // hold-to-walk sprinted at 5-10 m/s. Every walk now takes about twice as long and never sprints.
+    const d = player.pos.distanceTo(player.target);
+    if (d > 1e-4) { const v = Math.min(2.0, 1.2 * d); player.pos.lerp(player.target, Math.min(1, v * dt / d)); }
+  } else {
+    const k = REDUCED ? 1 : Math.min(1, dt * 2.4);
+    player.pos.lerp(player.target, k);
+  }
   clampPos(player.pos);
   if (pendingAction && player.pos.distanceTo(player.target) < 0.18) {
     const a = pendingAction; pendingAction = null; a();
