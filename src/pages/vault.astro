@@ -147,17 +147,22 @@ import Analytics from '@vercel/analytics/astro';
         </div>
         <p class="scrap-say" id="scrapSay"></p>
         <!-- The PinPoint VISITORS' BOOK (Dan, 2026-11-14): optional, never part of the find. Initials,
-             a country and the nearest city of 15,000+ picked from a list — nothing typed freely. -->
+             a country, a state/county where offered and optionally a town of 15,000+, all from lists — nothing typed freely. -->
         <div class="vb" id="vb" hidden>
           <form class="vb-form" id="vbForm" autocomplete="off" hidden>
-            <p class="vb-note">Optional, and not part of your find. Your initials and nearest city only, never your name or address. Everyone who visits can read it.</p>
+            <p class="vb-note">Optional, and not part of your find. Initials and your area only, never your name or address. Everyone who visits can read it.</p>
             <label class="vb-l" for="vbIni">Initials</label>
             <input class="vb-in" id="vbIni" maxlength="3" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off" />
             <label class="vb-l" for="vbCc">Country</label>
             <select class="vb-in" id="vbCc"><option value="">Choose your country…</option></select>
-            <label class="vb-l" for="vbCity">Nearest city</label>
+            <div id="vbRegWrap" hidden>
+              <label class="vb-l" for="vbReg" id="vbRegL">State</label>
+              <select class="vb-in" id="vbReg"><option value="">Choose…</option></select>
+            </div>
+            <label class="vb-l" for="vbCity">Nearest town or city <span class="vb-opt">(optional, 15,000+ people)</span></label>
             <input class="vb-in" id="vbCity" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Start typing, then pick one" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="vbSug" disabled />
             <ul class="vb-sug" id="vbSug" role="listbox" aria-label="Cities" hidden></ul>
+            <p class="vb-preview" id="vbPreview" aria-live="polite"></p>
             <div class="vb-btns">
               <button class="ghost-btn vb-sign" id="vbSign" type="submit">Sign it</button>
               <button class="ghost-btn" id="vbSkip" type="button">Not today</button>
@@ -736,6 +741,10 @@ import Analytics from '@vercel/analytics/astro';
     .vb-list li b { font-family: Cinzel, serif; letter-spacing: .12em; margin-right: 6px; }
     .vb-list li i { color: #6b4d1f; font-size: 13px; }
     .vb-list li.you { background: rgba(246,178,60,.25); }
+    #vbRegWrap[hidden] { display: none !important; }
+    .vb-opt { text-transform: none; letter-spacing: .02em; font-family: Georgia, serif; font-style: italic; font-size: 12px; }
+    .vb-preview { margin: 12px 0 0; font-size: 14px; text-align: center; color: #2c2011; min-height: 1.2em; }
+    .vb-preview b { font-family: Cinzel, serif; letter-spacing: .12em; }
     .vb-credit { font-size: 11px; color: rgba(90,64,26,.75); text-align: center; margin: 8px 0 0; }
     .wb-book { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { .nb-card { animation: none; } }
