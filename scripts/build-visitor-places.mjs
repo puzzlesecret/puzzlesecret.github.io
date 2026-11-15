@@ -134,7 +134,7 @@ const pub = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(
 const pubDir = path.join(pub, 'public', 'data', 'places2');
 fs.mkdirSync(pubDir, { recursive: true });
 for (const f of fs.readdirSync(pubDir)) if (f.endsWith('.json')) fs.unlinkSync(path.join(pubDir, f));
-const server = {}; const sortEn = (a, b) => a.localeCompare(b, 'en');
+const server = {}, centroids = {}; const sortEn = (a, b) => a.localeCompare(b, 'en');
 for (const cc of Object.keys(out).sort()) {
   const lv = LEVEL[cc];
   let regions = [];
@@ -153,12 +153,18 @@ for (const cc of Object.keys(out).sort()) {
     if (k && tc[k].length) rc[k] = [+(tc[k].reduce((a, p) => a + p[0], 0) / tc[k].length).toFixed(2), +(tc[k].reduce((a, p) => a + p[1], 0) / tc[k].length).toFixed(2)];
     tc[k].forEach(([la, lo]) => { sumLat += la; sumLon += lo; nAll++; });
   }
-  const c = nAll ? [+(sumLat / nAll).toFixed(2), +(sumLon / nAll).toFixed(2)] : [0, 0];
+  // the country's middle for its globe pin: the MEDIAN town position, so far-off islands don't drag it into the sea
+  const allXY = Object.values(tc).flat(), med = (a) => { const v = a.slice().sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : 0; };
+  let c = nAll ? [+med(allXY.map((p) => p[0])).toFixed(2), +med(allXY.map((p) => p[1])).toFixed(2)] : [0, 0];
+  // snap to the real town nearest that point, so an island or crescent-shaped country never gets a pin in the sea
+  if (allXY.length) { let best = allXY[0], bd = 1e9; for (const p of allXY) { const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2; if (d < bd) { bd = d; best = p; } } c = best; }
+  centroids[cc] = c;
   const file = { label: lv ? lv.label : '', req: !!(lv && lv.req), regions: regions.map(([n, g]) => (g ? [n, g] : [n])), towns, tc, rc, c };
   fs.writeFileSync(path.join(pubDir, cc + '.json'), JSON.stringify(file));
   server[cc] = { req: file.req, r: regions.map(([n]) => n), t: towns };
 }
 fs.writeFileSync(path.join(pubDir, 'index.json'), JSON.stringify(Object.keys(server)));
+fs.writeFileSync(path.join(pubDir, 'centroids.json'), JSON.stringify(centroids));   // one pin spot per country, for the globe's visitor pins
 fs.writeFileSync(path.join(pub, 'src', 'data', 'visitor-places2.json'), JSON.stringify(server));
 const n = (cc) => Object.values(server[cc]?.t || {}).reduce((a, b) => a + b.length, 0);
 const where = (cc, town) => Object.entries(server[cc].t).filter(([, l]) => l.includes(town)).map(([k]) => k || '(none)').join('/');

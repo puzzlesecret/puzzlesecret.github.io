@@ -3163,7 +3163,7 @@ async function vbLoad() {
   try {
     const r = await fetch('/api/visitors', { cache: 'no-store' }); const d = await r.json();
     if (d && /^[A-Z]{2}$/.test(d.you || '')) vbState.you = d.you;
-    if (d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; vbState.total = Number(d.total) || d.entries.length; }
+    if (d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; vbState.total = Number(d.total) || d.entries.length; vbState.visits = (d.visits && typeof d.visits === 'object') ? d.visits : {}; }
     else vbState.entries = false;
   } catch (e) { vbState.entries = false; }
   vbRender();
@@ -3314,6 +3314,21 @@ const globePinMat = {
   iron: new THREE.MeshStandardMaterial({ color: 0x3a3028, metalness: 0.6, roughness: 0.5 }),
 };
 const globeCoords = {};
+let globeCentroids = null;
+// a visiting country's mark: a flat ink dot on the parchment (not a pin), a little larger for more visitors
+const globeDotGeo = new THREE.CircleGeometry(1, 20);
+const globeDotMat = new THREE.MeshBasicMaterial({ color: 0x5a1e10, transparent: true, opacity: 0.82, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+const CC_SAY = { GB: 'the UK', US: 'the US', NL: 'the Netherlands', AE: 'the UAE', PH: 'the Philippines', CZ: 'the Czech Republic', DO: 'the Dominican Republic', BS: 'the Bahamas' };
+function globeAddDot(lat, lon, n, cc) {
+  const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  const nrm = new THREE.Vector3(Math.cos(la) * Math.cos(lo), Math.sin(la), -Math.cos(la) * Math.sin(lo));
+  const d = new THREE.Mesh(globeDotGeo, globeDotMat);
+  const r = Math.min(0.02, 0.007 + 0.0025 * Math.log2(1 + n));
+  d.scale.set(r, r, r); d.position.copy(nrm).multiplyScalar(0.2905);
+  d.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nrm);
+  d.userData = { kind: 'globePin', label: 'Visitors from ' + (CC_SAY[cc] || ccName(cc)), visit: true, cc, n };
+  globe.spin.add(d); globe.pins.push(d); interactables.push(d);
+}
 function globeAddPin(lat, lon, mat, data) {
   const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
   const n = new THREE.Vector3(Math.cos(la) * Math.cos(lo), Math.sin(la), -Math.cos(la) * Math.sin(lo));
@@ -3327,6 +3342,15 @@ function globeAddPin(lat, lon, mat, data) {
 }
 function globePinLine(u) {
   if (u.home) return 'Telford, Shropshire, UK. GCBYBY3’s home town.';
+  const invite = study.signed ? '' : scrapsFound().length >= 4
+    ? ' Sign my visitors’ book on the desk and add your own pin.'
+    : ' Find all four pieces, then sign my visitors’ book on the desk.';
+  if (u.visit) {
+    const place = CC_SAY[u.cc] || ccName(u.cc);
+    const signed = (vbState.entries || []).filter((e) => e.cc === u.cc).length;
+    const head = u.n < 3 ? 'A few visitors from ' + place + ' so far' : u.n + ' visitors from ' + place + ' so far';
+    return head + (signed ? ' · ' + signed + ' signed my book.' : '.') + invite;
+  }
   const who = u.count === 1 ? 'One visitor' : u.count + ' visitors';
   const tail = study.signed ? '' : scrapsFound().length >= 4
     ? ' Sign my visitors’ book on the desk and add your own pin.'
@@ -3361,8 +3385,29 @@ async function globePins() {
     globeAddPin(at[0], at[1], globePinMat.brass, { count, where: vbWhere(e) });
     if (++n >= 80) break;
   }
+  // every country a visitor arrived from (counted once per browser at the PinPoint door)
+  const visits = Object.assign({}, vbState.visits || {});
+  if (globe.freshVisit && vbState.you) visits[vbState.you] = (visits[vbState.you] || 0) + 1;   // the count is cached a minute; show your own now
+  const codes = Object.keys(visits).filter((cc) => /^[A-Z]{2}$/.test(cc) && visits[cc] > 0);
+  if (codes.length) {
+    if (!globeCentroids) { try { globeCentroids = await (await fetch('/data/places2/centroids.json')).json(); } catch (err) { globeCentroids = {}; } }
+    codes.sort((a, b) => visits[b] - visits[a]).slice(0, 120).forEach((cc) => {
+      const at = globeCentroids[cc]; if (Array.isArray(at)) globeAddDot(at[0], at[1], visits[cc], cc);
+    });
+  }
 }
-if (globe) { globeAddPin(52.68, -2.45, globePinMat.red, { home: true }); vbLoad().then(globePins); }
+// a browser that reached the room without passing the door page (e.g. "back into the study") counts here, once
+function globeCountVisit() {
+  try {
+    if (navigator.webdriver || localStorage.getItem('ps_globe_counted_v1')) return Promise.resolve(false);
+    return fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"visit":true}' })
+      .then((r) => r.json()).then((d) => { if (d && d.ok && d.final) localStorage.setItem('ps_globe_counted_v1', '1'); return !!(d && d.counted); }).catch(() => false);
+  } catch (e) { return Promise.resolve(false); }
+}
+if (globe) {
+  globeAddPin(52.68, -2.45, globePinMat.red, { home: true });
+  globeCountVisit().then((fresh) => { globe.freshVisit = fresh; return vbLoad(); }).then(globePins);
+}
 function openGuestLog() {
   if (!GUEST) return;
   goThen(0.2, -1.4, () => {
