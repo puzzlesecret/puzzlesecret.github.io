@@ -1,10 +1,10 @@
 // The PinPoint Visitors' Book (Dan, 2026-11-14) — a public, optional guest book in the PinPoint study.
 //
-// What a finder may leave, and nothing else: 2–3 initials (A–Z), a COUNTRY, and the nearest CITY of
-// 15,000+ people chosen from the GeoNames list for that country (src/data/visitor-places.json, built
-// by scripts/build-visitor-places.mjs). Nobody can type free text: every field is checked against a
-// fixed pattern or list. Initials + a city that size identify nobody — the same discipline as the
-// Sanctum Wall (api/carve.js), widened only by a picked-from-a-list place.
+// What a finder may leave, and nothing else: 2–3 initials (A–Z), a COUNTRY, a state / province / county
+// where we offer one (required in the US, Canada and Australia), and optionally the nearest TOWN of
+// 15,000+ people — every one picked from the GeoNames lists in src/data/visitor-places2.json (built by
+// scripts/build-visitor-places.mjs). Nobody can type free text: every field is checked against a fixed
+// pattern or list. No village is ever listed, so initials + place never single anyone out.
 //
 // It is NOT a geocaching log and never part of the find (Groundspeak bans extra logging requirements);
 // the copy says so. Storage: a "PinPoint Visitors" tab of the Sanctum Wall Google Sheet, through the
@@ -17,7 +17,7 @@
 export const prerender = false;
 
 import { notify } from '../../lib/keeper-telegram.js';
-import PLACES from '../../data/visitor-places.json';
+import PLACES from '../../data/visitor-places2.json';
 
 const HOOK = (import.meta.env.VISITORS_WEBHOOK ?? process.env.VISITORS_WEBHOOK)
   ?? (import.meta.env.PROD ? (import.meta.env.SANCTUM_WEBHOOK ?? process.env.SANCTUM_WEBHOOK) : undefined);
@@ -29,14 +29,24 @@ const RE_INI = /^[A-Z]{2,3}$/;
 const BLOCK = ['ASS', 'FAG', 'FUK', 'FCK', 'FUX', 'FKU', 'KKK', 'NIG', 'NGR', 'CUM', 'TIT',
   'SEX', 'DIK', 'DCK', 'COK', 'KOK', 'PIS', 'VAG', 'HOE', 'JIZ', 'FAP', 'KYS', 'FU', 'FK', 'KY', 'XX', 'WTF', 'STFU'];
 
-export function checkEntry(body) {
+const has = (cc) => Object.prototype.hasOwnProperty.call(PLACES, cc);
+const townIn = (cc, region, town) => {
+  const t = PLACES[cc].t;
+  if (region) return Array.isArray(t[region]) && t[region].includes(town);
+  return Object.values(t).some((l) => l.includes(town));
+};
+// `forWrite` enforces the required region; rows read back (older rows had a town and no region) don't need it.
+export function checkEntry(body, forWrite = true) {
   const initials = String(body && body.initials || '').toUpperCase().replace(/[^A-Z]/g, '');
   const cc = String(body && body.cc || '').toUpperCase();
-  const place = String(body && body.place || '').normalize('NFC').trim();
+  const region = String(body && body.region || '').normalize('NFC').trim();
+  const town = String(body && body.town || '').normalize('NFC').trim();
   if (!RE_INI.test(initials) || BLOCK.includes(initials)) return { ok: false, reason: 'bad_initials' };
-  if (!/^[A-Z]{2}$/.test(cc) || !Object.prototype.hasOwnProperty.call(PLACES, cc)) return { ok: false, reason: 'bad_country' };
-  if (!place || !PLACES[cc].includes(place)) return { ok: false, reason: 'bad_place' };
-  return { ok: true, initials, cc, place };
+  if (!/^[A-Z]{2}$/.test(cc) || !has(cc)) return { ok: false, reason: 'bad_country' };
+  if (region && !PLACES[cc].r.includes(region)) return { ok: false, reason: 'bad_region' };
+  if (forWrite && PLACES[cc].req && !region) return { ok: false, reason: 'need_region' };
+  if (town && !townIn(cc, region, town)) return { ok: false, reason: 'bad_place' };
+  return { ok: true, initials, cc, region, town };
 }
 
 // per-instance only — the real caps live in the Apps Script (shared state, under a lock)
@@ -60,7 +70,7 @@ let cache = { t: 0, entries: null, total: 0 };
 
 export async function GET({ request }) {
   const you = (request.headers.get('x-vercel-ip-country') || '').toUpperCase();
-  const youOk = /^[A-Z]{2}$/.test(you) && Object.prototype.hasOwnProperty.call(PLACES, you) ? you : '';
+  const youOk = /^[A-Z]{2}$/.test(you) && has(you) ? you : '';
   if (!HOOK) return json({ ok: false, reason: 'not_configured', you: youOk }, 503);
   if (!cache.entries || Date.now() - cache.t > 60000) {
     try {
@@ -71,8 +81,8 @@ export async function GET({ request }) {
       // re-check every row on the way out too: only list-valid entries are ever shown
       const entries = [];
       for (const row of d.rows) {
-        const c = checkEntry({ initials: row.i, cc: row.cc, place: row.p });
-        if (c.ok) entries.push({ i: c.initials, p: c.place, cc: c.cc, m: monthOf(row.t) });
+        const c = checkEntry({ initials: row.i, cc: row.cc, region: row.r, town: row.p }, false);
+        if (c.ok) entries.push({ i: c.initials, p: c.town, r: c.region, cc: c.cc, m: monthOf(row.t) });
         if (entries.length >= 150) break;
       }
       cache = { t: Date.now(), entries, total: Number(d.total) || entries.length };
@@ -95,12 +105,12 @@ export async function POST({ request, clientAddress }) {
     const r = await fetch(HOOK, {
       method: 'POST', redirect: 'follow',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tab: 'visitors', initials: c.initials, cc: c.cc, place: c.place, auth: AUTH }),
+      body: JSON.stringify({ tab: 'visitors', initials: c.initials, cc: c.cc, place: c.town, region: c.region, auth: AUTH }),
       signal: AbortSignal.timeout(8000),
     });
     const d = await r.json();
     if (d && d.ok) {
-      // the Keeper's line carries initials + country only — never the city (privacy §2)
+      // the Keeper's line carries initials + country only — never the region or town (privacy §2; keep it so)
       await notify(`\u{1F4D6} PinPoint visitors' book · signed “${c.initials}” · ${c.cc}${d.dup ? ' (repeat, not added)' : ''}`);
       return json({ ok: true, dup: !!d.dup });
     }

@@ -3016,21 +3016,33 @@ function openScrapBoard() {
 function setLogGlow() { if (logGlow) logGlow.material.opacity = (study.boardSolved && !study.logged) ? 0.6 : 0.0; }
 setLogGlow();
 /* ---- THE VISITORS' BOOK (Dan, 2026-11-14) — the desk's book, open to every visitor to read; a finder
-   with all four pieces may sign it: initials + country + the nearest city of 15,000+ picked from a list.
+   with all four pieces may sign it: initials + country + (state / province / county, required in the US,
+   Canada and Australia) + optionally the nearest town of 15,000+, every part picked from a list.
    Optional and never part of the find (Groundspeak bans extra logging requirements), so every finder
    gets the thanks whether they sign or not. Everything is built with text nodes, never innerHTML. --- */
 const vbEl = document.getElementById('vb'), vbForm = document.getElementById('vbForm'), vbIni = document.getElementById('vbIni');
 const vbCc = document.getElementById('vbCc'), vbCity = document.getElementById('vbCity'), vbSug = document.getElementById('vbSug');
+const vbReg = document.getElementById('vbReg'), vbRegWrap = document.getElementById('vbRegWrap'), vbRegL = document.getElementById('vbRegL');
 const vbMsg = document.getElementById('vbMsg'), vbCount = document.getElementById('vbCount'), vbList = document.getElementById('vbList');
-const vbSign = document.getElementById('vbSign');
-const vbState = { entries: null, total: 0, you: '', place: '', lists: {}, codes: null, sending: false, opts: [], active: -1 };
+const vbPreview = document.getElementById('vbPreview');
+const vbState = { entries: null, total: 0, you: '', place: '', data: {}, codes: null, sending: false, opts: [], active: -1 };
 let ccName = (cc) => cc;
 try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); ccName = (cc) => { try { return dn.of(cc) || cc; } catch (e) { return cc; } }; } catch (e) { /* old browser: codes */ }
+const ccShort = (cc) => (cc === 'US' ? 'USA' : cc === 'GB' ? 'UK' : ccName(cc));
 const fold = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// "near Hamburg, New York, USA" · "New York, USA" · "near Telford, UK" (older entries had no region) · "Germany"
+function vbWhere(e) {
+  const parts = [];
+  if (e.p) parts.push('near ' + e.p);
+  if (e.r && e.r !== e.p) parts.push(e.r);
+  parts.push(ccShort(e.cc));
+  return parts.join(', ');
+}
+const vbSame = (a, b) => !!(a && b && a.i === b.i && (a.p || '') === (b.p || '') && (a.r || '') === (b.r || '') && a.cc === b.cc);
 function vbRow(e, mine) {
   const li = document.createElement('li'); if (mine) li.className = 'you';
   const b = document.createElement('b'); b.textContent = e.i; li.appendChild(b);
-  li.appendChild(document.createTextNode('near ' + e.p + ', ' + ccName(e.cc) + ' '));
+  li.appendChild(document.createTextNode(vbWhere(e) + ' '));
   const m = document.createElement('i'); m.textContent = e.m ? '· ' + e.m : ''; li.appendChild(m);
   return li;
 }
@@ -3038,8 +3050,8 @@ function vbRender() {
   vbList.textContent = '';
   const mine = study.signed && study.signed.i ? study.signed : null;
   const rows = (vbState.entries || []).slice();
-  if (mine && !rows.some((e) => e.i === mine.i && e.p === mine.p && e.cc === mine.cc)) rows.unshift(mine);
-  rows.forEach((e) => vbList.appendChild(vbRow(e, mine && e.i === mine.i && e.p === mine.p && e.cc === mine.cc)));
+  if (mine && !rows.some((e) => vbSame(e, mine))) rows.unshift(mine);
+  rows.forEach((e) => vbList.appendChild(vbRow(e, vbSame(e, mine))));
   const n = Math.max(vbState.total, rows.length);
   if (vbState.entries === null) vbCount.textContent = 'Opening the book…';
   else if (vbState.entries === false) vbCount.textContent = 'The pages are damp. The list will show when you have signal.';
@@ -3057,7 +3069,7 @@ async function vbLoad() {
 }
 async function vbCodes() {
   if (vbState.codes) return;
-  try { const c = await (await fetch('/data/places/index.json')).json(); if (Array.isArray(c)) vbState.codes = c.filter((x) => /^[A-Z]{2}$/.test(x)); } catch (e) { return; }
+  try { const c = await (await fetch('/data/places2/index.json')).json(); if (Array.isArray(c)) vbState.codes = c.filter((x) => /^[A-Z]{2}$/.test(x)); } catch (e) { return; }
   vbState.codes.map((cc) => [cc, ccName(cc)]).sort((a, b) => a[1].localeCompare(b[1], 'en')).forEach(([cc, nm]) => {
     const o = document.createElement('option'); o.value = cc; o.textContent = nm; vbCc.appendChild(o);
   });
@@ -3065,38 +3077,92 @@ async function vbCodes() {
 }
 async function vbCcChanged() {
   const cc = vbCc.value; vbState.place = ''; vbCity.value = ''; vbSugHide();
-  vbCity.disabled = !cc; vbValidate();
-  if (cc && !vbState.lists[cc]) {
-    try { const l = await (await fetch('/data/places/' + cc + '.json')).json(); if (Array.isArray(l)) vbState.lists[cc] = l.map((p) => [p, fold(p)]); } catch (e) { vbMsg.textContent = 'The ink won’t take out here. Try again when you have signal.'; }
+  vbReg.textContent = ''; vbRegWrap.hidden = true; vbCity.disabled = true; vbPreviewUpdate();
+  if (!cc) return;
+  if (!vbState.data[cc]) {
+    try {
+      const d = await (await fetch('/data/places2/' + cc + '.json')).json();
+      if (d && d.towns && typeof d.towns === 'object') {
+        // each town keeps the region it sits in, so picking a town can fill the region in
+        const towns = [];
+        for (const [reg, list] of Object.entries(d.towns)) if (Array.isArray(list)) list.forEach((t) => towns.push([t, fold(t), reg]));
+        towns.sort((a, b) => a[0].localeCompare(b[0], 'en'));
+        vbState.data[cc] = { label: String(d.label || ''), req: !!d.req, regions: Array.isArray(d.regions) ? d.regions : [], towns };
+      }
+    } catch (e) { vbMsg.textContent = 'The ink won’t take out here. Try again when you have signal.'; }
   }
+  if (cc !== vbCc.value) return;              // the country changed again while that was loading
+  const D = vbState.data[cc]; if (!D) return;
+  if (D.regions.length) {
+    vbRegL.textContent = D.label + (D.req ? '' : ' (optional)');
+    const first = document.createElement('option'); first.value = '';
+    first.textContent = D.req ? 'Choose your ' + D.label.toLowerCase().split(' ')[0] + '…' : 'Leave blank';
+    vbReg.appendChild(first);
+    let grp = null, grpName = null;
+    D.regions.forEach(([name, group]) => {
+      if (group && group !== grpName) { grp = document.createElement('optgroup'); grp.label = group; grpName = group; vbReg.appendChild(grp); }
+      const o = document.createElement('option'); o.value = name; o.textContent = name; (group ? grp : vbReg).appendChild(o);
+    });
+    vbRegWrap.hidden = false;
+  }
+  vbCity.disabled = false; vbPreviewUpdate();
+}
+function vbTownsFor() {
+  const D = vbState.data[vbCc.value]; if (!D) return [];
+  const r = vbRegWrap.hidden ? '' : vbReg.value;
+  return r ? D.towns.filter((t) => t[2] === r) : D.towns;
 }
 function vbSugHide() { vbSug.hidden = true; vbSug.textContent = ''; vbState.opts = []; vbState.active = -1; vbCity.setAttribute('aria-expanded', 'false'); }
-function vbPick(p) { vbState.place = p; vbCity.value = p; vbSugHide(); vbValidate(); }
+function vbPick(t) {
+  vbState.place = t[0]; vbCity.value = t[0]; vbSugHide();
+  // a town picked before a region fills the region in (Telford -> Shropshire) when it sits in only one
+  if (!vbRegWrap.hidden && !vbReg.value) {
+    const regs = new Set(vbState.data[vbCc.value].towns.filter((x) => x[0] === t[0]).map((x) => x[2]).filter(Boolean));
+    if (regs.size === 1) vbReg.value = [...regs][0];
+  }
+  vbMsg.textContent = ''; vbPreviewUpdate();
+}
 function vbSearch() {
-  vbState.place = ''; vbValidate();
-  const list = vbState.lists[vbCc.value] || [], q = fold(vbCity.value.trim());
+  vbState.place = ''; vbPreviewUpdate();
+  const list = vbTownsFor(), q = fold(vbCity.value.trim());
   if (!q) { vbSugHide(); return; }
   const starts = [], words = [];
-  for (const [p, f] of list) {
-    if (f.startsWith(q)) starts.push(p); else if (f.includes(' ' + q) || f.includes('-' + q)) words.push(p);
+  for (const t of list) {
+    if (t[1].startsWith(q)) starts.push(t); else if (t[1].includes(' ' + q) || t[1].includes('-' + q)) words.push(t);
     if (starts.length >= 8) break;
   }
   const opts = starts.concat(words).slice(0, 8);
+  const showReg = !vbReg.value && opts.some((t) => t[2]);
   vbSug.textContent = ''; vbState.opts = opts; vbState.active = -1;
-  if (!opts.length) { const li = document.createElement('li'); li.textContent = 'No city of 15,000+ by that name. Try the nearest bigger one.'; li.setAttribute('aria-disabled', 'true'); vbSug.appendChild(li); }
-  opts.forEach((p, k) => {
-    const li = document.createElement('li'); li.textContent = p; li.id = 'vbOpt' + k; li.setAttribute('role', 'option');
-    li.addEventListener('pointerdown', (e) => { e.preventDefault(); vbPick(p); });
+  if (!opts.length) { const li = document.createElement('li'); li.textContent = 'No town of 15,000+ by that name here. Try the nearest bigger one, or leave it blank.'; li.setAttribute('aria-disabled', 'true'); vbSug.appendChild(li); }
+  opts.forEach((t, k) => {
+    const li = document.createElement('li'); li.textContent = showReg && t[2] ? t[0] + ', ' + t[2] : t[0]; li.id = 'vbOpt' + k; li.setAttribute('role', 'option');
+    li.addEventListener('pointerdown', (e) => { e.preventDefault(); vbPick(t); });
     vbSug.appendChild(li);
   });
   vbSug.hidden = false; vbCity.setAttribute('aria-expanded', 'true');
 }
-function vbValidate() {
-  const ok = /^[A-Z]{2,3}$/.test(vbIni.value) && !!vbCc.value && !!vbState.place && !vbState.sending;
-  vbSign.disabled = !ok; return ok;
+function vbEntry() { return { i: vbIni.value, p: vbState.place, r: vbRegWrap.hidden ? '' : vbReg.value, cc: vbCc.value }; }
+// what is still missing, in the Keeper's words ('' = ready). The button stays live, so a tap always explains.
+function vbMissing() {
+  if (!/^[A-Z]{2,3}$/.test(vbIni.value)) return 'Two or three letters for your initials, please.';
+  if (!vbCc.value) return 'Choose your country.';
+  const D = vbState.data[vbCc.value];
+  if (!D) return 'One moment, the pages are turning.';
+  if (D.req && D.regions.length && !vbReg.value) return 'Choose your ' + D.label.toLowerCase().split(' ')[0] + '.';
+  if (vbCity.value.trim() && !vbState.place) return 'Pick your town from the list, or clear it.';
+  return '';
 }
-vbIni.addEventListener('input', () => { const v = vbIni.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); if (v !== vbIni.value) vbIni.value = v; vbMsg.textContent = ''; vbValidate(); });
-vbCc.addEventListener('change', vbCcChanged);
+function vbPreviewUpdate() {
+  vbPreview.textContent = '';
+  if (!/^[A-Z]{2,3}$/.test(vbIni.value) || !vbCc.value) return;
+  vbPreview.appendChild(document.createTextNode('You’ll appear as: '));
+  const b = document.createElement('b'); b.textContent = vbIni.value; vbPreview.appendChild(b);
+  vbPreview.appendChild(document.createTextNode(' ' + vbWhere(vbEntry())));
+}
+vbIni.addEventListener('input', () => { const v = vbIni.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); if (v !== vbIni.value) vbIni.value = v; vbMsg.textContent = ''; vbPreviewUpdate(); });
+vbCc.addEventListener('change', () => { vbMsg.textContent = ''; vbCcChanged(); });
+vbReg.addEventListener('change', () => { vbMsg.textContent = ''; vbState.place = ''; vbCity.value = ''; vbSugHide(); vbPreviewUpdate(); });
 vbCity.addEventListener('input', () => { vbMsg.textContent = ''; vbSearch(); });
 vbCity.addEventListener('keydown', (e) => {
   const n = vbState.opts.length; if (!n || vbSug.hidden) return;
@@ -3106,15 +3172,17 @@ vbCity.addEventListener('keydown', (e) => {
     vbCity.setAttribute('aria-activedescendant', 'vbOpt' + vbState.active);
   } else if (e.key === 'Enter' && vbState.active >= 0) { e.preventDefault(); vbPick(vbState.opts[vbState.active]); }
 });
-[vbIni, vbCc, vbCity].forEach((el) => el.addEventListener('focus', () => { if (IS_TOUCH) setTimeout(() => el.scrollIntoView({ block: 'center' }), 300); }));
+// on a phone, lift the field to the top so the keyboard never hides the town suggestions under it
+[vbIni, vbCc, vbReg, vbCity].forEach((el) => el.addEventListener('focus', () => { if (IS_TOUCH) setTimeout(() => el.scrollIntoView({ block: 'start' }), 300); }));
 document.getElementById('vbSkip').addEventListener('click', () => { vbForm.hidden = true; scrapSay.textContent = 'As you like. My thanks for the find. Now go and sign the real log, out where the note says.'; });
 vbForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!vbValidate()) { vbMsg.textContent = vbState.place ? 'Two or three letters for your initials, please.' : 'Pick your city from the list.'; return; }
-  const entry = { i: vbIni.value, p: vbState.place, cc: vbCc.value };
-  vbState.sending = true; vbValidate(); vbMsg.textContent = 'Writing…';
+  if (vbState.sending) return;
+  const miss = vbMissing(); if (miss) { vbMsg.textContent = miss; return; }
+  const entry = vbEntry();
+  vbState.sending = true; vbMsg.textContent = 'Writing…';
   let d = null;
-  try { const r = await fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ initials: entry.i, cc: entry.cc, place: entry.p }) }); d = await r.json(); } catch (err) { d = null; }
+  try { const r = await fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ initials: entry.i, cc: entry.cc, region: entry.r, town: entry.p }) }); d = await r.json(); } catch (err) { d = null; }
   vbState.sending = false;
   if (d && d.ok) {
     const now = new Date(); entry.m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getUTCMonth()] + ' ' + now.getUTCFullYear();
@@ -3126,10 +3194,10 @@ vbForm.addEventListener('submit', async (e) => {
     if (d.pending) setTimeout(() => { vbState.entries = null; vbLoad(); }, 4000);
     return;
   }
-  vbValidate();
   const why = d && d.reason;
   vbMsg.textContent = why === 'bad_initials' ? 'Those initials won’t go in my book. Try your own.'
-    : why === 'bad_place' || why === 'bad_country' ? 'Pick your city from the list.'
+    : why === 'need_region' ? (vbMissing() || 'Choose your state or province.')
+    : why === 'bad_place' || why === 'bad_country' || why === 'bad_region' ? 'Pick your place from the lists.'
     : why === 'slow_down' || why === 'full' ? 'The book is resting. Try again in a while.'
     : 'The ink won’t take out here. Try again when you have signal.';
 });
@@ -3149,7 +3217,7 @@ function openGuestLog() {
       : 'My thanks for the find. Leave your mark below if you like, then go and sign the real log, out where the note says.';
     vbForm.hidden = !(all && !study.signed); vbMsg.textContent = '';
     showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false;
-    vbRender(); vbLoad(); if (all && !study.signed) { vbCodes(); vbValidate(); }
+    vbRender(); vbLoad(); if (all && !study.signed) { vbCodes(); vbPreviewUpdate(); }
     if (first && !REDUCED) burstConfetti();
     setLogGlow(); renderGpsr(true);
   });
