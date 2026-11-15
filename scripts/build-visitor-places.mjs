@@ -125,9 +125,10 @@ for (const c of rows) {
   if (leaky(name)) { dropped.leak++; continue; }
   if (!okName(name)) { dropped.bad++; continue; }
   if (code === 'PPL' && pop < 100000 && big.some((b) => b.cc === cc && b.a1 === c[10] && b.name !== name && km(b.lat, b.lon, +c[4], +c[5]) < 10)) { dropped.hood++; continue; }
-  const o = (out[cc] ||= { towns: {} });
+  const o = (out[cc] ||= { towns: {}, xy: {} });
   const reg = LEVEL[cc] ? regionOfRow(c) : '';
   ((o.towns[reg] ||= new Set())).add(name);
+  const key = reg + '|' + name; if (!o.xy[key]) o.xy[key] = [Math.round(+c[4] * 100) / 100, Math.round(+c[5] * 100) / 100];   // [lat, lon] for the globe's pins
 }
 const pub = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const pubDir = path.join(pub, 'public', 'data', 'places2');
@@ -141,10 +142,19 @@ for (const cc of Object.keys(out).sort()) {
     const seen = new Map();
     for (const [n, g] of regionsOf(cc)) { if (okName(n) && !seen.has(n)) seen.set(n, g); else if (!okName(n)) console.warn('region skipped', cc, n); }
     regions = [...seen.entries()].sort((a, b) => (a[1] === b[1] ? 0 : a[1] < b[1] ? -1 : 1) || sortEn(a[0], b[0]));
-    for (const k of Object.keys(out[cc].towns)) if (k && !seen.has(k)) { console.warn('town region not offered', cc, k); (out[cc].towns[''] ||= new Set()); for (const t of out[cc].towns[k]) out[cc].towns[''].add(t); delete out[cc].towns[k]; }
+    for (const k of Object.keys(out[cc].towns)) if (k && !seen.has(k)) { console.warn('town region not offered', cc, k); (out[cc].towns[''] ||= new Set()); for (const t of out[cc].towns[k]) { out[cc].towns[''].add(t); out[cc].xy['|' + t] ||= out[cc].xy[k + '|' + t]; } delete out[cc].towns[k]; }
   }
   const towns = Object.fromEntries(Object.entries(out[cc].towns).map(([k, s]) => [k, [...s].sort(sortEn)]));
-  const file = { label: lv ? lv.label : '', req: !!(lv && lv.req), regions: regions.map(([n, g]) => (g ? [n, g] : [n])), towns };
+  // positions for the Keeper's globe: each town (aligned with towns[region]), each region's middle (mean of its
+  // towns) and the country's middle. Pins never go finer than a town of 15,000+.
+  const tc = {}, rc = {}; let sumLat = 0, sumLon = 0, nAll = 0;
+  for (const [k, list] of Object.entries(towns)) {
+    tc[k] = list.map((t) => out[cc].xy[k + '|' + t] || [0, 0]);
+    if (k && tc[k].length) rc[k] = [+(tc[k].reduce((a, p) => a + p[0], 0) / tc[k].length).toFixed(2), +(tc[k].reduce((a, p) => a + p[1], 0) / tc[k].length).toFixed(2)];
+    tc[k].forEach(([la, lo]) => { sumLat += la; sumLon += lo; nAll++; });
+  }
+  const c = nAll ? [+(sumLat / nAll).toFixed(2), +(sumLon / nAll).toFixed(2)] : [0, 0];
+  const file = { label: lv ? lv.label : '', req: !!(lv && lv.req), regions: regions.map(([n, g]) => (g ? [n, g] : [n])), towns, tc, rc, c };
   fs.writeFileSync(path.join(pubDir, cc + '.json'), JSON.stringify(file));
   server[cc] = { req: file.req, r: regions.map(([n]) => n), t: towns };
 }

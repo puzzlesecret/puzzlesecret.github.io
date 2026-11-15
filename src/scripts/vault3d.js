@@ -671,6 +671,7 @@ if (!GUEST) [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z], i) => {
    the book's own study is untouched. Positions were checked by seven critiques and a headless
    click test (props are in `interactables`, so they block a tap aimed at a scrap behind them). */
 const guestProps = [], guestObstacles = [];
+let globe = null;   // the Keeper's globe (guest room only), built below
 if (GUEST) {
   // seeded so every visit sees the same four balls, each crumpled differently
   const rng = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -781,17 +782,82 @@ if (GUEST) {
   prop(barrel, { label: 'A barrel', say: 'Rainwater, for the ink. I would not drink it.' }, [-2.25, 2.6]);
   guestObstacles.push({ x: -3.15, z: 3.05, r: 0.4 });
 
-  // PACKING CRATES in the front-right corner — nothing behind them
-  const crates = new THREE.Group(); crates.position.set(2.85, 0, 3.0);
-  const crate = (s, x, y, z, ry) => {
-    const c = new THREE.Group(); c.position.set(x, y, z); c.rotation.y = ry; crates.add(c);
-    box(s, s, s, pine, 0, s / 2, 0, 0, c);
-    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b2]) => box(0.05, s + 0.01, 0.05, M.woodDark, a * (s / 2 - 0.02), s / 2, b2 * (s / 2 - 0.02), 0, c));
-    const brace = box(0.05, s * 1.25, 0.02, M.woodDark, 0, s / 2, s / 2 + 0.006, 0, c); brace.rotation.z = Math.PI / 4;
+  // THE KEEPER'S GLOBE in the front-right corner (Dan, 2026-11-14; it replaced two packing crates).
+  // A floor-standing library globe: accurate coastlines drawn in code from Natural Earth (public domain;
+  // /data/globe-land.json, scripts/build-globe-land.mjs) as ink on parchment — coastlines only, no borders.
+  // Drag it to spin. Brass pins mark where Visitors' Book signers come from (never finer than a town of
+  // 15,000+, never initials), a red pin marks Telford, and a brass plaque carries Geocaching HQ's numbers.
+  const gb = (globe = { group: new THREE.Group(), spin: new THREE.Group(), vel: 0, pins: [], dragging: null });
+  gb.group.position.set(2.85, 0, 3.0); gb.group.rotation.y = 2.33;          // local +X (longitude 0) faces the room
+  const globeBrass = new THREE.MeshStandardMaterial({ map: goldFoilTex, color: 0xc29a4c, metalness: 0.45, roughness: 0.38, emissive: 0x4a3010, emissiveIntensity: 0.5 });
+  const GR = 0.29, GY = 0.86;                                                // radius, centre height
+  [0, 1, 2].forEach((k) => {                                                 // three turned legs and a stretcher
+    const a = k * Math.PI * 2 / 3, x = Math.cos(a) * 0.3, z = Math.sin(a) * 0.3;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.03, GY, 10), M.woodDark);
+    leg.position.set(x, GY / 2, z); gb.group.add(leg);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), M.woodDark); foot.position.set(x, 0.03, z); gb.group.add(foot);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 8), M.woodDark);
+    bar.position.set(x / 2, 0.22, z / 2); bar.rotation.set(0, -a, Math.PI / 2); gb.group.add(bar);
+  });
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.08, 12), M.woodDark); hub.position.y = 0.22; gb.group.add(hub);
+  const horizon = new THREE.Mesh(new THREE.RingGeometry(GR + 0.035, GR + 0.1, 64), globeBrass);
+  horizon.rotation.x = -Math.PI / 2; horizon.position.y = GY; gb.group.add(horizon);
+  const horizonEdge = new THREE.Mesh(new THREE.CylinderGeometry(GR + 0.1, GR + 0.1, 0.025, 64, 1, true), globeBrass);
+  horizonEdge.position.y = GY - 0.012; gb.group.add(horizonEdge);
+  const tilt = new THREE.Group(); tilt.position.y = GY; tilt.rotation.x = 0.409; gb.group.add(tilt);   // the earth's 23.4° tilt
+  const meridian = new THREE.Mesh(new THREE.TorusGeometry(GR + 0.022, 0.009, 8, 72), globeBrass); meridian.rotation.y = Math.PI / 2; tilt.add(meridian);   // rings the globe as you face it
+  [1, -1].forEach((s) => { const cap = new THREE.Mesh(new THREE.SphereGeometry(0.014, 10, 8), globeBrass); cap.position.y = s * (GR + 0.012); tilt.add(cap); });
+  tilt.add(gb.spin);
+  // the map: parchment first, the coastlines drawn in as soon as the outline file arrives
+  const touchy = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;   // (IS_TOUCH is declared further down)
+  const gcv = document.createElement('canvas'); gcv.width = touchy || renderer.capabilities.maxTextureSize < 4096 ? 2048 : 4096; gcv.height = gcv.width / 2;
+  const gtex = new THREE.CanvasTexture(gcv); gtex.colorSpace = THREE.SRGBColorSpace; gtex.wrapS = THREE.RepeatWrapping;
+  gtex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const drawGlobe = (rings) => {
+    const g = gcv.getContext('2d'), W = gcv.width, H = gcv.height, X = (lon) => (lon + 180) / 360 * W, Y = (lat) => (90 - lat) / 180 * H;
+    const sea = g.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, W * 0.6);
+    sea.addColorStop(0, '#b8955a'); sea.addColorStop(1, '#94723f'); g.fillStyle = sea; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(90,60,30,0.22)'; g.lineWidth = W / 2048;            // graticule every 15°
+    for (let lo = -180; lo <= 180; lo += 15) { g.beginPath(); g.moveTo(X(lo), 0); g.lineTo(X(lo), H); g.stroke(); }
+    for (let la = -75; la <= 75; la += 15) { g.beginPath(); g.moveTo(0, Y(la)); g.lineTo(W, Y(la)); g.stroke(); }
+    g.strokeStyle = 'rgba(120,40,20,0.35)'; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(W, Y(0)); g.stroke();   // the equator, in red ink
+    if (!rings) { gtex.needsUpdate = true; return; }
+    const path = (r) => { g.beginPath(); for (let i = 0; i < r.length; i += 2) { const x = X(r[i] / 10), y = Y(r[i + 1] / 10); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); };
+    g.fillStyle = '#ecdcae'; rings.forEach((r) => { path(r); g.fill(); });
+    // coastlines, skipping the straight edges the map data adds at the date line and the south pole
+    const ink = (w, a) => {
+      g.strokeStyle = 'rgba(74,46,24,' + a + ')'; g.lineWidth = w * W / 2048; g.lineJoin = 'round';
+      rings.forEach((r) => {
+        g.beginPath();
+        for (let i = 0; i < r.length; i += 2) {
+          const lo = r[i] / 10, la = r[i + 1] / 10, pl = r[(i - 2 + r.length) % r.length] / 10, pa = r[(i - 1 + r.length) % r.length] / 10;
+          const fake = (Math.abs(lo) >= 179.9 && Math.abs(pl) >= 179.9) || (la <= -89.5 && pa <= -89.5);
+          if (i === 0 || fake) g.moveTo(X(lo), Y(la)); else g.lineTo(X(lo), Y(la));
+        }
+        g.stroke();
+      });
+    };
+    ink(6, 0.16); ink(2.2, 0.9);                                             // a soft engraved fringe, then the line
+    gtex.needsUpdate = true;
   };
-  crate(0.6, 0, 0, 0, 0.1); crate(0.46, 0.04, 0.6, -0.02, 0.36);
-  contact(0.95, 0.95, 0, 0, 0, crates);
-  prop(crates, { label: 'Packing crates', say: 'Old packing crates, nailed shut. Nothing for you in there.' }, [2.2, 2.4]);
+  drawGlobe(null);
+  fetch('/data/globe-land.json').then((r) => r.json()).then((d) => { if (d && Array.isArray(d.rings)) drawGlobe(d.rings); }).catch(() => {});
+  const sphereMat = new THREE.MeshStandardMaterial({ map: gtex, roughness: 0.82, metalness: 0, emissive: 0xffffff, emissiveMap: gtex, emissiveIntensity: 0.07 });
+  gb.sphere = new THREE.Mesh(new THREE.SphereGeometry(GR, 64, 32), sphereMat);
+  gb.sphere.userData = { kind: 'globe', label: "The Keeper's globe · drag to spin" };
+  gb.spin.add(gb.sphere);
+  // the brass plaque on the front of the horizon ring
+  const pcv = document.createElement('canvas'); pcv.width = 512; pcv.height = 128;
+  { const g = pcv.getContext('2d'); g.fillStyle = '#9a7434'; g.fillRect(0, 0, 512, 128); g.strokeStyle = '#5a3e14'; g.lineWidth = 6; g.strokeRect(6, 6, 500, 116);
+    g.fillStyle = '#2a1a06'; g.textAlign = 'center'; g.font = 'bold 34px Georgia, serif'; g.fillText('3.4 million active geocaches', 256, 56);
+    g.font = 'italic 26px Georgia, serif'; g.fillText('in 191 countries  ·  Geocaching HQ, 2026', 256, 98); }
+  const ptex = new THREE.CanvasTexture(pcv); ptex.colorSpace = THREE.SRGBColorSpace;
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.05), new THREE.MeshStandardMaterial({ map: ptex, metalness: 0.4, roughness: 0.45, emissive: 0xffffff, emissiveMap: ptex, emissiveIntensity: 0.18 }));
+  plaque.position.set(GR + 0.11, GY - 0.012, 0); plaque.rotation.y = Math.PI / 2; gb.group.add(plaque);
+  plaque.userData = { kind: 'globePlaque', label: 'A brass plaque' };
+  contact(0.95, 0.95, 0, 0, 0, gb.group);
+  scene.add(gb.group);
+  guestProps.push(gb.sphere, plaque);
   guestObstacles.push({ x: 2.85, z: 3.0, r: 0.55 });
 
   // THE DESK hides a piece underneath: panels close its front and left end (seen from the door, the
@@ -2158,7 +2224,20 @@ function findKind(obj) {
   while (o) { if (o.userData && o.userData.kind) return o; o = o.parent; }
   return null;
 }
+// The Keeper's globe takes a drag before the camera does: a press that lands on the globe spins it,
+// a press anywhere else looks around as before. A tap (no drag) still goes to the normal handlers.
+function globeGrab(e) {
+  if (!globe || overlayOpen()) return false;
+  const hits = pick(e.clientX, e.clientY, interactables);
+  const top = hits.length ? findKind(hits[0].object) : null;
+  if (!top || top !== globe.sphere || hits[0].distance > 3.2) return false;
+  globe.dragging = { x: e.clientX, t: performance.now(), lastX: e.clientX, lastT: performance.now(), moved: false };
+  globe.vel = 0;
+  renderer.domElement.setPointerCapture(e.pointerId);
+  return true;
+}
 renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (globeGrab(e)) return;
   down = { x: e.clientX, y: e.clientY, t: performance.now(), yaw, pitch };
   dragging = false; holdWalk = false;
   renderer.domElement.setPointerCapture(e.pointerId);
@@ -2169,6 +2248,15 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 });
 renderer.domElement.addEventListener('pointermove', (e) => {
   lastPtr.x = e.clientX; lastPtr.y = e.clientY;
+  if (globe && globe.dragging) {
+    const d = globe.dragging, now = performance.now(), dx = e.clientX - d.lastX;
+    if (Math.abs(e.clientX - d.x) > 6) d.moved = true;
+    const k = 2.2 / Math.max(240, Math.min(innerWidth, innerHeight));   // a full-width drag ≈ one turn
+    globe.spin.rotation.y += dx * k;
+    const dt = Math.max(1, now - d.lastT); globe.vel = globe.vel * 0.6 + (dx * k / dt * 1000) * 0.4;
+    d.lastX = e.clientX; d.lastT = now;
+    return;
+  }
   if (down) {
     down.lastX = e.clientX; down.lastY = e.clientY;
     if (holdWalk) { walkToward(e.clientX, e.clientY); return; }  // finger steers the destination
@@ -2198,6 +2286,16 @@ renderer.domElement.addEventListener('pointermove', (e) => {
   }
 });
 renderer.domElement.addEventListener('pointerup', (e) => {
+  if (globe && globe.dragging) {
+    const d = globe.dragging; globe.dragging = null;
+    if (performance.now() - d.lastT > 120) globe.vel = 0;                // held still before letting go: no fling
+    if (d.moved) return;
+    globe.vel = 0;                                                        // a tap: a pin, or the globe itself
+    const hits = pick(e.clientX, e.clientY, interactables);
+    const hit = hits.length ? findKind(hits[0].object) : null;
+    if (hit) activate(hit.userData.kind, hit);
+    return;
+  }
   clearTimeout(holdTimer);
   if (holdWalk) { holdWalk = false; walkRing.visible = false; down = null; dragging = false; return; }
   const wasDrag = dragging || !down || (performance.now() - down.t) > 500;
@@ -2690,6 +2788,10 @@ function activate(kind, hitObj) {
   if (kind === 'reject') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openDraft(w.userData.idx)); return; }
   // a guest room's furniture: walk round to where you can see behind it, then the Keeper says his line
   if (kind === 'prop') { const u = hitObj.userData; goThen(u.stand[0], u.stand[1], () => showCaption(u.line, 5600)); return; }
+  // the Keeper's globe (guest room): walk up to it; its pins and plaque speak
+  if (kind === 'globe') { goThen(2.25, 2.35, () => showCaption('The world, as I keep it. Drag it to give it a spin.', 4800)); return; }
+  if (kind === 'globePlaque') { goThen(2.25, 2.35, () => showCaption('More than 3.4 million active geocaches, hidden in 191 countries. So says Geocaching HQ, 2026.', 6500)); return; }
+  if (kind === 'globePin') { showCaption(globePinLine(hitObj.userData), 7000); return; }
   if (kind === 'scrap') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openScrap(w.userData.idx)); return; }
   if (kind === 'notebook') { goThen(-0.2, -1.9, () => openNotebook()); return; }
   if (kind === 'chartStudy') { goThen(2.3, -2.3, () => { showCaption(STUDY_SAY.chart, 8000); markFound('chart'); }); return; }
@@ -3190,7 +3292,7 @@ vbForm.addEventListener('submit', async (e) => {
     vbForm.hidden = true; vbMsg.textContent = '';
     scrapSay.textContent = 'Signed, and in ink. My thanks for the find. Now go and sign the real log, out where the note says.';
     if (!d.dup) vbState.total += 1;
-    vbRender();
+    vbRender(); globePins();
     if (d.pending) setTimeout(() => { vbState.entries = null; vbLoad(); }, 4000);
     return;
   }
@@ -3201,6 +3303,66 @@ vbForm.addEventListener('submit', async (e) => {
     : why === 'slow_down' || why === 'full' ? 'The book is resting. Try again in a while.'
     : 'The ink won’t take out here. Try again when you have signal.';
 });
+/* ---- the globe's pins (guest room): one brass pin per place the Visitors' Book was signed from — never finer
+   than a town of 15,000+, never initials — and a red pin on Telford, GCBYBY3's home town. A pin's line invites
+   the visitor to sign the book on the desk. Positions come from the same GeoNames lists the book uses. --- */
+const GLOBE_R = 0.29, Y_UP = new THREE.Vector3(0, 1, 0);
+const globePinGeo = { shaft: new THREE.CylinderGeometry(0.0025, 0.0025, 0.03, 6), head: new THREE.SphereGeometry(0.012, 12, 10), homeShaft: new THREE.CylinderGeometry(0.003, 0.003, 0.05, 6), homeHead: new THREE.SphereGeometry(0.015, 12, 10) };
+const globePinMat = {
+  brass: new THREE.MeshStandardMaterial({ color: 0xc9a14a, metalness: 0.5, roughness: 0.35, emissive: 0x3a2608, emissiveIntensity: 0.4 }),
+  red: new THREE.MeshStandardMaterial({ color: 0x9a1c14, roughness: 0.45, emissive: 0x3a0604, emissiveIntensity: 0.5 }),
+  iron: new THREE.MeshStandardMaterial({ color: 0x3a3028, metalness: 0.6, roughness: 0.5 }),
+};
+const globeCoords = {};
+function globeAddPin(lat, lon, mat, data) {
+  const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  const n = new THREE.Vector3(Math.cos(la) * Math.cos(lo), Math.sin(la), -Math.cos(la) * Math.sin(lo));
+  const g = new THREE.Group(); g.position.copy(n).multiplyScalar(GLOBE_R); g.quaternion.setFromUnitVectors(Y_UP, n);
+  // Telford's red pin stands taller than the brass ones, so it is never buried among them
+  const tall = !!data.home;
+  const shaft = new THREE.Mesh(tall ? globePinGeo.homeShaft : globePinGeo.shaft, globePinMat.iron); shaft.position.y = tall ? 0.025 : 0.015; g.add(shaft);
+  const head = new THREE.Mesh(tall ? globePinGeo.homeHead : globePinGeo.head, mat); head.position.y = tall ? 0.052 : 0.032; g.add(head);
+  g.userData = { kind: 'globePin', label: data.home ? 'A red pin' : 'A brass pin', ...data };
+  globe.spin.add(g); globe.pins.push(g); interactables.push(g);
+}
+function globePinLine(u) {
+  if (u.home) return 'Telford, Shropshire, UK. GCBYBY3’s home town.';
+  const who = u.count === 1 ? 'One visitor' : u.count + ' visitors';
+  const tail = study.signed ? '' : scrapsFound().length >= 4
+    ? ' Sign my visitors’ book on the desk and add your own pin.'
+    : ' Find all four pieces, then sign my visitors’ book on the desk to add your own.';
+  return who + ' from ' + u.where.replace(/^near /, 'near ') + '.' + tail;
+}
+async function globePins() {
+  if (!globe) return;
+  globe.pins.filter((p) => !p.userData.home).forEach((p) => { globe.spin.remove(p); const i = interactables.indexOf(p); if (i >= 0) interactables.splice(i, 1); });
+  globe.pins = globe.pins.filter((p) => p.userData.home);
+  const rows = (vbState.entries || []).slice(), mine = study.signed && study.signed.i ? study.signed : null;
+  if (mine && !rows.some((e) => vbSame(e, mine))) rows.unshift(mine);
+  const groups = new Map();
+  for (const e of rows) { const k = e.cc + '|' + (e.r || '') + '|' + (e.p || ''); const g = groups.get(k) || { e, count: 0 }; g.count++; groups.set(k, g); }
+  for (const cc of new Set(rows.map((e) => e.cc))) {
+    if (globeCoords[cc] || !/^[A-Z]{2}$/.test(cc)) continue;
+    try { globeCoords[cc] = await (await fetch('/data/places2/' + cc + '.json')).json(); } catch (err) { globeCoords[cc] = null; }
+  }
+  let n = 0;
+  for (const { e, count } of groups.values()) {
+    const d = globeCoords[e.cc]; if (!d || !d.c) continue;
+    let at = null;
+    if (e.p) {
+      for (const [reg, list] of Object.entries(d.towns || {})) {
+        if (e.r && reg !== e.r) continue;
+        const i = list.indexOf(e.p); if (i >= 0 && d.tc && d.tc[reg]) { at = d.tc[reg][i]; break; }
+      }
+    }
+    if (!at && e.r && d.rc) at = d.rc[e.r];
+    if (!at) at = d.c;
+    if (!at || (at[0] === 0 && at[1] === 0)) continue;
+    globeAddPin(at[0], at[1], globePinMat.brass, { count, where: vbWhere(e) });
+    if (++n >= 80) break;
+  }
+}
+if (globe) { globeAddPin(52.68, -2.45, globePinMat.red, { home: true }); vbLoad().then(globePins); }
 function openGuestLog() {
   if (!GUEST) return;
   goThen(0.2, -1.4, () => {
@@ -3930,6 +4092,11 @@ function tick(dt) {
   const t = simT;
   watchFrameRate();
   tickSlab();
+  // the Keeper's globe: a heavy spin that settles after a fling, then a slow idle drift
+  if (globe && !globe.dragging) {
+    if (Math.abs(globe.vel) > 0.01 && !REDUCED) { globe.spin.rotation.y += globe.vel * dt; globe.vel *= Math.exp(-2.2 * dt); }
+    else { globe.vel = 0; if (!REDUCED) globe.spin.rotation.y += 0.025 * dt; }
+  }
 
   // destination ring breathes while holding
   if (walkRing.visible) {
