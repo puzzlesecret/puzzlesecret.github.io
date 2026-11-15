@@ -768,7 +768,7 @@ import Analytics from '@vercel/analytics/astro';
        one more; Back pops it and closes the overlay; closing by button pops it quietly. With
        nothing open, Back lands on base → one warning; Back again within 12 s really leaves. */
     (function () {
-      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel', 'lockbox', 'tilecard', 'roundEnd', 'farewell'];
+      var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel', 'lockbox', 'tilecard', 'roundEnd', 'farewell', 'globeView'];
       var el = function (id) { return document.getElementById(id); };
       var anyOpen = function () { return IDS.some(function (id) { var e = el(id); return e && !e.hidden; }); };
       var pushed = false, quiet = 0, warned = false, warnT = null;
@@ -781,6 +781,7 @@ import Analytics from '@vercel/analytics/astro';
       function closeAll() {
         IDS.forEach(function (id) {
           var e = el(id); if (!e || e.hidden) return;
+          if (id === 'globeView') { if (window.__globeClose) window.__globeClose(); return; }   // the Keeper's globe close-up
           if (id === 'desk' && window.__vaultRise) window.__vaultRise();
           else if (id === 'wordbox' && el('wbCancel')) el('wbCancel').click();   // through the cancel path, so the "gave up at this door" line still fires
           else e.hidden = true;
