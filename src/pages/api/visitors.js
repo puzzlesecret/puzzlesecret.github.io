@@ -16,7 +16,7 @@
 // and with none set it answers "not configured". Never test through `astro preview` (it runs as PROD).
 export const prerender = false;
 
-import { notify } from '../../lib/keeper-telegram.js';
+import { notify, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 import PLACES from '../../data/visitor-places2.json';
 
 const HOOK = (import.meta.env.VISITORS_WEBHOOK ?? process.env.VISITORS_WEBHOOK)
@@ -66,7 +66,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const monthOf = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
 
 // Only the entry list is cached (never the visitor's own country, which is per request).
-let cache = { t: 0, entries: null, total: 0 };
+let cache = { t: 0, entries: null, total: 0, visits: {} };
 
 export async function GET({ request }) {
   const you = (request.headers.get('x-vercel-ip-country') || '').toUpperCase();
@@ -85,22 +85,55 @@ export async function GET({ request }) {
         if (c.ok) entries.push({ i: c.initials, p: c.town, r: c.region, cc: c.cc, m: monthOf(row.t) });
         if (entries.length >= 150) break;
       }
-      cache = { t: Date.now(), entries, total: Number(d.total) || entries.length };
+      // visits: {CC: n} — country counts only (never a time), and only for countries we know
+      const visits = {};
+      if (d.visits && typeof d.visits === 'object') for (const [k, v] of Object.entries(d.visits)) if (/^[A-Z]{2}$/.test(k) && has(k) && Number(v) > 0) visits[k] = Math.min(999999, Math.floor(Number(v)));
+      cache = { t: Date.now(), entries, total: Number(d.total) || entries.length, visits };
     } catch {
       if (!cache.entries) return json({ ok: false, reason: 'book_unreachable', you: youOk }, 502);
     }
   }
-  return json({ ok: true, entries: cache.entries, total: cache.total, you: youOk });
+  return json({ ok: true, entries: cache.entries, total: cache.total, visits: cache.visits || {}, you: youOk });
+}
+
+// ---- A VISIT (Dan, 2026-11-14): each browser's first arrival at the PinPoint door adds one to a public count for
+// its COUNTRY (from the connection, never asked), shown as ink dots on the Keeper's globe. Nothing else is stored —
+// the connection address is only used here, for a moment, to stop repeat counting. Crawlers and the quiet countries
+// (CN: nearly all automated) are not counted. No Telegram line: the arrival line already tells Dan.
+const visitBuckets = new Map();
+async function handleVisit(request, clientAddress) {
+  const cc = (request.headers.get('x-vercel-ip-country') || '').toUpperCase();
+  // `final` tells the browser to stop asking: true when it was counted or should never be; false when the sheet
+  // didn't take it (e.g. the script not updated yet), so the next visit tries again
+  if (!/^[A-Z]{2}$/.test(cc) || !has(cc) || isBot(request) || quietPlace(request)) return json({ ok: true, counted: false, final: true });
+  const ip = clientAddress || 'unknown', now = Date.now(), last = visitBuckets.get(ip) || 0;
+  if (now - last < 3600000) return json({ ok: true, counted: false, final: true });
+  visitBuckets.set(ip, now);
+  try {
+    // awaited: Vercel may freeze the function once it answers, which would drop an un-awaited request
+    const r = await fetch(HOOK, {
+      method: 'POST', redirect: 'follow', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tab: 'visits', cc, auth: AUTH }), signal: AbortSignal.timeout(4000),
+    });
+    const d = await r.json();
+    const ok = !!(d && d.ok);
+    return json({ ok: true, counted: ok, final: ok || (d && d.reason === 'full') });
+  } catch (e) {
+    return json({ ok: true, counted: null, final: true });   // unknown (slow) — it probably landed; don't send again
+  }
 }
 
 export async function POST({ request, clientAddress }) {
   if (!HOOK || !AUTH) return json({ ok: false, reason: 'not_configured' }, 503);
+  let peek = null;
+  try { peek = await request.clone().json(); } catch { /* not a visit */ }
+  if (peek && peek.visit === true) return handleVisit(request, clientAddress);
   let body = {};
   try { body = await request.json(); } catch { /* ignore */ }
   const c = checkEntry(body);
   if (!c.ok) return json(c);                     // a refused entry never reaches the sheet, so it isn't counted
   if (rateLimited(clientAddress || 'unknown')) return json({ ok: false, reason: 'slow_down' }, 429);
-  cache = { t: 0, entries: null, total: 0 };
+  cache = { t: 0, entries: null, total: 0, visits: {} };
   try {
     const r = await fetch(HOOK, {
       method: 'POST', redirect: 'follow',
