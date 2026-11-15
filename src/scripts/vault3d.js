@@ -790,9 +790,8 @@ const BOOK_ROOM = !GUEST;
   guestObstacles.push({ x: -3.15, z: 3.05, r: 0.4 });
 
   // THE KEEPER'S GLOBE in the front-right corner (Dan, 2026-11-14; it replaced two packing crates).
-  // A floor-standing library globe: accurate coastlines drawn in code from Natural Earth (public domain;
-  // /data/globe-land.json, scripts/build-globe-land.mjs) as ink on parchment — coastlines only, no borders.
-  // Drag it to spin. Brass pins mark where Visitors' Book signers come from (never finer than a town of
+  // A floor-standing library globe painted as a physical atlas (Natural Earth, public domain; since 2026-11-15 —
+  // it was ink on parchment, which read with sea and land swapped). Drag it to spin; tap it for the close-up. Brass pins mark where Visitors' Book signers come from (never finer than a town of
   // 15,000+, never initials), a red pin marks Telford, and a brass plaque carries Geocaching HQ's numbers.
   const gb = (globe = { group: new THREE.Group(), spin: new THREE.Group(), vel: 0, pins: [], dragging: null });
   gb.group.position.set(2.85, 0, 3.0); gb.group.rotation.y = 2.33;          // local +X (longitude 0) faces the room
@@ -815,43 +814,19 @@ const BOOK_ROOM = !GUEST;
   const meridian = new THREE.Mesh(new THREE.TorusGeometry(GR + 0.022, 0.009, 8, 72), globeBrass); meridian.rotation.y = Math.PI / 2; tilt.add(meridian);   // rings the globe as you face it
   [1, -1].forEach((s) => { const cap = new THREE.Mesh(new THREE.SphereGeometry(0.014, 10, 8), globeBrass); cap.position.y = s * (GR + 0.012); tilt.add(cap); });
   tilt.add(gb.spin);
-  // the map: parchment first, the coastlines drawn in as soon as the outline file arrives
+  // the map (Dan, 2026-11-15: "land in greens and browns, water in blues"): Natural Earth's cross-blended hypsometric
+  // tints with shaded relief (public domain; scripts/build-globe-atlas.py) — green lowlands, tan deserts, brown
+  // mountains, white ice, blue seas paler in the shallows. A plain sea-blue until the picture arrives. Tap the globe
+  // for the close-up (src/scripts/globe-closeup.js), which adds borders, states and cities as you zoom.
   const touchy = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;   // (IS_TOUCH is declared further down)
-  const gcv = document.createElement('canvas'); gcv.width = touchy || renderer.capabilities.maxTextureSize < 4096 ? 2048 : 4096; gcv.height = gcv.width / 2;
-  const gtex = new THREE.CanvasTexture(gcv); gtex.colorSpace = THREE.SRGBColorSpace; gtex.wrapS = THREE.RepeatWrapping;
-  gtex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const drawGlobe = (rings) => {
-    const g = gcv.getContext('2d'), W = gcv.width, H = gcv.height, X = (lon) => (lon + 180) / 360 * W, Y = (lat) => (90 - lat) / 180 * H;
-    const sea = g.createRadialGradient(W / 2, H / 2, H * 0.1, W / 2, H / 2, W * 0.6);
-    sea.addColorStop(0, '#b8955a'); sea.addColorStop(1, '#94723f'); g.fillStyle = sea; g.fillRect(0, 0, W, H);
-    g.strokeStyle = 'rgba(90,60,30,0.22)'; g.lineWidth = W / 2048;            // graticule every 15°
-    for (let lo = -180; lo <= 180; lo += 15) { g.beginPath(); g.moveTo(X(lo), 0); g.lineTo(X(lo), H); g.stroke(); }
-    for (let la = -75; la <= 75; la += 15) { g.beginPath(); g.moveTo(0, Y(la)); g.lineTo(W, Y(la)); g.stroke(); }
-    g.strokeStyle = 'rgba(120,40,20,0.35)'; g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(W, Y(0)); g.stroke();   // the equator, in red ink
-    if (!rings) { gtex.needsUpdate = true; return; }
-    const path = (r) => { g.beginPath(); for (let i = 0; i < r.length; i += 2) { const x = X(r[i] / 10), y = Y(r[i + 1] / 10); i ? g.lineTo(x, y) : g.moveTo(x, y); } g.closePath(); };
-    g.fillStyle = '#ecdcae'; rings.forEach((r) => { path(r); g.fill(); });
-    // coastlines, skipping the straight edges the map data adds at the date line and the south pole
-    const ink = (w, a) => {
-      g.strokeStyle = 'rgba(74,46,24,' + a + ')'; g.lineWidth = w * W / 2048; g.lineJoin = 'round';
-      rings.forEach((r) => {
-        g.beginPath();
-        for (let i = 0; i < r.length; i += 2) {
-          const lo = r[i] / 10, la = r[i + 1] / 10, pl = r[(i - 2 + r.length) % r.length] / 10, pa = r[(i - 1 + r.length) % r.length] / 10;
-          const fake = (Math.abs(lo) >= 179.9 && Math.abs(pl) >= 179.9) || (la <= -89.5 && pa <= -89.5);
-          if (i === 0 || fake) g.moveTo(X(lo), Y(la)); else g.lineTo(X(lo), Y(la));
-        }
-        g.stroke();
-      });
-    };
-    ink(6, 0.16); ink(2.2, 0.9);                                             // a soft engraved fringe, then the line
-    gtex.needsUpdate = true;
-  };
-  drawGlobe(null);
-  fetch('/data/globe-land.json').then((r) => r.json()).then((d) => { if (d && Array.isArray(d.rings)) drawGlobe(d.rings); }).catch(() => {});
-  const sphereMat = new THREE.MeshStandardMaterial({ map: gtex, roughness: 0.82, metalness: 0, emissive: 0xffffff, emissiveMap: gtex, emissiveIntensity: 0.07 });
+  const sphereMat = new THREE.MeshStandardMaterial({ color: 0x6f9cc6, roughness: 0.62, metalness: 0, emissive: 0xffffff, emissiveIntensity: 0 });
+  new THREE.TextureLoader().load(touchy || renderer.capabilities.maxTextureSize < 4096 ? '/data/globe/atlas-2k.webp' : '/data/globe/atlas-4k.webp', (t) => {
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    // a little of the picture glows on its own, so the colours read true in a candle-lit room
+    sphereMat.map = t; sphereMat.emissiveMap = t; sphereMat.emissiveIntensity = 0.32; sphereMat.color.set(0xffffff); sphereMat.needsUpdate = true;
+  });
   gb.sphere = new THREE.Mesh(new THREE.SphereGeometry(GR, 64, 32), sphereMat);
-  gb.sphere.userData = { kind: 'globe', label: "The Keeper's globe · drag to spin" };
+  gb.sphere.userData = { kind: 'globe', label: "The Keeper's globe · tap to look closer, drag to spin" };
   gb.spin.add(gb.sphere);
   // the brass plaque on the front of the horizon ring
   const pcv = document.createElement('canvas'); pcv.width = 512; pcv.height = 128;
@@ -2220,6 +2195,16 @@ function moveTo(x, z, action = null) {
   player.target.set(x, 0, z); clampPos(player.target);
   pendingAction = action;
 }
+// a wheel step adds to where you were already heading (so many small trackpad events add up to a notch), but never
+// more than one notch (0.4 m) ahead of where you stand, so steady scrolling glides at about a third of the old pace
+function wheelStep(dist) {
+  const dir = new THREE.Vector3(); camera.getWorldDirection(dir); dir.y = 0; dir.normalize();
+  const ahead = player.target.clone().sub(player.pos); ahead.y = 0;
+  const along = ahead.dot(dir) * Math.sign(dist) > 0 ? ahead.dot(dir) : 0;   // keep going only if already heading this way
+  let d = along + dist;
+  if (Math.abs(d) > 0.4) d = 0.4 * Math.sign(d);
+  moveTo(player.pos.x + dir.x * d, player.pos.z + dir.z * d);
+}
 function stepForward(dist) {
   const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
   dir.y = 0; dir.normalize();
@@ -2239,7 +2224,7 @@ const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox'
   || !document.getElementById('lockbox').hidden || !document.getElementById('tilecard').hidden || !document.getElementById('roundEnd').hidden
   || !document.getElementById('pageview').hidden || !document.getElementById('desk').hidden
   || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden
-  || !(document.getElementById('farewell')?.hidden ?? true);
+  || !(document.getElementById('farewell')?.hidden ?? true) || gvOpen;
 
 function pick(clientX, clientY, targets) {
   ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
@@ -2316,7 +2301,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (globe && globe.dragging) {
     const d = globe.dragging; globe.dragging = null;
     if (performance.now() - d.lastT > 120) globe.vel = 0;                // held still before letting go: no fling
-    if (d.moved) return;
+    if (d.moved) { if (!globe.hinted) { globe.hinted = true; showCaption('Tap the globe to look closer.', 3800); } return; }
     globe.vel = 0;                                                        // a tap: a pin, or the globe itself
     const hits = pick(e.clientX, e.clientY, interactables);
     const hit = hits.length ? findKind(hits[0].object) : null;
@@ -2338,7 +2323,18 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (fhits.length) moveTo(fhits[0].point.x, fhits[0].point.z);
   else if (round.on) roundMiss();
 });
-addEventListener('wheel', (e) => { if (!overlayOpen()) stepForward(e.deltaY < 0 ? 1.3 : -1.0); }, { passive: true });
+// The mouse wheel walks about 70% less than it did (Dan, 2026-11-15: "drop that down almost 70%"): one notch is 0.4 m
+// forward / 0.3 m back (was 1.3 / 1.0). Each step starts from where you stand, so steady scrolling glides at roughly
+// a third of the old pace too. Trackpads and smooth-scroll mice send many small events, so each event's step is
+// scaled by its size (a standard notch is ~100 px) and a flick can't sprint. Taps, W/S keys and the ▲ button unchanged.
+addEventListener('wheel', (e) => {
+  if (overlayOpen()) return;
+  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;                 // a sideways trackpad swipe is not a step
+  const px = Math.abs(e.deltaY) * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 600 : 1);
+  if (!px) return;
+  const s = Math.min(1, px / 100);
+  wheelStep(e.deltaY < 0 ? 0.4 * s : -0.3 * s);
+}, { passive: true });
 addEventListener('keydown', (e) => {
   if (overlayOpen()) return;   // typing a word must never walk the player
   if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') stepForward(1.3);
@@ -2816,7 +2812,7 @@ function activate(kind, hitObj) {
   // a guest room's furniture: walk round to where you can see behind it, then the Keeper says his line
   if (kind === 'prop') { const u = hitObj.userData; goThen(u.stand[0], u.stand[1], () => showCaption(u.line, 5600)); return; }
   // the Keeper's globe (guest room): walk up to it; its pins and plaque speak
-  if (kind === 'globe') { goThen(BOOK_ROOM ? 1.75 : 2.25, BOOK_ROOM ? 2.45 : 2.35, () => showCaption(BOOK_ROOM ? 'The world, as I keep it. Every pin is a place my visitors came from. Drag it to give it a spin.' : 'The world, as I keep it. Drag it to give it a spin.', 5200)); return; }
+  if (kind === 'globe') { goThen(BOOK_ROOM ? 1.75 : 2.25, BOOK_ROOM ? 2.45 : 2.35, openGlobeView); return; }
   if (kind === 'globePlaque') { goThen(BOOK_ROOM ? 1.75 : 2.25, BOOK_ROOM ? 2.45 : 2.35, () => showCaption(BOOK_ROOM ? 'From every corner they come. A copper pin for every place my visitors call home, a brass one for each who signed my book.' : 'More than 3.4 million active geocaches, hidden in 191 countries. So says Geocaching HQ, 2026.', 6500)); return; }
   if (kind === 'vbookTable') { openVisitorsBook(); return; }
   if (kind === 'globePin') { showCaption(globePinLine(hitObj.userData), 7000); return; }
@@ -3357,7 +3353,7 @@ function globeAddDot(lat, lon, n, cc) {
   const r = Math.min(0.02, 0.007 + 0.0025 * Math.log2(1 + n));
   d.scale.set(r, r, r); d.position.copy(nrm).multiplyScalar(0.2905);
   d.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nrm);
-  d.userData = { kind: 'globePin', label: 'Visitors from ' + (CC_SAY[cc] || ccName(cc)), visit: true, cc, n };
+  d.userData = { kind: 'globePin', label: 'Visitors from ' + (CC_SAY[cc] || ccName(cc)), visit: true, cc, n, lat, lon };
   globe.spin.add(d); globe.pins.push(d); interactables.push(d);
 }
 function globeAddPin(lat, lon, mat, data) {
@@ -3368,7 +3364,7 @@ function globeAddPin(lat, lon, mat, data) {
   const tall = !!data.home;
   const shaft = new THREE.Mesh(tall ? globePinGeo.homeShaft : globePinGeo.shaft, globePinMat.iron); shaft.position.y = tall ? 0.025 : 0.015; g.add(shaft);
   const head = new THREE.Mesh(tall ? globePinGeo.homeHead : globePinGeo.head, mat); head.position.y = tall ? 0.052 : 0.032; g.add(head);
-  g.userData = { kind: 'globePin', label: data.home ? 'A red pin' : 'A brass pin', ...data };
+  g.userData = { kind: 'globePin', label: data.home ? 'A red pin' : 'A brass pin', ...data, lat, lon };
   globe.spin.add(g); globe.pins.push(g); interactables.push(g);
 }
 // each room's own wording for the visitors' book (Dan, 2026-11-14: one shared book, read in both rooms)
@@ -3468,7 +3464,7 @@ function globeAddVisitPin(lat, lon, n, key) {
   const shaft = new THREE.Mesh(globePinGeo.shaft, globePinMat.iron); shaft.position.y = 0.012; shaft.scale.y = 0.8; g.add(shaft);
   const head = new THREE.Mesh(globePinGeo.head, globeCopper);
   head.scale.setScalar(Math.min(1.15, 0.55 + 0.12 * Math.log2(1 + n))); head.position.y = 0.025; g.add(head);
-  g.userData = { kind: 'globePin', label: 'Visitors from ' + globePlaceName(key), visit: true, cc: key, n };
+  g.userData = { kind: 'globePin', label: 'Visitors from ' + globePlaceName(key), visit: true, cc: key, n, lat, lon };
   globe.spin.add(g); globe.pins.push(g); interactables.push(g);
 }
 // a browser that reached the PinPoint room without passing its door page (e.g. "back into the study") counts here, once
@@ -3482,6 +3478,25 @@ function globeCountVisit() {
 if (globe) {
   if (GUEST) globeAddPin(52.68, -2.45, globePinMat.red, { home: true });
   globeCountVisit().then((fresh) => { globe.freshVisit = fresh; return vbLoad(); }).then(globePins);
+}
+// ---- the close-up (Dan, 2026-11-15): loaded only on the first tap, torn down on close
+let gvOpen = false;
+function openGlobeView() {
+  if (gvOpen || !globe) return;
+  gvOpen = true; labelEl.style.display = 'none';
+  const pins = globe.pins.filter((p) => isFinite(p.userData.lat)).map((p) => {
+    const u = p.userData;
+    return { lat: u.lat, lon: u.lon, n: u.n || u.count || 1, line: globePinLine(u),
+      kind: u.home ? 'home' : u.visit ? (BOOK_ROOM ? 'visit' : 'dot') : 'signer' };
+  });
+  import('./globe-closeup.js').then((m) => m.openGlobeCloseup({
+    pins, reduced: REDUCED,
+    center: GUEST ? [48, -12] : [36, -40],
+    title: 'The Keeper’s globe',
+    hint: BOOK_ROOM ? 'Every pin is a place my visitors came from. Drag to turn it; scroll, pinch or + to look closer. Tap a pin.'
+      : 'Drag to turn it; scroll, pinch or + to look closer. Tap a pin.',
+    onClose: () => { gvOpen = false; },
+  })).catch(() => { gvOpen = false; showCaption('The globe sticks on its axis. Try again in a moment.', 3500); });
 }
 function vbSetNote() { const el = document.querySelector('#vbForm .vb-note'); if (el) el.textContent = VB_COPY.note; }
 // the book study's visitors' book, on the side table by the globe: anyone who reached Vault I may sign it
@@ -4352,7 +4367,8 @@ function tick(dt) {
   tickConfetti(dt);
   // a full-cover overlay is up: render every third frame, not every one (phones thank you)
   frameNo++;
-  if (!overlayOpen() || frameNo % 3 === 0) renderer.render(scene, camera);
+  // the globe's close-up has its own renderer over the whole screen: the room needn't draw behind it
+  if (!gvOpen && (!overlayOpen() || frameNo % 3 === 0)) renderer.render(scene, camera);
 }
 let frameNo = 0;
 loop();
