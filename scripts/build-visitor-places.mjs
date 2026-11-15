@@ -134,7 +134,7 @@ const pub = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(
 const pubDir = path.join(pub, 'public', 'data', 'places2');
 fs.mkdirSync(pubDir, { recursive: true });
 for (const f of fs.readdirSync(pubDir)) if (f.endsWith('.json')) fs.unlinkSync(path.join(pubDir, f));
-const server = {}, centroids = {}; const sortEn = (a, b) => a.localeCompare(b, 'en');
+const server = {}, centroids = {}, stateNames = {}; const sortEn = (a, b) => a.localeCompare(b, 'en');
 for (const cc of Object.keys(out).sort()) {
   const lv = LEVEL[cc];
   let regions = [];
@@ -159,12 +159,29 @@ for (const cc of Object.keys(out).sort()) {
   // snap to the real town nearest that point, so an island or crescent-shaped country never gets a pin in the sea
   if (allXY.length) { let best = allXY[0], bd = 1e9; for (const p of allXY) { const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2; if (d < bd) { bd = d; best = p; } } c = best; }
   centroids[cc] = c;
+  // US states and Canadian provinces get their own pin spot, keyed the way Vercel names them ("US-NY", "CA-ON"):
+  // the median of the state's towns, snapped to a real town in it (so Michigan or Hawaii never lands in water)
+  if (cc === 'US' || cc === 'CA') {
+    const codeOf = cc === 'US'
+      ? Object.fromEntries(Object.entries(A1).filter(([k]) => k.startsWith('US.')).map(([k, n]) => [tidyA1(n), k.slice(3)]))
+      : Object.fromEntries(Object.entries({ '01': 'AB', '02': 'BC', '03': 'MB', '04': 'NB', '05': 'NL', '07': 'NS', '08': 'ON', '09': 'PE', '10': 'QC', '11': 'SK', '12': 'YT', '13': 'NT', '14': 'NU' }).map(([g, iso]) => [tidyA1(A1['CA.' + g] || ''), iso]));
+    for (const [reg, xy] of Object.entries(tc)) {
+      if (!reg || !xy.length || !codeOf[reg]) continue;
+      const m = [med(xy.map((p) => p[0])), med(xy.map((p) => p[1]))];
+      let best = xy[0], bd = 1e9; for (const p of xy) { const d = (p[0] - m[0]) ** 2 + (p[1] - m[1]) ** 2; if (d < bd) { bd = d; best = p; } }
+      centroids[cc + '-' + codeOf[reg]] = best;
+      stateNames[cc + '-' + codeOf[reg]] = reg;
+    }
+    // Nunavut has no town of 15,000+, so it gets Iqaluit by hand
+    if (cc === 'CA' && !centroids['CA-NU']) { centroids['CA-NU'] = [63.75, -68.52]; stateNames['CA-NU'] = 'Nunavut'; }
+  }
   const file = { label: lv ? lv.label : '', req: !!(lv && lv.req), regions: regions.map(([n, g]) => (g ? [n, g] : [n])), towns, tc, rc, c };
   fs.writeFileSync(path.join(pubDir, cc + '.json'), JSON.stringify(file));
   server[cc] = { req: file.req, r: regions.map(([n]) => n), t: towns };
 }
 fs.writeFileSync(path.join(pubDir, 'index.json'), JSON.stringify(Object.keys(server)));
-fs.writeFileSync(path.join(pubDir, 'centroids.json'), JSON.stringify(centroids));   // one pin spot per country, for the globe's visitor pins
+fs.writeFileSync(path.join(pubDir, 'centroids.json'), JSON.stringify(centroids));
+fs.writeFileSync(path.join(pubDir, 'state-names.json'), JSON.stringify(stateNames));   // "US-NY" -> "New York" for the globe's dot labels   // one pin spot per country, for the globe's visitor pins
 fs.writeFileSync(path.join(pub, 'src', 'data', 'visitor-places2.json'), JSON.stringify(server));
 const n = (cc) => Object.values(server[cc]?.t || {}).reduce((a, b) => a + b.length, 0);
 const where = (cc, town) => Object.entries(server[cc].t).filter(([, l]) => l.includes(town)).map(([k]) => k || '(none)').join('/');

@@ -657,12 +657,6 @@ deskShadow.rotation.x = -Math.PI / 2; deskShadow.position.set(0, 0.012, -0.35); 
 // three crumpled rejects near the walls — each unfolds into a draft with TWO answers.
 // In a GUEST ROOM they are four crumpled scraps instead, each holding a piece of the note.
 const rejects = [];
-if (!GUEST) [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z], i) => {
-  const w = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), M.paperB);
-  w.position.set(x, 0.07, z); w.rotation.set(R() * 3, R() * 3, R() * 3); scene.add(w);
-  w.userData = { kind: 'reject', idx: i, label: 'A crumpled page' };
-  rejects.push(w);
-});
 
 /* ---- A GUEST ROOM's four scraps, and the furniture they hide behind (Dan, 2026-11-14) ----
    Dan: smaller, real balled-up paper, and "slightly harder but not too hard": one in the open by the
@@ -671,8 +665,11 @@ if (!GUEST) [[-2.9, 2.3], [3.15, -1.5], [-3.3, -2.5]].forEach(([x, z], i) => {
    the book's own study is untouched. Positions were checked by seven critiques and a headless
    click test (props are in `interactables`, so they block a tap aimed at a scrap behind them). */
 const guestProps = [], guestObstacles = [];
-let globe = null;   // the Keeper's globe (guest room only), built below
-if (GUEST) {
+let globe = null;   // the Keeper's globe, built below (both rooms since 2026-11-14)
+// The book's own study shares the furniture, the globe and the visitors' book (Dan, 2026-11-14) — but never the
+// scraps, the desk panels or anything to do with co-ordinates. BOOK_ROOM picks each room's wording and spots.
+const BOOK_ROOM = !GUEST;
+{
   // seeded so every visit sees the same four balls, each crumpled differently
   const rng = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const unit = (r) => { const v = new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1); return v.lengthSq() < 1e-4 ? v.set(0, 1, 0) : v.normalize(); };
@@ -716,8 +713,18 @@ if (GUEST) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     m.rotation.x = -Math.PI / 2; m.rotation.z = ry; m.position.set(x, 0.011, z); m.raycast = () => {}; parent.add(m); return m;
   };
+  // THE BOOK'S THREE DRAFTS: same drafts, same places (reject #2 moved out of the chest's footprint and the open
+  // bookcase's swing), now real crumpled paper. No glow, as before. They are the study's own finds, never hidden.
+  if (BOOK_ROOM) [[-2.9, 2.3], [3.15, -1.5], [-2.95, -1.95]].forEach(([x, z], i) => {
+    const geo = crumpledPaper(0.08, 211 + i * 37), rr = rng(301 + i * 11);
+    const w = new THREE.Mesh(geo, scrapMat);
+    w.rotation.set((rr() - 0.5) * 0.35, rr() * Math.PI * 2, (rr() - 0.5) * 0.35);
+    w.position.set(x, -geo.boundingBox.min.y - 0.006, z); scene.add(w);
+    w.userData = { kind: 'reject', idx: i, label: 'A crumpled page' };
+    rejects.push(w);
+  });
   // [x, z]: 0 by the barrel (open) · 1 behind the sea chest · 2 under the desk (desk-local 0.70, 0, 0.0) · 3 behind the map cabinet
-  [[-2.7, 3.15], [-3.47, -3.35], [1.139, -0.685], [3.72, 0.25]].forEach(([x, z], i) => {
+  if (GUEST) [[-2.7, 3.15], [-3.47, -3.35], [1.139, -0.685], [3.72, 0.25]].forEach(([x, z], i) => {
     const R0 = 0.1, rr = rng(101 + i * 17);
     const geo = crumpledPaper(R0, 31 + i * 53);
     const w = new THREE.Mesh(geo, scrapMat);
@@ -751,7 +758,7 @@ if (GUEST) {
   box(0.12, 0.14, 0.03, M.goldGlow, 0, 0.37, 0.26, 0, chest);       // the lock plate
   box(0.82, 0.04, 0.52, M.woodDark, 0, 0.02, 0, 0, chest);          // plinth
   contact(1.15, 0.8, 0, 0, 0, chest);
-  prop(chest, { label: 'A sea chest', say: 'Locked since before my time. Things roll behind it and stay there.' }, [-2.5, -3.35]);
+  prop(chest, { label: 'A sea chest', say: BOOK_ROOM ? 'Locked since before my time. Whatever it holds, it was never mine to open.' : 'Locked since before my time. Things roll behind it and stay there.' }, BOOK_ROOM ? [-2.0, -2.3] : [-2.5, -3.35]);
   guestObstacles.push({ x: -3.05, z: -2.85, r: 0.6 });
 
   // MAP CABINET in the stone gap between the right-hand bookcases, pulled off the wall a hand's width
@@ -767,7 +774,7 @@ if (GUEST) {
   const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.6, 12), new THREE.MeshStandardMaterial({ map: paperTexA, color: 0xcaa870, roughness: 0.9 }));
   roll.rotation.x = Math.PI / 2; roll.position.set(-0.3, 0.6, 0.05); cab.add(roll);   // a chart rolled up in the open drawer
   contact(0.7, 1.2, 0, 0, 0, cab);
-  prop(cab, { label: 'A map cabinet', say: 'My map cabinet. It never did sit flush to the wall.' }, [3.3, -0.55]);
+  prop(cab, { label: 'A map cabinet', say: BOOK_ROOM ? 'My map cabinet. Charts of every place a reader has written to me from.' : 'My map cabinet. It never did sit flush to the wall.' }, [3.3, -0.55]);
   guestObstacles.push({ x: 3.2, z: 0.25, r: 0.6 });
 
   // BARREL in the front-left corner — the warm-up piece lies beside it
@@ -849,8 +856,9 @@ if (GUEST) {
   // the brass plaque on the front of the horizon ring
   const pcv = document.createElement('canvas'); pcv.width = 512; pcv.height = 128;
   { const g = pcv.getContext('2d'); g.fillStyle = '#9a7434'; g.fillRect(0, 0, 512, 128); g.strokeStyle = '#5a3e14'; g.lineWidth = 6; g.strokeRect(6, 6, 500, 116);
-    g.fillStyle = '#2a1a06'; g.textAlign = 'center'; g.font = 'bold 34px Georgia, serif'; g.fillText('3.4 million active geocaches', 256, 56);
-    g.font = 'italic 26px Georgia, serif'; g.fillText('in 191 countries  ·  Geocaching HQ, 2026', 256, 98); }
+    g.fillStyle = '#2a1a06'; g.textAlign = 'center';
+    if (BOOK_ROOM) { g.font = 'bold 32px Georgia, serif'; g.fillText('From every corner they come', 256, 56); g.font = 'italic 26px Georgia, serif'; g.fillText('a pin for every visitor’s home', 256, 98); }
+    else { g.font = 'bold 34px Georgia, serif'; g.fillText('3.4 million active geocaches', 256, 56); g.font = 'italic 26px Georgia, serif'; g.fillText('in 191 countries  ·  Geocaching HQ, 2026', 256, 98); } }
   const ptex = new THREE.CanvasTexture(pcv); ptex.colorSpace = THREE.SRGBColorSpace;
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.05), new THREE.MeshStandardMaterial({ map: ptex, metalness: 0.4, roughness: 0.45, emissive: 0xffffff, emissiveMap: ptex, emissiveIntensity: 0.18 }));
   plaque.position.set(GR + 0.11, GY - 0.012, 0); plaque.rotation.y = Math.PI / 2; gb.group.add(plaque);
@@ -864,6 +872,7 @@ if (GUEST) {
   // floor under it was in plain view), the right end stays open to peek in. The desk itself now takes
   // a tap — it means the logbook, exactly as the chair does — so a tap aimed through the top can't
   // reach the piece. Kept at or below y 0.815 so the gift, the notebook and the candle stay tappable.
+  if (GUEST) {
   const deskHit = { kind: 'chair', label: "The Keeper's desk" };
   const front = box(1.72, 0.515, 0.03, M.woodDark, 0, 0.3175, 0.40, 0, desk); front.userData = deskHit;
   const endL = box(0.03, 0.515, 0.84, M.woodDark, -0.86, 0.3175, 0, 0, desk); endL.userData = deskHit;
@@ -875,6 +884,24 @@ if (GUEST) {
   const apronHit = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.16, 0.8), hitMat);
   apronHit.position.set(0, 0.655, 0); apronHit.userData = deskHit; desk.add(apronHit);
   guestProps.push(front, endL, topHit, apronHit);
+  }
+  // THE BOOK ROOM'S VISITORS' BOOK: a small round table beside the globe with the book lying open on it (the desk
+  // is the daily puzzle there). Tap → the same shared book as PinPoint's.
+  if (BOOK_ROOM) {
+    const tbl = new THREE.Group(); tbl.position.set(2.0, 0, 3.3); tbl.rotation.y = 2.6;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 28), M.wood); top.position.y = 0.72; tbl.add(top);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.7, 12), M.woodDark); stem.position.y = 0.36; tbl.add(stem);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.04, 20), M.woodDark); base.position.y = 0.02; tbl.add(base);
+    box(0.34, 0.025, 0.24, new THREE.MeshStandardMaterial({ color: 0x4a2a16, roughness: 0.7 }), 0, 0.752, 0, 0, tbl);   // the open book's cover
+    box(0.16, 0.018, 0.22, M.candle, -0.08, 0.768, 0, 0.04, tbl); box(0.16, 0.018, 0.22, M.candle, 0.08, 0.768, 0, -0.04, tbl);   // its pages
+    const quillB = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0xe8e2d2, side: THREE.DoubleSide, roughness: 0.8 }));
+    quillB.position.set(0.12, 0.79, 0.06); quillB.rotation.set(-1.2, 0.3, 0.6); tbl.add(quillB);
+    const hitB = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.9, 12), new THREE.MeshBasicMaterial({ visible: false })); hitB.position.y = 0.45; tbl.add(hitB);
+    tbl.userData = { kind: 'vbookTable', label: "The Keeper's visitors' book" };
+    contact(0.7, 0.7, 0, 0, 0, tbl);
+    scene.add(tbl); guestProps.push(tbl);
+    guestObstacles.push({ x: 2.0, z: 3.3, r: 0.35 });
+  }
 }
 
 /* ---- pinboard of sudoku sheets (back wall, right — per concept) ---- */
@@ -2180,7 +2207,7 @@ function clampPos(p) {
   // A guest room's props stand near the walls, so a push out of one can land past the study's edge
   // (into the gap behind the cabinet, say). Pull back inside, then out of any circle once more.
   const S = ZONES[0];   // the study (its open back edge leads to the passage, so only the other three sides)
-  if (GUEST && p.z > S.minZ && (p.x < S.minX || p.x > S.maxX || p.z > S.maxZ)) {
+  if (guestObstacles.length && p.z > S.minZ && (p.x < S.minX || p.x > S.maxX || p.z > S.maxZ)) {
     p.x = THREE.MathUtils.clamp(p.x, S.minX, S.maxX); p.z = Math.min(p.z, S.maxZ);
     for (const o of guestObstacles) {
       const dx = p.x - o.x, dz = p.z - o.z, d = Math.hypot(dx, dz);
@@ -2789,8 +2816,9 @@ function activate(kind, hitObj) {
   // a guest room's furniture: walk round to where you can see behind it, then the Keeper says his line
   if (kind === 'prop') { const u = hitObj.userData; goThen(u.stand[0], u.stand[1], () => showCaption(u.line, 5600)); return; }
   // the Keeper's globe (guest room): walk up to it; its pins and plaque speak
-  if (kind === 'globe') { goThen(2.25, 2.35, () => showCaption('The world, as I keep it. Drag it to give it a spin.', 4800)); return; }
-  if (kind === 'globePlaque') { goThen(2.25, 2.35, () => showCaption('More than 3.4 million active geocaches, hidden in 191 countries. So says Geocaching HQ, 2026.', 6500)); return; }
+  if (kind === 'globe') { goThen(BOOK_ROOM ? 1.75 : 2.25, BOOK_ROOM ? 2.45 : 2.35, () => showCaption(BOOK_ROOM ? 'The world, as I keep it. Every pin is a place my visitors came from. Drag it to give it a spin.' : 'The world, as I keep it. Drag it to give it a spin.', 5200)); return; }
+  if (kind === 'globePlaque') { goThen(BOOK_ROOM ? 1.75 : 2.25, BOOK_ROOM ? 2.45 : 2.35, () => showCaption(BOOK_ROOM ? 'From every corner they come. A copper pin for every place my visitors call home, a brass one for each who signed my book.' : 'More than 3.4 million active geocaches, hidden in 191 countries. So says Geocaching HQ, 2026.', 6500)); return; }
+  if (kind === 'vbookTable') { openVisitorsBook(); return; }
   if (kind === 'globePin') { showCaption(globePinLine(hitObj.userData), 7000); return; }
   if (kind === 'scrap') { const w = hitObj; goThen(w.position.x + (player.pos.x - w.position.x) * 0.35, w.position.z + (player.pos.z - w.position.z) * 0.35, () => openScrap(w.userData.idx)); return; }
   if (kind === 'notebook') { goThen(-0.2, -1.9, () => openNotebook()); return; }
@@ -3038,7 +3066,7 @@ function drawDraft() {
 }
 function openDraft(idx) {
   if (!DRAFTS.length) { loadDrafts().then(() => { if (DRAFTS.length) openDraft(idx); else showCaption('The page is stuck to itself. Try again in a moment.', 3000); }); return; }
-  draftCur = idx % DRAFTS.length; draftShow = null; drawDraft(); draftEl.hidden = false;
+  draftCur = idx % DRAFTS.length; draftShow = null; drawDraft(); draftEl.classList.remove('scrap', 'vbook'); draftEl.hidden = false;
   showCaption('A page I threw away. Look at it and tell me why.', 4800);
   markFound('reject' + idx);
   psEventOnce(PS_EV.PAGE_REJECTS);
@@ -3140,12 +3168,14 @@ function vbWhere(e) {
   parts.push(ccShort(e.cc));
   return parts.join(', ');
 }
-const vbSame = (a, b) => !!(a && b && a.i === b.i && (a.p || '') === (b.p || '') && (a.r || '') === (b.r || '') && a.cc === b.cc);
+const vbSame = (a, b) => !!(a && b && a.i === b.i && (a.p || '') === (b.p || '') && (a.r || '') === (b.r || '') && a.cc === b.cc && (a.rm || 'pinpoint') === (b.rm || 'pinpoint'));
+// one shared book, read in both rooms: each line says where it was signed
+const VB_ROOM_SAY = { book: 'Vault I', pinpoint: 'PinPoint' };
 function vbRow(e, mine) {
   const li = document.createElement('li'); if (mine) li.className = 'you';
   const b = document.createElement('b'); b.textContent = e.i; li.appendChild(b);
   li.appendChild(document.createTextNode(vbWhere(e) + ' '));
-  const m = document.createElement('i'); m.textContent = e.m ? '· ' + e.m : ''; li.appendChild(m);
+  const m = document.createElement('i'); m.textContent = [VB_ROOM_SAY[e.rm || 'pinpoint'], e.m].filter(Boolean).map((x) => '· ' + x).join(' '); li.appendChild(m);
   return li;
 }
 function vbRender() {
@@ -3163,7 +3193,7 @@ async function vbLoad() {
   try {
     const r = await fetch('/api/visitors', { cache: 'no-store' }); const d = await r.json();
     if (d && /^[A-Z]{2}$/.test(d.you || '')) vbState.you = d.you;
-    if (d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; vbState.total = Number(d.total) || d.entries.length; vbState.visits = (d.visits && typeof d.visits === 'object') ? d.visits : {}; }
+    if (d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; vbState.total = Number(d.total) || d.entries.length; vbState.visits = (d.visits && typeof d.visits === 'object') ? d.visits : {}; vbState.site = (d.site && typeof d.site === 'object') ? d.site : {}; }
     else vbState.entries = false;
   } catch (e) { vbState.entries = false; }
   vbRender();
@@ -3276,7 +3306,7 @@ vbCity.addEventListener('keydown', (e) => {
 });
 // on a phone, lift the field to the top so the keyboard never hides the town suggestions under it
 [vbIni, vbCc, vbReg, vbCity].forEach((el) => el.addEventListener('focus', () => { if (IS_TOUCH) setTimeout(() => el.scrollIntoView({ block: 'start' }), 300); }));
-document.getElementById('vbSkip').addEventListener('click', () => { vbForm.hidden = true; scrapSay.textContent = 'As you like. My thanks for the find. Now go and sign the real log, out where the note says.'; });
+document.getElementById('vbSkip').addEventListener('click', () => { vbForm.hidden = true; scrapSay.textContent = VB_COPY.skip; });
 vbForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (vbState.sending) return;
@@ -3284,13 +3314,14 @@ vbForm.addEventListener('submit', async (e) => {
   const entry = vbEntry();
   vbState.sending = true; vbMsg.textContent = 'Writing…';
   let d = null;
-  try { const r = await fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ initials: entry.i, cc: entry.cc, region: entry.r, town: entry.p }) }); d = await r.json(); } catch (err) { d = null; }
+  try { const r = await fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ initials: entry.i, cc: entry.cc, region: entry.r, town: entry.p, room: BOOK_ROOM ? 'book' : 'pinpoint' }) }); d = await r.json(); } catch (err) { d = null; }
   vbState.sending = false;
   if (d && d.ok) {
     const now = new Date(); entry.m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][now.getUTCMonth()] + ' ' + now.getUTCFullYear();
+    entry.rm = BOOK_ROOM ? 'book' : 'pinpoint';
     study.signed = entry; saveStudy();
     vbForm.hidden = true; vbMsg.textContent = '';
-    scrapSay.textContent = 'Signed, and in ink. My thanks for the find. Now go and sign the real log, out where the note says.';
+    scrapSay.textContent = VB_COPY.done;
     if (!d.dup) vbState.total += 1;
     vbRender(); globePins();
     if (d.pending) setTimeout(() => { vbState.entries = null; vbLoad(); }, 4000);
@@ -3340,22 +3371,47 @@ function globeAddPin(lat, lon, mat, data) {
   g.userData = { kind: 'globePin', label: data.home ? 'A red pin' : 'A brass pin', ...data };
   globe.spin.add(g); globe.pins.push(g); interactables.push(g);
 }
+// each room's own wording for the visitors' book (Dan, 2026-11-14: one shared book, read in both rooms)
+const VB_COPY = BOOK_ROOM ? {
+  where: 'on the little table by the globe',
+  note: 'Optional. Initials and your area only, never your name or address. Everyone who visits can read it. Under 13? Ask a grown-up first.',
+  open: 'Sign my visitors’ book if you like. Everyone who visits my study, here and in PinPoint’s room, can read it.',
+  signed: 'You have signed my visitors’ book. Thank you for visiting.',
+  done: 'Signed, and in ink. Thank you for visiting my study.',
+  skip: 'As you like. The book will keep.',
+} : {
+  where: 'on the desk',
+  note: 'Optional, and not part of your find. Initials and your area only, never your name or address. Everyone who visits can read it.',
+  done: 'Signed, and in ink. My thanks for the find. Now go and sign the real log, out where the note says.',
+  skip: 'As you like. My thanks for the find. Now go and sign the real log, out where the note says.',
+};
+const STATE_SAY = { 'US-NY': 'New York State', 'US-WA': 'Washington State', 'US-DC': 'Washington, D.C.' };
+let globeStateNames = null;
+function globePlaceName(key) {
+  const [cc, st] = key.split('-');
+  if (!st) return CC_SAY[key] || ccName(key);
+  if (key === 'US-DC') return 'Washington, D.C.';
+  const nm = STATE_SAY[key] || (globeStateNames && globeStateNames[key]) || st;
+  return nm + ', ' + (cc === 'US' ? 'USA' : cc === 'CA' ? 'Canada' : ccName(cc));
+}
+function globeInvite() {
+  if (study.signed) return '';
+  if (GUEST && scrapsFound().length < 4) return ' Find all four pieces, then sign my visitors’ book ' + VB_COPY.where + '.';
+  return ' Sign my visitors’ book ' + VB_COPY.where + ' and add your own pin.';
+}
 function globePinLine(u) {
   if (u.home) return 'Telford, Shropshire, UK. GCBYBY3’s home town.';
-  const invite = study.signed ? '' : scrapsFound().length >= 4
-    ? ' Sign my visitors’ book on the desk and add your own pin.'
-    : ' Find all four pieces, then sign my visitors’ book on the desk.';
   if (u.visit) {
-    const place = CC_SAY[u.cc] || ccName(u.cc);
-    const signed = (vbState.entries || []).filter((e) => e.cc === u.cc).length;
-    const head = u.n < 3 ? 'A few visitors from ' + place + ' so far' : u.n + ' visitors from ' + place + ' so far';
-    return head + (signed ? ' · ' + signed + ' signed my book.' : '.') + invite;
+    const place = globePlaceName(u.cc);
+    const [cc, st] = u.cc.split('-');
+    const stName = st && globeStateNames ? globeStateNames[u.cc] : '';
+    const signed = (vbState.entries || []).filter((e) => e.cc === cc && (!st || (stName && e.r === stName))).length;
+    // fewer than five reads "a few" (privacy: a lone pin must never point at one person)
+    const head = (u.n < 5 ? 'A few visitors from ' : 'About ' + u.n + ' visitors from ') + place + ' so far';
+    return head + (signed ? ' · ' + signed + ' signed my book.' : '.') + globeInvite();
   }
   const who = u.count === 1 ? 'One visitor' : u.count + ' visitors';
-  const tail = study.signed ? '' : scrapsFound().length >= 4
-    ? ' Sign my visitors’ book on the desk and add your own pin.'
-    : ' Find all four pieces, then sign my visitors’ book on the desk to add your own.';
-  return who + ' from ' + u.where.replace(/^near /, 'near ') + '.' + tail;
+  return who + ' signed my book from ' + u.where + '.' + globeInvite();
 }
 async function globePins() {
   if (!globe) return;
@@ -3385,28 +3441,61 @@ async function globePins() {
     globeAddPin(at[0], at[1], globePinMat.brass, { count, where: vbWhere(e) });
     if (++n >= 80) break;
   }
-  // every country a visitor arrived from (counted once per browser at the PinPoint door)
-  const visits = Object.assign({}, vbState.visits || {});
-  if (globe.freshVisit && vbState.you) visits[vbState.you] = (visits[vbState.you] || 0) + 1;   // the count is cached a minute; show your own now
-  const codes = Object.keys(visits).filter((cc) => /^[A-Z]{2}$/.test(cc) && visits[cc] > 0);
-  if (codes.length) {
+  // where visitors came from. PinPoint's room: arrivals at its door, by country (ink dots). The book's study:
+  // every site visitor, by country or US/Canadian state, as copper pins whose heads grow a little with the count.
+  const visits = Object.assign({}, (BOOK_ROOM ? vbState.site : vbState.visits) || {});
+  if (GUEST && globe.freshVisit && vbState.you) visits[vbState.you] = (visits[vbState.you] || 0) + 1;   // the count is cached a minute; show your own now
+  let keys = Object.keys(visits).filter((k) => /^[A-Z]{2}(-[A-Z0-9]{1,3})?$/.test(k) && visits[k] > 0);
+  // a country shown state by state never also gets a country pin (its "state unknown" visitors stay in the count only)
+  const byState = new Set(keys.filter((k) => k.includes('-')).map((k) => k.slice(0, 2)));
+  keys = keys.filter((k) => k.includes('-') || !byState.has(k));
+  if (keys.length) {
     if (!globeCentroids) { try { globeCentroids = await (await fetch('/data/places2/centroids.json')).json(); } catch (err) { globeCentroids = {}; } }
-    codes.sort((a, b) => visits[b] - visits[a]).slice(0, 120).forEach((cc) => {
-      const at = globeCentroids[cc]; if (Array.isArray(at)) globeAddDot(at[0], at[1], visits[cc], cc);
+    if (BOOK_ROOM && !globeStateNames) { try { globeStateNames = await (await fetch('/data/places2/state-names.json')).json(); } catch (err) { globeStateNames = {}; } }
+    keys.sort((a, b) => visits[b] - visits[a]).slice(0, 150).forEach((k) => {
+      const at = globeCentroids[k] || (k === 'CA-NU' ? [63.75, -68.52] : null);
+      if (!Array.isArray(at)) return;
+      if (BOOK_ROOM) globeAddVisitPin(at[0], at[1], visits[k], k); else globeAddDot(at[0], at[1], visits[k], k);
     });
   }
 }
-// a browser that reached the room without passing the door page (e.g. "back into the study") counts here, once
+// a copper pin for a place visitors came from (book study); shorter than a signer's brass pin
+const globeCopper = new THREE.MeshStandardMaterial({ color: 0xa8582c, metalness: 0.5, roughness: 0.4, emissive: 0x2a1006, emissiveIntensity: 0.45 });
+function globeAddVisitPin(lat, lon, n, key) {
+  const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  const nrm = new THREE.Vector3(Math.cos(la) * Math.cos(lo), Math.sin(la), -Math.cos(la) * Math.sin(lo));
+  const g = new THREE.Group(); g.position.copy(nrm).multiplyScalar(GLOBE_R); g.quaternion.setFromUnitVectors(Y_UP, nrm);
+  const shaft = new THREE.Mesh(globePinGeo.shaft, globePinMat.iron); shaft.position.y = 0.012; shaft.scale.y = 0.8; g.add(shaft);
+  const head = new THREE.Mesh(globePinGeo.head, globeCopper);
+  head.scale.setScalar(Math.min(1.15, 0.55 + 0.12 * Math.log2(1 + n))); head.position.y = 0.025; g.add(head);
+  g.userData = { kind: 'globePin', label: 'Visitors from ' + globePlaceName(key), visit: true, cc: key, n };
+  globe.spin.add(g); globe.pins.push(g); interactables.push(g);
+}
+// a browser that reached the PinPoint room without passing its door page (e.g. "back into the study") counts here, once
 function globeCountVisit() {
   try {
-    if (navigator.webdriver || localStorage.getItem('ps_globe_counted_v1')) return Promise.resolve(false);
+    if (!GUEST || navigator.webdriver || localStorage.getItem('ps_globe_counted_v1')) return Promise.resolve(false);
     return fetch('/api/visitors', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"visit":true}' })
       .then((r) => r.json()).then((d) => { if (d && d.ok && d.final) localStorage.setItem('ps_globe_counted_v1', '1'); return !!(d && d.counted); }).catch(() => false);
   } catch (e) { return Promise.resolve(false); }
 }
 if (globe) {
-  globeAddPin(52.68, -2.45, globePinMat.red, { home: true });
+  if (GUEST) globeAddPin(52.68, -2.45, globePinMat.red, { home: true });
   globeCountVisit().then((fresh) => { globe.freshVisit = fresh; return vbLoad(); }).then(globePins);
+}
+function vbSetNote() { const el = document.querySelector('#vbForm .vb-note'); if (el) el.textContent = VB_COPY.note; }
+// the book study's visitors' book, on the side table by the globe: anyone who reached Vault I may sign it
+function openVisitorsBook() {
+  goThen(1.9, 2.7, () => {
+    scrapBoard.hidden = true;
+    scrapKick.textContent = "THE KEEPER'S VISITORS' BOOK";
+    scrapText.textContent = '';
+    scrapSay.textContent = study.signed ? VB_COPY.signed : VB_COPY.open;
+    vbForm.hidden = !!study.signed; vbMsg.textContent = '';
+    showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false; vbSetNote();
+    vbRender(); vbLoad().then(globePins);
+    if (!study.signed) { vbCodes(); vbPreviewUpdate(); }
+  });
 }
 function openGuestLog() {
   if (!GUEST) return;
@@ -3423,7 +3512,7 @@ function openGuestLog() {
       : study.signed ? 'You have signed my visitors’ book. My thanks for the find. Now go and sign the real log, out where the note says.'
       : 'My thanks for the find. Leave your mark below if you like, then go and sign the real log, out where the note says.';
     vbForm.hidden = !(all && !study.signed); vbMsg.textContent = '';
-    showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false;
+    showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false; vbSetNote();
     vbRender(); vbLoad(); if (all && !study.signed) { vbCodes(); vbPreviewUpdate(); }
     if (first && !REDUCED) burstConfetti();
     setLogGlow(); renderGpsr(true);

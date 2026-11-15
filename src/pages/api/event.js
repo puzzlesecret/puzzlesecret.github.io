@@ -21,6 +21,7 @@ export const prerender = false;
 
 import { notify, solverTag, place, safeExtra, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 import { ALLOW, EXTRA_ALLOWED, validExtra, keeperLine, CLIENT_EV } from '../../lib/events.js';
+import { countSiteVisit } from '../../lib/visit-counts.js';
 import { guessSource, returningNote } from '../../lib/traffic-guess.js';
 
 // Per-IP+event cooldown. 5 minutes per (ip64, ev, extra) tuple. Also caps the Map to 5000
@@ -133,7 +134,10 @@ export async function POST({ request, clientAddress }) {
       if (r) msg += '\n   ' + r;
     } catch { /* a guess is never worth a lost line */ }
   }
-  await notify(msg);
+  // a browser's first-ever arrival also adds one to the globe's public count for its country / US or Canadian state
+  // (never Dan's own browsers). Run beside the Telegram line so neither waits on the other.
+  const first = ev === CLIENT_EV.ARRIVE && / · first visit( · |$)/.test(extra) && !/ · keeper$/.test(extra);
+  await Promise.allSettled([notify(msg), first ? countSiteVisit(request, ip) : null]);
   return NOOP204();
 }
 

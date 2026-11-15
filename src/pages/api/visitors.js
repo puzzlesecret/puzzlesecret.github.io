@@ -18,11 +18,11 @@ export const prerender = false;
 
 import { notify, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 import PLACES from '../../data/visitor-places2.json';
+import { HOOK, AUTH, RE_VISIT_KEY } from '../../lib/visit-counts.js';
 
-const HOOK = (import.meta.env.VISITORS_WEBHOOK ?? process.env.VISITORS_WEBHOOK)
-  ?? (import.meta.env.PROD ? (import.meta.env.SANCTUM_WEBHOOK ?? process.env.SANCTUM_WEBHOOK) : undefined);
-const AUTH = (import.meta.env.VISITORS_AUTH ?? process.env.VISITORS_AUTH)
-  ?? (import.meta.env.PROD ? (import.meta.env.SANCTUM_AUTH ?? process.env.SANCTUM_AUTH) : undefined);
+// one shared book, signed in two rooms (Dan, 2026-11-14): the room is a fixed word, never free text
+const ROOMS = { book: 'Vault I', pinpoint: 'PinPoint' };
+const roomOf = (v) => (v === 'book' ? 'book' : 'pinpoint');
 
 const RE_INI = /^[A-Z]{2,3}$/;
 // carve.js's list plus two-letter insults that read badly beside a place ("FU · near Leeds")
@@ -66,7 +66,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const monthOf = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
 
 // Only the entry list is cached (never the visitor's own country, which is per request).
-let cache = { t: 0, entries: null, total: 0, visits: {} };
+let cache = { t: 0, entries: null, total: 0, visits: {}, site: {} };
 
 export async function GET({ request }) {
   const you = (request.headers.get('x-vercel-ip-country') || '').toUpperCase();
@@ -82,18 +82,21 @@ export async function GET({ request }) {
       const entries = [];
       for (const row of d.rows) {
         const c = checkEntry({ initials: row.i, cc: row.cc, region: row.r, town: row.p }, false);
-        if (c.ok) entries.push({ i: c.initials, p: c.town, r: c.region, cc: c.cc, m: monthOf(row.t) });
+        if (c.ok) entries.push({ i: c.initials, p: c.town, r: c.region, cc: c.cc, m: monthOf(row.t), rm: roomOf(row.room) });
         if (entries.length >= 150) break;
       }
       // visits: {CC: n} — country counts only (never a time), and only for countries we know
       const visits = {};
       if (d.visits && typeof d.visits === 'object') for (const [k, v] of Object.entries(d.visits)) if (/^[A-Z]{2}$/.test(k) && has(k) && Number(v) > 0) visits[k] = Math.min(999999, Math.floor(Number(v)));
-      cache = { t: Date.now(), entries, total: Number(d.total) || entries.length, visits };
+      // site: {US-NY | GB: n} — every site visitor's country (US/Canadian state), counts only, never a time
+      const site = {};
+      if (d.site && typeof d.site === 'object') for (const [k, v] of Object.entries(d.site)) if (RE_VISIT_KEY.test(k) && has(k.slice(0, 2)) && Number(v) > 0) site[k] = Math.min(999999, Math.floor(Number(v)));
+      cache = { t: Date.now(), entries, total: Number(d.total) || entries.length, visits, site };
     } catch {
       if (!cache.entries) return json({ ok: false, reason: 'book_unreachable', you: youOk }, 502);
     }
   }
-  return json({ ok: true, entries: cache.entries, total: cache.total, visits: cache.visits || {}, you: youOk });
+  return json({ ok: true, entries: cache.entries, total: cache.total, visits: cache.visits || {}, site: cache.site || {}, you: youOk });
 }
 
 // ---- A VISIT (Dan, 2026-11-14): each browser's first arrival at the PinPoint door adds one to a public count for
@@ -133,18 +136,19 @@ export async function POST({ request, clientAddress }) {
   const c = checkEntry(body);
   if (!c.ok) return json(c);                     // a refused entry never reaches the sheet, so it isn't counted
   if (rateLimited(clientAddress || 'unknown')) return json({ ok: false, reason: 'slow_down' }, 429);
-  cache = { t: 0, entries: null, total: 0, visits: {} };
+  cache = { t: 0, entries: null, total: 0, visits: {}, site: {} };
+  const room = roomOf(body && body.room);
   try {
     const r = await fetch(HOOK, {
       method: 'POST', redirect: 'follow',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ tab: 'visitors', initials: c.initials, cc: c.cc, place: c.town, region: c.region, auth: AUTH }),
+      body: JSON.stringify({ tab: 'visitors', initials: c.initials, cc: c.cc, place: c.town, region: c.region, room, auth: AUTH }),
       signal: AbortSignal.timeout(8000),
     });
     const d = await r.json();
     if (d && d.ok) {
       // the Keeper's line carries initials + country only — never the region or town (privacy §2; keep it so)
-      await notify(`\u{1F4D6} PinPoint visitors' book · signed “${c.initials}” · ${c.cc}${d.dup ? ' (repeat, not added)' : ''}`);
+      await notify(`\u{1F4D6} Visitors' book (${ROOMS[room]}) · signed “${c.initials}” · ${c.cc}${d.dup ? ' (repeat, not added)' : ''}`);
       return json({ ok: true, dup: !!d.dup });
     }
     return json({ ok: false, reason: d && d.reason ? String(d.reason).slice(0, 20) : 'refused' });
