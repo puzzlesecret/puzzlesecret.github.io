@@ -672,8 +672,50 @@ box(0.2, 0.012, 0.14, M.candle, 0, 0.04, 0, 0, notebook);                       
 box(0.03, 0.045, 0.16, M.brass, -0.095, 0.022, 0, 0, notebook);                  // brass spine
 notebook.userData = { kind: 'notebook', label: "The Keeper's notebook" };
 
+// TODAY'S PAGE (Dan, 2026-11-16): the chair was the only way in to the daily puzzle and nobody would guess
+// it. A small walnut reading stand at the desk's front corner holds a gilt-framed parchment page with a
+// sudoku grid and a soft gold glow; it does exactly what the chair does. Not in a guest room (the chair is a logbook there).
+const todayStand = new THREE.Group();
+let todayGlow = null;
+if (!GUEST) {
+  todayStand.position.set(-0.4, 0.825, 0.24); todayStand.rotation.y = -0.18; todayStand.scale.setScalar(1.6); desk.add(todayStand);
+  const pageTex = (() => {
+    const c = document.createElement('canvas'); c.width = 384; c.height = 480; const g = c.getContext('2d');
+    const bg = g.createLinearGradient(0, 0, 0, 480); bg.addColorStop(0, '#e6d3a6'); bg.addColorStop(1, '#cdb37a');
+    g.fillStyle = bg; g.fillRect(0, 0, 384, 480);
+    g.fillStyle = '#5a3a10'; g.textAlign = 'center'; g.font = 'bold 30px Cinzel, Georgia, serif'; g.fillText('TODAY’S PAGE', 192, 52);
+    g.strokeStyle = '#b8862e'; g.lineWidth = 2; g.beginPath(); g.moveTo(90, 66); g.lineTo(294, 66); g.stroke();
+    const x0 = 48, y0 = 88, cs = 32;
+    g.strokeStyle = '#1e1408';
+    for (let i = 0; i <= 9; i++) {
+      g.lineWidth = i % 3 ? 2 : 5;
+      g.beginPath(); g.moveTo(x0 + i * cs, y0); g.lineTo(x0 + i * cs, y0 + 9 * cs); g.stroke();
+      g.beginPath(); g.moveTo(x0, y0 + i * cs); g.lineTo(x0 + 9 * cs, y0 + i * cs); g.stroke();
+    }
+    // a valid decorative grid (a patterned solution with cells blanked), never a book or daily puzzle
+    const givens = Array.from({ length: 81 }, (_, k) => { const r = Math.floor(k / 9), c = k % 9; return (r * 4 + c * 7) % 9 < 4 ? String(((r * 3 + Math.floor(r / 3) + c) % 9) + 1) : '.'; }).join('');
+    g.fillStyle = '#120b04'; g.font = 'bold 25px Georgia, serif'; g.textBaseline = 'middle';
+    for (let i = 0; i < 81; i++) { const ch = givens[i]; if (ch && ch >= '1' && ch <= '9') g.fillText(ch, x0 + (i % 9) * cs + cs / 2, y0 + Math.floor(i / 9) * cs + cs / 2 + 1); }
+    g.fillStyle = '#7a5520'; g.font = 'italic 20px Georgia, serif'; g.fillText('Sit, and solve', 192, 420);
+    g.fillText('❧', 192, 450);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const walnut = new THREE.MeshStandardMaterial({ color: 0x3b2112, roughness: 0.55 });
+  box(0.26, 0.02, 0.17, walnut, 0, 0.01, 0, 0, todayStand);                  // base
+  box(0.27, 0.006, 0.18, M.gold, 0, 0.022, 0, 0, todayStand);                // gilt edge on the base
+  const lean = new THREE.Group(); lean.position.set(0, 0.02, -0.04); lean.rotation.x = -0.42; todayStand.add(lean);
+  box(0.23, 0.29, 0.012, walnut, 0, 0.145, -0.008, 0, lean);                  // the board
+  box(0.245, 0.305, 0.006, M.gold, 0, 0.145, -0.016, 0, lean);               // gilt frame behind it
+  const page = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.25), new THREE.MeshStandardMaterial({ map: pageTex, roughness: 0.85, emissive: 0x000000 }));
+  page.position.set(0, 0.148, 0.0); lean.add(page);
+  box(0.24, 0.02, 0.03, M.brass, 0, 0.012, 0.012, 0, lean);                   // brass ledge the page rests on
+
+  todayGlow = sprite(0.9, 0, 0.17, -0.16, todayStand, 0.5); todayGlow.raycast = () => {};   // behind the board, a halo, never over the page
+  todayStand.userData = { kind: 'chair', label: 'Play today’s puzzle' };
+}
+
 // scattered pages on the desk
-[[-0.45, 0.28, 0.5, M.paperA], [0.5, -0.25, -0.4, M.paperB], [-0.15, -0.3, 1.2, M.paperB], [0.42, 0.3, 2.4, M.paperA]].forEach(([x, z, r, mt]) => {
+[[-0.62, -0.3, 0.5, M.paperA], [0.5, -0.25, -0.4, M.paperB], [-0.15, -0.3, 1.2, M.paperB], [0.42, 0.3, 2.4, M.paperA]].forEach(([x, z, r, mt]) => {
   const p = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.4), mt);
   p.rotation.x = -Math.PI / 2; p.rotation.z = r; p.position.set(x, 0.828, z); desk.add(p);
 });
@@ -2251,7 +2293,7 @@ const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const interactables = [stack, oddHit, exitHit, hinge, door2, door3, wall4, letters4, chart4, lectern, chestG, masterTome, sealsWall, unlitObj,
   hoodStand, pbChest, ...roundHits,
-  candle, ink, quill, board, sconce, sconceR, chair, notebook, easelS, ...rejects, ...wallCases, ...guestProps,
+  candle, ink, quill, board, sconce, sconceR, chair, todayStand, notebook, easelS, ...rejects, ...wallCases, ...guestProps,
   ...storyPages,
   ...sealPulse.filter(o => o.isMesh)];
 let down = null, dragging = false;
@@ -3708,7 +3750,9 @@ function riseFromDesk() {
   showCaption(STUDY_SAY.rise, 4200);
 }
 document.getElementById('deskRise').addEventListener('click', riseFromDesk);
+document.getElementById('deskX').addEventListener('click', riseFromDesk);
 addEventListener('message', (e) => {
+  if (e.origin === location.origin && e.data && e.data.type === 'ps-desk-rise') { if (!deskEl.hidden) riseFromDesk(); return; }
   if (e.origin !== location.origin || !e.data || e.data.type !== 'ps-desk-solved') return;
   const d = localDay();
   if (e.data.id !== dailyPuzzleId()) return;          // only today's page earns the desk's stamp
@@ -3740,9 +3784,7 @@ function burstConfetti() {
   }
 }
 function tickConfetti(dt) {
-document.getElementById('deskX').addEventListener('click', riseFromDesk);
   if (!confParts.length) return;
-  if (e.origin === location.origin && e.data && e.data.type === 'ps-desk-rise') { if (!deskEl.hidden) riseFromDesk(); return; }
   cg.clearRect(0, 0, conf.width, conf.height);
   confParts.forEach(p => {
     p.vy += 18 * dt; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= dt * 0.4;
@@ -4365,6 +4407,7 @@ function tick(dt) {
   // flickers & pulses
   const fl = 0.82 + 0.28 * (Math.sin(t * 11) * 0.35 + Math.sin(t * 23 + 1.7) * 0.3 + Math.sin(t * 5.1) * 0.35);
   candleLight.intensity = candleLit ? 24 * fl : 0;
+  if (todayGlow) todayGlow.material.opacity = deskEl.hidden ? 0.45 + 0.22 * Math.sin(t * 1.8) : 0;
   sconceLight.intensity = 28 * (0.85 + 0.3 * Math.sin(t * 9.2 + 2));
   torchLight.intensity = 14 * (0.85 + 0.3 * Math.sin(t * 8.1 + 4));
   flame.scale.y = sflame.scale.y = sflameR.scale.y = tflame.scale.y = 0.9 + 0.2 * Math.sin(t * 13);
