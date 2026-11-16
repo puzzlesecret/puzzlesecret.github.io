@@ -137,18 +137,23 @@ import Analytics from '@vercel/analytics/astro';
          Back button already know it; shown only when #draft carries the .scrap class, which only a guest room sets. -->
     <div class="scrap-wrap" aria-live="polite">
       <div class="scrap" id="scrapNote">
-        <div class="scrap-kick" id="scrapKick">A PIECE OF THE NOTE</div>
+        <div class="scrap-kick" id="scrapKick" tabindex="-1">A PIECE OF THE NOTE</div>
         <div class="scrap-text" id="scrapText"></div>
         <div class="scrap-board" id="scrapBoard" hidden>
           <div class="scrap-slots" id="scrapSlots"></div>
           <div class="scrap-full" id="scrapFull"></div>
           <button id="scrapCopy" class="ghost-btn" type="button">Copy the position</button>
+          <div id="scrapLogPrompt" class="scrap-log-prompt" hidden>
+            <button id="scrapLog" class="ghost-btn" type="button" aria-describedby="scrapLogHint">Sign the Visitors’ Book</button>
+            <p id="scrapLogHint">Optional. Leave your initials and general location in the same book as the one on the desk.</p>
+          </div>
           <p class="scrap-note-p">The pieces stay pinned for this visit. If you lose them, speak the word again and they come back.</p>
         </div>
         <p class="scrap-say" id="scrapSay"></p>
         <!-- The PinPoint VISITORS' BOOK (Dan, 2026-11-14): optional, never part of the find. Initials,
              a country, a state/county where offered and optionally a town of 15,000+, all from lists — nothing typed freely. -->
         <div class="vb" id="vb" hidden>
+          <button id="vbBackToPosition" class="ghost-btn" type="button" hidden>Back to coordinates</button>
           <form class="vb-form" id="vbForm" autocomplete="off" hidden>
             <p class="vb-note">Optional, and not part of your find. Initials and your area only, never your name or address. Everyone who visits can read it.</p>
             <label class="vb-l" for="vbIni">Initials</label>
@@ -607,7 +612,7 @@ import Analytics from '@vercel/analytics/astro';
     #desk[hidden], #notebook[hidden], #draft[hidden] { display: none; }
     /* .ghost-btn sets display, which beat the hidden attribute: the copy button showed (and copied
        the whole position) before a single scrap was found. Found by the 2026-10-01 phone test. */
-    #scrapCopy[hidden], #scrapBoard[hidden] { display: none !important; }
+    #scrapCopy[hidden], #scrapBoard[hidden], #scrapLogPrompt[hidden], #vbBackToPosition[hidden] { display: none !important; }
 
     /* ---- the key-tile games ---- */
     #roundHud { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 12; width: min(560px, 94vw); background: rgba(10,6,2,.86); border: 1px solid rgba(246,178,60,.45); border-radius: 10px; padding: 10px 14px; pointer-events: none; }
@@ -712,6 +717,15 @@ import Analytics from '@vercel/analytics/astro';
     .scrap-note-p { font-size: 13px; font-style: italic; color: #5a4a2a; margin: 10px 0 0; }
     .scrap-wrap .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.45); }
     #scrapCopy[data-done="1"] { background: rgba(246,178,60,.35); color: #2c2011; border-color: #b8760c; }
+    .scrap-log-prompt { margin: 12px auto 0; padding: 10px; border: 1px solid #8b631e; border-radius: 6px;
+      background: #f8df9f; color: #33230e; }
+    .scrap-log-prompt p { margin: 5px 0 0; font-size: 13px; line-height: 1.35; }
+    .scrap-wrap #scrapLog { min-height: 44px; padding: 8px 12px; background: #392711; color: #fff4d7; border-color: #392711; }
+    .scrap-wrap #scrapLog:hover { background: #533817; }
+    .scrap-wrap #scrapLog:focus-visible, .scrap-wrap #vbBackToPosition:focus-visible { outline: 2px solid #392711; outline-offset: 3px; }
+    #vbBackToPosition { min-height: 44px; margin: 4px 0 10px; }
+    #draft.scrap:has(#scrapLogPrompt:not([hidden])) { align-items: flex-start; overflow-y: auto; }
+    #draft.scrap:has(#scrapLogPrompt:not([hidden])) .scrap-wrap { margin: auto 0; }
     /* "Fold it away" sits BELOW the parchment, on the dark room, so the parchment-brown rule above made it
        near-invisible (Dan, 2026-11-14: players may not see it under the scrap). Light lettering, ~20% brighter
        than the standard ghost button, so it reads as the way out. */

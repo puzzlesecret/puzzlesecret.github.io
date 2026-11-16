@@ -3083,6 +3083,14 @@ document.getElementById('draftClose').addEventListener('click', () => { draftEl.
 const scrapKick = document.getElementById('scrapKick'), scrapText = document.getElementById('scrapText'),
   scrapBoard = document.getElementById('scrapBoard'), scrapSlots = document.getElementById('scrapSlots'),
   scrapFull = document.getElementById('scrapFull'), scrapCopy = document.getElementById('scrapCopy'), scrapSay = document.getElementById('scrapSay');
+const scrapLogPrompt = document.getElementById('scrapLogPrompt'), scrapLog = document.getElementById('scrapLog'),
+  scrapLogHint = document.getElementById('scrapLogHint'), vbBackToPosition = document.getElementById('vbBackToPosition');
+function updateScrapLogCopy() {
+  scrapLog.textContent = study.signed ? 'View the Visitors’ Book' : 'Sign the Visitors’ Book';
+  scrapLogHint.textContent = study.signed
+    ? 'Read the same Visitors’ Book that’s on the desk.'
+    : 'Optional. Leave your initials and general location in the same book as the one on the desk.';
+}
 const SLOT_HINTS = ['north, degrees', 'north, the rest', 'west, degrees', 'west, the rest'];
 function scrapsFound() { return GUEST ? GUEST.items.filter((id) => study.found.includes(id)) : []; }
 function fullPosition() { const f = GUEST.frags; return f.length === 4 ? (f[0] + f[1].replace(/^[NSEW]\s*…?/, '') + '  ' + f[2] + f[3].replace(/^[NSEW]\s*…?/, '')) : ''; }
@@ -3108,7 +3116,7 @@ function openScrap(idx) {
   psEvent(PS_EV.GUEST_SCRAP, scrapsFound().length + ' of 4');   // every scrap, with the running count (2026-10-01)
   psTouch('rejects');
 }
-function openScrapBoard() {
+function openScrapBoard(fromLogbook = false) {
   if (!GUEST) return;
   const have = scrapsFound();
   scrapKick.textContent = 'THE PINBOARD';
@@ -3123,22 +3131,23 @@ function openScrapBoard() {
   const all = have.length === 4 && GUEST.frags.length === 4;
   scrapFull.textContent = all ? fullPosition() : '';
   scrapCopy.hidden = !all;
+  scrapLogPrompt.hidden = !all;
+  if (all) updateScrapLogCopy();
   scrapBoard.hidden = false;
   scrapSay.textContent = all ? GUEST.allFound : (have.length ? 'Pinned. ' + (4 - have.length) + ' still to find.' : GUEST.boardEmpty);
   showScrapOverlay();
   markFound('board');
-  psEvent(PS_EV.GUEST_BOARD, have.length + ' of 4 pinned');
+  if (!fromLogbook) psEvent(PS_EV.GUEST_BOARD, have.length + ' of 4 pinned');
   if (all) {
     psEventOnce(PS_EV.GUEST_SOLVED);
     if (!study.boardSolved) { study.boardSolved = true; saveStudy(); }
-    if (!study.logged) scrapSay.textContent = GUEST.allFound + ' And before you go, my logbook on the desk is waiting for you.';
     setLogGlow();
   }
   renderGpsr(true);
 }
 /* --- The Keeper's logbook (guest rooms only): the desk's daily sudoku was being taken for a cache
        step (PinPoint, 2026-10-07/08), so in a guest room the desk holds a logbook instead. It does
-       nothing until the note is whole; then a finder can sign it. Kept on this device only. --- */
+       nothing until the note is whole; then a finder can sign it. Progress is local; signatures use the shared Visitors' Book. --- */
 function setLogGlow() { if (logGlow) logGlow.material.opacity = (study.boardSolved && !study.logged) ? 0.6 : 0.0; }
 setLogGlow();
 /* ---- THE VISITORS' BOOK (Dan, 2026-11-14) — the desk's book, open to every visitor to read; a finder
@@ -3195,13 +3204,23 @@ async function vbLoad() {
   vbRender();
   if (vbState.you && !vbCc.value && vbState.codes && vbState.codes.includes(vbState.you)) { vbCc.value = vbState.you; vbCcChanged(); }
 }
-async function vbCodes() {
+let vbCodesLoading = null;
+function vbCodes() {
   if (vbState.codes) return;
-  try { const c = await (await fetch('/data/places2/index.json')).json(); if (Array.isArray(c)) vbState.codes = c.filter((x) => /^[A-Z]{2}$/.test(x)); } catch (e) { return; }
-  vbState.codes.map((cc) => [cc, ccName(cc)]).sort((a, b) => a[1].localeCompare(b[1], 'en')).forEach(([cc, nm]) => {
-    const o = document.createElement('option'); o.value = cc; o.textContent = nm; vbCc.appendChild(o);
-  });
-  if (vbState.you && vbState.codes.includes(vbState.you)) { vbCc.value = vbState.you; vbCcChanged(); }
+  if (vbCodesLoading) return vbCodesLoading;
+  vbCodesLoading = (async () => {
+    try {
+      const c = await (await fetch('/data/places2/index.json')).json();
+      if (!Array.isArray(c)) return;
+      vbState.codes = [...new Set(c.filter((x) => /^[A-Z]{2}$/.test(x)))];
+      vbState.codes.map((cc) => [cc, ccName(cc)]).sort((a, b) => a[1].localeCompare(b[1], 'en')).forEach(([cc, nm]) => {
+        const o = document.createElement('option'); o.value = cc; o.textContent = nm; vbCc.appendChild(o);
+      });
+      if (!vbCc.value && vbState.you && vbState.codes.includes(vbState.you)) { vbCc.value = vbState.you; vbCcChanged(); }
+    } catch (e) { /* A later opening can retry a failed country request. */ }
+    finally { vbCodesLoading = null; }
+  })();
+  return vbCodesLoading;
 }
 async function vbCcChanged() {
   const cc = vbCc.value; vbState.place = ''; vbCity.value = ''; vbSugHide();
@@ -3317,7 +3336,8 @@ vbForm.addEventListener('submit', async (e) => {
     entry.rm = BOOK_ROOM ? 'book' : 'pinpoint';
     study.signed = entry; saveStudy();
     vbForm.hidden = true; vbMsg.textContent = '';
-    scrapSay.textContent = VB_COPY.done;
+    if (!draftEl.hidden && !vbEl.hidden && draftEl.classList.contains('vbook')) scrapSay.textContent = VB_COPY.done;
+    if (GUEST && !draftEl.hidden && !scrapBoard.hidden) updateScrapLogCopy();
     if (!d.dup) vbState.total += 1;
     vbRender(); globePins();
     if (d.pending) setTimeout(() => { vbState.entries = null; vbLoad(); }, 4000);
@@ -3502,6 +3522,7 @@ function vbSetNote() { const el = document.querySelector('#vbForm .vb-note'); if
 // the book study's visitors' book, on the side table by the globe: anyone who reached Vault I may sign it
 function openVisitorsBook() {
   goThen(1.9, 2.7, () => {
+    vbBackToPosition.hidden = true;
     scrapBoard.hidden = true;
     scrapKick.textContent = "THE KEEPER'S VISITORS' BOOK";
     scrapText.textContent = '';
@@ -3514,25 +3535,36 @@ function openVisitorsBook() {
 }
 function openGuestLog() {
   if (!GUEST) return;
-  goThen(0.2, -1.4, () => {
-    if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
-    const all = scrapsFound().length >= 4;
-    const first = all && !study.logged;
-    if (first) { study.logged = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); saveStudy(); }
-    scrapBoard.hidden = true;
-    scrapKick.textContent = "THE KEEPER'S VISITORS' BOOK";
-    scrapText.textContent = all ? 'FOUND IT' : '';
-    scrapSay.textContent = !all
-      ? 'Finders may sign my visitors’ book once all four pieces are found. It is optional, and it is not your find.'
-      : study.signed ? 'You have signed my visitors’ book. My thanks for the find. Now go and sign the real log, out where the note says.'
-      : 'My thanks for the find. Leave your mark below if you like, then go and sign the real log, out where the note says.';
-    vbForm.hidden = !(all && !study.signed); vbMsg.textContent = '';
-    showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false; vbSetNote();
-    vbRender(); vbLoad(); if (all && !study.signed) { vbCodes(); vbPreviewUpdate(); }
-    if (first && !REDUCED) burstConfetti();
-    setLogGlow(); renderGpsr(true);
-  });
+  goThen(0.2, -1.4, () => showGuestLog());
 }
+function showGuestLog(fromBoard = false) {
+  if (!GUEST) return;
+  if (!GUEST.frags.length) { showCaption(GUEST.retired, 7000); return; }
+  const all = scrapsFound().length === 4 && GUEST.frags.length === 4;
+  if (fromBoard && (!all || draftEl.hidden || scrapBoard.hidden)) return;
+  vbBackToPosition.hidden = !fromBoard;
+  const first = all && !study.logged;
+  if (first) { study.logged = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); saveStudy(); }
+  scrapBoard.hidden = true;
+  scrapKick.textContent = "THE KEEPER'S VISITORS' BOOK";
+  scrapText.textContent = all ? 'FOUND IT' : '';
+  scrapSay.textContent = !all
+    ? 'Finders may sign my visitors’ book once all four pieces are found. It is optional, and it is not your find.'
+    : study.signed ? 'You have signed my visitors’ book. My thanks for the find. Now go and sign the real log, out where the note says.'
+    : 'My thanks for the find. Leave your mark below if you like, then go and sign the real log, out where the note says.';
+  vbForm.hidden = !(all && !study.signed); vbMsg.textContent = '';
+  showScrapOverlay(); draftEl.classList.add('vbook'); vbEl.hidden = false; vbSetNote();
+  vbRender(); vbLoad(); if (all && !study.signed) { vbCodes(); vbPreviewUpdate(); }
+  if (first && !REDUCED) burstConfetti();
+  setLogGlow(); renderGpsr(true);
+  if (fromBoard) { draftEl.scrollTop = 0; scrapKick.focus({ preventScroll: true }); }
+}
+scrapLog.addEventListener('click', () => showGuestLog(true));
+vbBackToPosition.addEventListener('click', () => {
+  if (vbBackToPosition.hidden || draftEl.hidden || vbEl.hidden) return;
+  openScrapBoard(true);
+  scrapLog.focus();
+});
 scrapCopy.addEventListener('click', async () => {
   const s = scrapsFound().length === 4 ? fullPosition() : ''; if (!s) return;   // never copy before all four are found
   psEvent(PS_EV.GUEST_COPY);
