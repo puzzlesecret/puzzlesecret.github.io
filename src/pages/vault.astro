@@ -89,10 +89,11 @@ import Analytics from '@vercel/analytics/astro';
   </div>
 
   <!-- THE KEEPER'S DESK — sit, and play today's page (the arcade in a parchment frame) -->
-  <div id="desk" hidden>
+  <div id="desk" hidden role="dialog" aria-modal="true" aria-labelledby="deskTitle">
     <div class="desk-card">
       <div class="desk-head">
-        <div class="reward-kicker">THE KEEPER’S DESK</div>
+        <button id="deskX" class="desk-x" type="button" aria-label="Rise from the desk and return to the vault" title="Rise from the desk">✕</button>
+        <div class="reward-kicker" id="deskTitle">THE KEEPER’S DESK</div>
         <p class="desk-line" id="deskLine"></p>
         <p class="desk-stamps" id="deskStamps"></p>
       </div>
@@ -647,18 +648,27 @@ import Analytics from '@vercel/analytics/astro';
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     @media (prefers-reduced-motion: reduce) { #roundHud.pulse #roundClock { animation: none; } .lock-shake { transition: none; } .lock-card .lock-dial { transition: none; } }
     @media (max-width: 640px) { #roundHud { top: 70px; padding: 8px 10px; } }
-    #desk { padding: 6px; }
+    #desk { padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); overscroll-behavior: contain; }
+    /* landscape phones: give the puzzle the height; the ✕ stays as the way out */
+    @media (max-height: 480px) {
+      #desk { padding: 0; } .desk-card { height: 100vh; height: 100dvh; width: 100%; border-radius: 0; }
+      .desk-head { padding: 6px 60px 4px; } .desk-line, .desk-stamps { display: none; } .desk-card .word-actions { display: none; }
+    }
     .desk-card {
-      width: min(780px, 100%); max-height: calc(100vh - 12px); display: flex; flex-direction: column;
+      width: min(780px, 100%); height: calc(100vh - 12px); height: calc(100dvh - 12px); display: flex; flex-direction: column;
       background: url(/art/parchment_bg.webp) center / cover #e9dcc0; border: 3px solid #3a2a14; border-radius: 4px;
       box-shadow: 0 0 60px rgba(246,178,60,0.18), 0 18px 50px rgba(0,0,0,0.8); overflow: hidden;
     }
-    .desk-head { padding: 12px 16px 8px; text-align: center; background: rgba(255,250,236,.62); border-bottom: 1px solid rgba(58,42,20,.35); }
+    .desk-head { position: relative; padding: 12px 60px 8px; text-align: center; background: rgba(255,250,236,.62); border-bottom: 1px solid rgba(58,42,20,.35); }
     .desk-head .reward-kicker { color: #7a5520; }
     .desk-line { font-size: 17px; font-style: italic; color: #2c2011; line-height: 1.35; }
     .desk-stamps { margin-top: 4px; font-family: Cinzel, serif; font-size: 10px; letter-spacing: .18em; color: #8a6a33; }
-    .desk-frame { flex: 1; min-height: 0; margin: 0 10px; border: 1px solid rgba(58,42,20,0.6); border-radius: 3px; background: #120d07; }
-    .desk-frame iframe { display: block; width: 100%; height: calc(100vh - 150px); border: 0; }
+    .desk-frame { flex: 1; min-height: 0; display: flex; margin: 0 10px; border: 1px solid rgba(58,42,20,0.6); border-radius: 3px; background: #120d07; }
+    .desk-frame iframe { display: block; flex: 1; width: 100%; height: 100%; min-height: 0; border: 0; }
+    .desk-x { position: absolute; top: 6px; right: 8px; width: 44px; height: 44px; touch-action: manipulation; border-radius: 50%; border: 1px solid rgba(58,42,20,.6);
+      background: #2c2011; color: #f6e7c4; font-size: 18px; line-height: 1; cursor: pointer; }
+    .desk-x:hover { background: #4a3418; } .desk-x:focus-visible { outline: 2px solid #b8760c; outline-offset: 2px; }
+    .desk-card #deskRise { background: #2c2011; color: #f6e7c4; border-color: #2c2011; }
     .desk-card .word-actions { padding: 8px 10px 10px; margin-top: 0; }
     .desk-card .ghost-btn { color: #6b4d1f; border-color: rgba(90,64,26,.5); }
     #draftA[aria-pressed="true"], #draftB[aria-pressed="true"] { background: rgba(246,178,60,.35); color: #2c2011; border-color: #b8760c; }

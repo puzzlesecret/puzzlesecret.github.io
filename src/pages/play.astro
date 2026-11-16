@@ -9,6 +9,8 @@ import webPuzzles from '../data/web_puzzles.json';
        Decided before first paint so the header never flashes. -->
   <script is:inline>
     if (new URLSearchParams(location.search).has('embed')) document.documentElement.classList.add('embed');
+    // Escape inside the desk's frame never reaches the vault page, so pass it up (Dan, 2026-11-16: trapped at the desk)
+    if (new URLSearchParams(location.search).has('embed')) addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.defaultPrevented) parent.postMessage({ type: 'ps-desk-rise' }, location.origin); });
   </script>
   <style is:global>
     html.embed .chrome, html.embed .global-foot, html.embed .menu-drawer, html.embed .key-banner,
