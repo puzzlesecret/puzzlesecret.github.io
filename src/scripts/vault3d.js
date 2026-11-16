@@ -623,8 +623,43 @@ function setCandle(lit) { candleLit = lit; flame.visible = lit; candleGlow.visib
 // inkwell + quill (left of desk)
 const ink = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0x181310, roughness: 0.4, metalness: 0.3 }));
 ink.position.set(-0.72, 0.87, 0.12); desk.add(ink);
-const quill = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.34), new THREE.MeshStandardMaterial({ color: 0xe8e2d2, side: THREE.DoubleSide, roughness: 0.8 }));
-quill.position.set(-0.72, 1.02, 0.12); quill.rotation.set(0.5, 0.4, 0.9); desk.add(quill);
+// A real quill (Dan, 2026-11-16: the old flat white plank "doesn't look anything like" a pen): a dark nib,
+// a bare horn barrel, a central shaft and a curved, tapering feather vane with a few split barbs, standing
+// in the inkwell and leaning back over the desk the way a resting quill does.
+function makeQuill(len) {
+  const g = new THREE.Group();
+  const shaftMat = new THREE.MeshStandardMaterial({ color: 0xd8c9a3, roughness: 0.55 });
+  const vaneMat = new THREE.MeshStandardMaterial({ color: 0xf1e9d6, side: THREE.DoubleSide, roughness: 0.9 });
+  const tipMat = new THREE.MeshStandardMaterial({ color: 0x6b5a48, side: THREE.DoubleSide, roughness: 0.9 });
+  const nib = new THREE.Mesh(new THREE.ConeGeometry(0.0055, 0.035 * len, 8), new THREE.MeshStandardMaterial({ color: 0x0c0907, roughness: 0.3, metalness: 0.2 }));
+  nib.rotation.x = Math.PI; nib.position.y = 0.0175 * len; g.add(nib);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0055, 0.4 * len, 8), shaftMat);
+  shaft.position.y = 0.035 * len + 0.2 * len; g.add(shaft);
+  // the vane: a long leaf shape, wider on the trailing side, with a soft curl at the top
+  const v = new THREE.Shape(), L = 0.33 * len, b = 0.12 * len;
+  v.moveTo(0, 0);
+  v.bezierCurveTo(0.05 * len, 0.05 * len, 0.075 * len, 0.2 * len, 0.012 * len, L);
+  v.bezierCurveTo(-0.015 * len, 0.26 * len, -0.045 * len, 0.12 * len, -0.012 * len, 0);
+  v.lineTo(0, 0);
+  const vane = new THREE.Mesh(new THREE.ShapeGeometry(v, 16), vaneMat);
+  vane.position.y = b; vane.rotation.y = 0.25; g.add(vane);
+  // a second, slightly smaller layer turned across the first, so the feather has body from every side
+  const vane2 = new THREE.Mesh(vane.geometry, vaneMat);
+  vane2.position.y = b + 0.01 * len; vane2.rotation.y = 0.25 + 1.35; vane2.scale.set(0.8, 0.95, 1); g.add(vane2);
+  // a darker tip band and three split barbs, so it reads as feather and not paper
+  const tipS = new THREE.Shape();
+  tipS.moveTo(0.045 * len, 0.27 * len); tipS.bezierCurveTo(0.04 * len, 0.3 * len, 0.02 * len, 0.32 * len, 0.012 * len, L);
+  tipS.bezierCurveTo(0, 0.31 * len, -0.008 * len, 0.29 * len, -0.009 * len, 0.27 * len); tipS.lineTo(0.045 * len, 0.27 * len);
+  const tip = new THREE.Mesh(new THREE.ShapeGeometry(tipS, 8), tipMat);
+  tip.position.set(0, b, 0.0006); tip.rotation.y = 0.25; g.add(tip);
+  [[0.1, 0.06, -0.5], [0.17, 0.065, -0.6], [0.06, -0.035, 0.5]].forEach(([y, x, r]) => {
+    const barb = new THREE.Mesh(new THREE.PlaneGeometry(0.004 * len, 0.05 * len), vaneMat);
+    barb.position.set(x * len, b + y * len, 0.001); barb.rotation.set(0, 0.25, r); g.add(barb);
+  });
+  return g;
+}
+const quill = makeQuill(1);
+quill.position.set(-0.72, 0.84, 0.12); quill.rotation.set(0.12, 0.6, 0.38); desk.add(quill);
 ink.userData = { kind: 'say', say: 'quill', found: 'quill', label: 'Quill and ink' };
 quill.userData = { kind: 'say', say: 'quill', found: 'quill', label: 'Quill and ink' };
 chair.userData = { kind: 'chair', label: GUEST ? "The Keeper's logbook" : "Sit at the Keeper's desk" };
@@ -869,8 +904,8 @@ const BOOK_ROOM = !GUEST;
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.04, 20), M.woodDark); base.position.y = 0.02; tbl.add(base);
     box(0.34, 0.025, 0.24, new THREE.MeshStandardMaterial({ color: 0x4a2a16, roughness: 0.7 }), 0, 0.752, 0, 0, tbl);   // the open book's cover
     box(0.16, 0.018, 0.22, M.candle, -0.08, 0.768, 0, 0.04, tbl); box(0.16, 0.018, 0.22, M.candle, 0.08, 0.768, 0, -0.04, tbl);   // its pages
-    const quillB = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.22), new THREE.MeshStandardMaterial({ color: 0xe8e2d2, side: THREE.DoubleSide, roughness: 0.8 }));
-    quillB.position.set(0.12, 0.79, 0.06); quillB.rotation.set(-1.2, 0.3, 0.6); tbl.add(quillB);
+    const quillB = makeQuill(0.62);
+    quillB.position.set(0.02, 0.775, 0.06); quillB.rotation.set(-1.52, 0, 0.9); tbl.add(quillB);
     const hitB = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.9, 12), new THREE.MeshBasicMaterial({ visible: false })); hitB.position.y = 0.45; tbl.add(hitB);
     tbl.userData = { kind: 'vbookTable', label: "The Keeper's visitors' book" };
     contact(0.7, 0.7, 0, 0, 0, tbl);
@@ -3632,7 +3667,7 @@ function sitAtDesk() {
     if (!deskFrame.src) deskFrame.src = '/play?embed=1&daily=1';
     deskEl.hidden = false;
     showCaption(STUDY_SAY.sit, 5000);
-    setTimeout(() => { try { deskFrame.contentWindow.focus(); } catch (e) {} }, 400);
+    setTimeout(() => { if (deskEl.hidden) return; try { deskFrame.contentWindow.focus(); } catch (e) {} }, 400);
   }, 900);
 }
 function riseFromDesk() {
@@ -3673,7 +3708,9 @@ function burstConfetti() {
   }
 }
 function tickConfetti(dt) {
+document.getElementById('deskX').addEventListener('click', riseFromDesk);
   if (!confParts.length) return;
+  if (e.origin === location.origin && e.data && e.data.type === 'ps-desk-rise') { if (!deskEl.hidden) riseFromDesk(); return; }
   cg.clearRect(0, 0, conf.width, conf.height);
   confParts.forEach(p => {
     p.vy += 18 * dt; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= dt * 0.4;
@@ -4117,7 +4154,8 @@ let chestTickT = 0;
 })();
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (!draftEl.hidden && draftEl.classList.contains('scrap')) { draftEl.hidden = true; draftEl.classList.remove('scrap', 'vbook'); }
+  if (!deskEl.hidden) riseFromDesk();
+  else if (!draftEl.hidden && draftEl.classList.contains('scrap')) { draftEl.hidden = true; draftEl.classList.remove('scrap', 'vbook'); }
   else if (!lockboxEl.hidden) closeLock();
   else if (!tilecardEl.hidden) closeCard(tilecardEl);
   else if (!roundEndEl.hidden) closeCard(roundEndEl);
