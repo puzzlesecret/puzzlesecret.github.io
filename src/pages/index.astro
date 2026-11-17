@@ -6,12 +6,11 @@
 //   LIVE (on Enter) — Volume I ignites to gold; Keeper speaks; word slot rises.
 // Gemini crack video + Keeper voice composite into LIVE in the next step.
 const keeperFirstLine =
-  "Two hundred puzzles… and hidden among them, a single word. If you found my first, speak it now — the vault is listening.";
+  "The vault is listening.";
 // Clean product URL, not a shortener — shorteners strip Amazon Attribution
 // tags, and the old amzn.to link carried a stale search session. tag= is the
 // Associates ID (site links only; NEVER in email or print — Associates ToS).
 const AMAZON_URL = "https://www.amazon.com/dp/B0HB9K8PXC?tag=puzzlesecret-20";   // Volume 1, $14.99
-const tiles = 6;
 const volumes = [
   { rn: "I", c: "var(--v1)", rgb: "255,180,72", img: "/art/door-v10.webp", name: "The Keeper's Vault", active: true },
   { rn: "II", c: "var(--v2)", rgb: "70,210,135", img: "/art/door-v2.webp", name: "The Corsair's Chart" },
@@ -239,16 +238,16 @@ const HOME_LD = {
           <div class="enterblock pre-only reveal" style="--d:.5s">
             <p class="tagline"><span>Solve the puzzles.</span> <span>Find the word.</span> <span>Open the vault.</span></p>
             <div class="enter-row">
-            <a class="enter" id="entryStartBtn" href="/start">
+            <button class="enter" id="entryStartBtn" type="button">
               <!-- the door's own spoked wheel; it turns on hover -->
               <svg class="enter-ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7.2"/><circle cx="12" cy="12" r="2.3"/>{[0, 60, 120, 180, 240, 300].map((a) => <line x1="12" y1="9.7" x2="12" y2="1.6" transform={`rotate(${a} 12 12)`} />)}</svg>
               <span>Enter the Vault</span>
-            </a>
+            </button>
             <button class="soundpick" id="soundPick" type="button" title="Sound is on. Press to mute." aria-label="Sound is on. Press to mute.">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><g class="sp-on"><path d="M15.5 8.8a4.5 4.5 0 0 1 0 6.4"/><path d="M18.4 6a8.5 8.5 0 0 1 0 12"/></g><g class="sp-off"><line x1="16" y1="9.5" x2="21" y2="14.5"/><line x1="21" y1="9.5" x2="16" y2="14.5"/></g></svg>
             </button>
             </div>
-            <p class="entry-options"><a class="linklike" href="/start#choose-book">Choose your book</a><button class="linklike" id="legacyEnterBtn" type="button">Speaking door (Volume I)</button></p>
+            <p class="entry-options"><a class="linklike" href="/start">Quiet entry · no audio</a><a class="linklike" href="/start#choose-book">Help with my book</a></p>
             <p class="g-mute remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="linklike rem-link" href="/vault">Step back inside →</a></p>
             <p class="g-mute daily-word-pre" id="dailyWordPre" hidden></p>
           </div>
@@ -260,19 +259,22 @@ const HOME_LD = {
               <p id="capText"></p>
             </div>
             <div class="slot" id="slot">
-              <p class="prompt" id="prompt">Speak the first word</p>
-              <form class="entry" id="tileForm" autocomplete="off">
-                <div class="tiles">
-                  {Array.from({ length: tiles }).map((_, i) => (
-                    <input class="tile" maxlength="1" inputmode="latin" aria-label={`letter ${i + 1}`} data-i={i} />
-                  ))}
-                </div>
-                <button class="speak" type="button" id="micBtn" aria-label="Tap to speak the word using your microphone">
-                  <svg class="mic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-                  <span class="speak-lbl">Speak</span>
-                </button>
+              <form class="entry word-entry" id="tileForm" method="post" action="/api/unlock" autocomplete="off" novalidate>
+                <label class="prompt" for="wordInput">Your word</label>
+                <input class="word-input" id="wordInput" name="word" type="text" disabled minlength="4" maxlength="32" pattern="[A-Za-z -]{4,32}" inputmode="text" autocapitalize="characters" spellcheck="false" aria-describedby="wordHelp entryStatus" />
+                <button class="speak word-submit" type="submit" id="submitWord" disabled>Offer the word</button>
               </form>
-              <p class="entry-hint">Tap <em>Speak</em> and say the word aloud — or type it in the boxes.</p>
+              <noscript><p class="entry-hint">Enable JavaScript to offer a word at this door, or visit <a href="/start">quiet entry</a> for book help.</p></noscript>
+              <p class="entry-hint" id="wordHelp">Type the word you found · 4–12 letters. Press Offer the word when ready.</p>
+              <p class="entry-status" id="entryStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+              <div class="voice-tools">
+                <button class="linklike" type="button" id="replayKeeper">Replay Keeper</button>
+                <button class="linklike" type="button" id="micBtn" aria-pressed="false" aria-describedby="micHelp micStatus">Speak instead (optional)</button>
+                <a class="linklike" href="/start">Quiet entry</a>
+              </div>
+              <p class="entry-hint" id="micHelp">Speak uses your microphone and may send audio to your browser’s speech service. Review the transcript, then offer it yourself.</p>
+              <p class="entry-hint" id="micStatus" role="status" aria-live="polite"></p>
+              <p class="entry-hint" id="audioStatus" role="status" aria-live="polite"></p>
               <p class="entry-hint remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="rem-link" href="/vault">Step back inside →</a></p>
               <p class="entry-hint daily-word" id="dailyWord" hidden></p>
             </div>
@@ -286,7 +288,7 @@ const HOME_LD = {
           <p class="side reveal" style="--d:.62s">
             <a href="/play">Play 200 puzzles free</a>
             <span>·</span>
-            <a href="/hints">Need a hint?</a>
+            <a href="/start#choose-book">Help with my book</a>
           </p>
           <!-- The quiet review note (Option B, Dan 2026-11-09): only for a browser that spoke one of the BOOK's words,
                only on a later visit, never beside a gift, never tied to one. Shown by public/js/review-ask.js. -->
@@ -444,7 +446,7 @@ const HOME_LD = {
         master.connect(actx.destination);
         audioReady = true;
       }
-      function resumeAudio() { if (actx && actx.state === 'suspended') actx.resume(); }
+      function resumeAudio() { if (actx && actx.state === 'suspended') actx.resume().catch(() => {}); }
       function makeNoise() {
         const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
         for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -581,14 +583,12 @@ const HOME_LD = {
       }
       function setMuted(m) {
         muted = m;
-        if ('speechSynthesis' in window) speechSynthesis.cancel();  // always stop the voice on toggle
         if (currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} }
         if (master && actx) master.gain.setTargetAtTime(m ? 0 : 0.9, actx.currentTime, 0.03);
-        if (actx) { if (m) actx.suspend(); else actx.resume(); }    // suspend = truly silent
+        if (actx) { if (m) actx.suspend(); else actx.resume().catch(() => {}); }    // suspend = truly silent
       }
       // Never let sound outlive the page: kill the voice + suspend audio when hidden or closing.
       function silenceAll() {
-        try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
         try { if (currentKeeperAudio) currentKeeperAudio.pause(); } catch (e) {}
         try { if (actx && actx.state === 'running') actx.suspend(); } catch (e) {}
       }
@@ -596,18 +596,13 @@ const HOME_LD = {
       window.addEventListener('beforeunload', silenceAll);
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) silenceAll();
-        else if (!muted && actx && actx.state === 'suspended') actx.resume();
+        // Return silently; the visitor can replay or toggle sound intentionally.
       });
 
-      /* The Keeper's VOICE — LOCKED: Kokoro TTS "Michael," speed 0.8x (corrected 2026-07-22;
-         the "0.65x" in older notes never actually shipped), natural pitch,
-         inserted sentence-boundary pauses (the exact reproducible recipe is in the
-         project's internal notes, which are not published). Real pre-baked lines live in /audio/vo/ and are looked
-         up here by their exact script text. Lines not yet recorded fall back to the
-         browser's built-in speech so nothing is silent while the rest of the script is
-         produced — replace fallback entries here as each new line is generated. */
+      /* The Keeper uses only the established recorded voice. Missing or blocked
+         recordings leave complete captions and an editable word field. */
       const keeperAudioFiles = {
-        [keeperFirstLine]: '/audio/vo/vo_scene0_entry.wav',
+        [keeperFirstLine]: '/audio/vo/vo_entry_universal.wav',
         'So… you found my first word. Take what the first door guarded.': '/audio/vo/vo_vault1_entry.wav',
         'That is not the word I sealed it with.': '/audio/vo/vo_fail_1.wav',
         'Close… or not close at all. I will never tell.': '/audio/vo/vo_fail_2.wav',
@@ -616,84 +611,44 @@ const HOME_LD = {
         'Three words, three doors… and you spoke them all. The vault is yours.': '/audio/vo/vo_landing_success3.wav',
         'So — you heard the whole of it.': '/audio/vo/vo_landing_success4.wav',
       };
-      // Preload + unlock every Keeper line on the first tap, so mobile autoplay
-      // rules can never block a later line and force a fallback.
+      // Metadata only: recordings play individually, following the entry gesture.
       const keeperPlayers = {};
       for (const [txt, src] of Object.entries(keeperAudioFiles)) {
-        const a = new Audio(src + '?v=3'); a.preload = 'auto'; a.volume = 1;  // v3 = true reference voice (bm_george)
+        const a = new Audio(src); a.preload = 'metadata'; a.volume = 1;
         keeperPlayers[txt] = a;
       }
-      let keeperUnlocked = false;
-      function unlockKeeperAudio() {
-        if (keeperUnlocked) return; keeperUnlocked = true;
-        Object.values(keeperPlayers).forEach((a) => {
-          a.muted = true;
-          const p = a.play();
-          if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; })
-                            .catch(() => { a.muted = false; });
-          else a.muted = false;
-        });
-      }
-      document.addEventListener('pointerdown', unlockKeeperAudio, { once: true });
-      let keeperVoice = null;
-      function pickKeeperVoice() {
-        if (!('speechSynthesis' in window)) return null;
-        const vs = speechSynthesis.getVoices();
-        if (!vs.length) return null;
-        return vs.find((v) => /en/i.test(v.lang) && /george|arthur|daniel/i.test(v.name))
-          || vs.find((v) => /en-GB/i.test(v.lang))
-          || vs.find((v) => /en/i.test(v.lang) && /(david|mark|male)/i.test(v.name))
-          || vs.find((v) => /^en/i.test(v.lang)) || vs[0];
-      }
-      if ('speechSynthesis' in window) {
-        keeperVoice = pickKeeperVoice();
-        speechSynthesis.addEventListener('voiceschanged', () => { keeperVoice = pickKeeperVoice(); });
-      }
+      let visitorStarted = false;
+      let lastCaption = keeperFirstLine;
       let currentKeeperAudio = null;
       // Returns the playing <audio> element when a real recorded line exists (so the
-      // caller can sync caption timing to its actual duration), or null when it fell
-      // back to browser speech (or was muted).
+      // caller can inspect recording playback), or null while muted.
       // ONE voice only: the Keeper's recorded lines. If a line has no recording
       // (or can't play), the caption carries it in SILENCE — never browser TTS,
       // whose mismatched voice is exactly what Dan rejected.
       function speakKeeper(text) {
         if (currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} currentKeeperAudio = null; }
-        if (muted) return null;
+        if (muted || !visitorStarted || document.hidden) return null;
         const a = keeperPlayers[text];
         if (!a) return null;
         try { a.currentTime = 0; } catch (e) {}
-        a.play().catch(() => {});
+        document.getElementById('audioStatus').textContent = '';
+        a.play().catch(() => { document.getElementById('audioStatus').textContent = 'Keeper audio unavailable. His words remain above; you can still type your word or replay.'; });
         currentKeeperAudio = a;
         return a;
       }
 
-      let typeTimer = null;
       function typeCaption(text, silent = false) {
-        // silent: the caption writes out but the Keeper holds his tongue (used during the door
-        // hand-off, where the page leaves before a recording could finish)
-        if (silent && currentKeeperAudio) { try { currentKeeperAudio.pause(); } catch (e) {} currentKeeperAudio = null; }
-        const audioEl = silent ? null : speakKeeper(text);   // the Keeper speaks the line as it writes out
-        capText.textContent = '';
-        let i = 0;
-        clearInterval(typeTimer);
-        const startTyping = (totalMs) => {
-          const perChar = Math.max(18, totalMs / text.length);
-          typeTimer = setInterval(() => {
-            capText.textContent = text.slice(0, ++i);
-            if (i >= text.length) clearInterval(typeTimer);
-          }, perChar);
-        };
-        if (audioEl) {
-          // sync the typewriter reveal to the real recording's actual length
-          if (audioEl.readyState >= 1 && audioEl.duration) startTyping(audioEl.duration * 1000);
-          else {
-            audioEl.addEventListener('loadedmetadata', () => startTyping(audioEl.duration * 1000), { once: true });
-            setTimeout(() => { if (i === 0) startTyping(text.length * 34); }, 1200); // safety net
-          }
-        } else {
-          startTyping(text.length * 34);  // browser-speech fallback pacing
-        }
+        lastCaption = text;
+        capText.textContent = text;
+        if (silent) { if (currentKeeperAudio) currentKeeperAudio.pause(); }
+        else speakKeeper(text);
       }
+      document.getElementById('replayKeeper').addEventListener('click', () => {
+        if (recognition) { stopMicrophone(); micStatus.textContent = 'Microphone stopped for Keeper playback.'; }
+        visitorStarted = true;
+        if (muted) { setMuted(false); syncSoundIcon(); }
+        speakKeeper(lastCaption);
+      });
 
       // The stage's "dawn" animation is filter-based; once it has played, drop the filter so the
       // door layers stay composited (a persisting filter forces the whole stage to rasterize).
@@ -701,19 +656,22 @@ const HOME_LD = {
       stageEl?.addEventListener('animationend', (e) => { if (e.animationName === 'dawn') stageEl.classList.add('dawned'); });
 
       function beginExperience(withSound = true) {
-        initAudio(); resumeAudio();
-        if (withSound && !muted) startAmbient();
+        visitorStarted = true;
+        if (scene.classList.contains('live')) { document.getElementById('wordInput').focus(); return; }
+        if (withSound && !muted) { initAudio(); resumeAudio(); startAmbient(); }
         syncSoundIcon();
         scene.classList.add('live');
-        scene.classList.add('igniting');      // crack-open: flash, widen, sparks, push-in
-        if (withSound) playBoom();            // the door punches forward — deep BOOM + crack + metal ring
-        setTimeout(() => scene.classList.remove('igniting'), 1500);
-        setTimeout(() => typeCaption(keeperFirstLine), 1150);
-        setTimeout(() => { const f = slot?.querySelector('.tile'); if (f) f.focus(); }, 1750);
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          scene.classList.add('igniting');
+          if (withSound) playBoom();
+          setTimeout(() => scene.classList.remove('igniting'), 1500);
+        }
+        // Begin the recorded line within the same trusted click as Enter the Vault.
+        typeCaption(keeperFirstLine);
+        document.getElementById('wordInput').focus();
       }
-      document.getElementById('legacyEnterBtn')?.addEventListener('click', () => beginExperience(!muted));
-      // the speaker under the button: choose sound before stepping in (the header chip stays in step)
-      document.getElementById('soundPick')?.addEventListener('click', () => { setMuted(!muted); syncSoundIcon(); });
+      document.getElementById('entryStartBtn').addEventListener('click', () => beginExperience(!muted));
+      document.getElementById('soundPick').addEventListener('click', () => { setMuted(!muted); syncSoundIcon(); });
 
       const q = new URLSearchParams(location.search);
       if (q.get('scene') === 'live') {   // settled live state (no crack animation) — for review
@@ -735,8 +693,9 @@ const HOME_LD = {
         }
       }
       syncSoundIcon();   // header chip and the speaker under the button start in agreement
-      if (q.get('ignite') === '1') beginExperience();  // trigger the crack-open (for capturing frames) — after `st` exists
+      // URL review hooks never start audio: sound requires a visitor gesture.
       st?.addEventListener('click', () => {
+        if (recognition) { stopMicrophone(); micStatus.textContent = 'Microphone stopped while you change sound.'; }
         initAudio(); resumeAudio();
         setMuted(!muted);
         if (!muted) startAmbient();  // turning sound on starts the ambient bed
@@ -772,12 +731,11 @@ const HOME_LD = {
       const volParam = q.get('vol');
       if (volParam) document.querySelector(`.sv[data-vol="${volParam}"]`)?.dispatchEvent(new Event('mouseenter'));
 
-      const tileEls = [...document.querySelectorAll('.tile')];
+      const wordInput = document.getElementById('wordInput');
+      const submitWord = document.getElementById('submitWord');
+      const entryStatus = document.getElementById('entryStatus');
       const micBtn = document.getElementById('micBtn');
-      const promptEl = document.getElementById('prompt');
-      const PROMPT_DEFAULT = promptEl ? promptEl.textContent : '';
-
-      function fillTiles(letters) { tileEls.forEach((t, i) => { t.value = letters[i] || ''; }); }
+      const micStatus = document.getElementById('micStatus');
 
       function psVid() {
         try {
@@ -797,10 +755,10 @@ const HOME_LD = {
       // SECURITY: these lines ship in the page source — they must never contain a secret word.
       // (The canon spoken lines with the words live only in the book and the VO recordings.)
       const successLines = {
-        I: 'So… you found my first word. Take what the first door guarded.',
-        II: 'The fire took my second plate — but you read my letter anyway. Enter.',
-        III: 'Three words, three doors… and you spoke them all. The vault is yours.',
-        IV: 'So — you heard the whole of it.',
+        I: 'The word was true. The first vault opens.',
+        II: 'The word was true. The second vault opens.',
+        III: 'The word was true. The third vault opens.',
+        IV: 'The word was true. The vault opens.',
       };
       function onWrong() {
         misses += 1;
@@ -810,7 +768,7 @@ const HOME_LD = {
         if (misses >= 3 && slot && !document.getElementById('hintLink')) {
           const p = document.createElement('p');
           p.id = 'hintLink'; p.className = 'entry-hint';
-          p.innerHTML = 'The Keeper offers <a href="/hints">a hint</a>.';
+          p.innerHTML = 'The Keeper offers <a href="/start#choose-book">help for your book</a>.';
           slot.appendChild(p);
         }
       }
@@ -830,7 +788,7 @@ const HOME_LD = {
         if (!panel && slot) { panel = document.createElement('div'); panel.id = 'rewardPanel'; panel.className = 'reward'; slot.appendChild(panel); }
         if (panel) panel.innerHTML =
           `<p class="r-tag">Vault ${data.act} — the word was true</p>` +
-          `<p class="r-body">…</p>`;
+          `<p class="r-body">…</p><p class="entry-hint"><a id="continueVault" href="/vault?from=door&amp;act=${encodeURIComponent(data.act || '')}">Step inside →</a></p>`;
         openTheDoor(data.act);
       }
 
@@ -864,6 +822,14 @@ const HOME_LD = {
       sizeDoor();
       addEventListener('resize', sizeDoor);
       let opening = false;
+      let openingInterrupted = false;
+      let pendingAct = null;
+      let openingTimers = [];
+      let openingSkip = null;
+      function cancelOpening() {
+        openingTimers.forEach(clearTimeout); openingTimers = [];
+        if (openingSkip) openingSkip.abort();
+      }
       function buildSlab() {
         // a copy of the plate, cut from the same picture at the same size, so the swap is invisible
         const slab = document.createElement('div'); slab.className = 'dleaf';
@@ -877,10 +843,13 @@ const HOME_LD = {
       }
       function openTheDoor(act, stay = false) {
         if (opening) return; opening = true;
+        pendingAct = act; openingInterrupted = false;
         showVolume(0, DEFAULT_SC);                   // the visitor may be hovering Volume III
         // the vault is next — fetch it now so the tap at the gate is the only cost
         const pf = document.createElement('link'); pf.rel = 'prefetch'; pf.href = '/vault'; document.head.appendChild(pf);
         const dest = '/vault?from=door' + (act ? '&act=' + encodeURIComponent(act) : '');
+        openingSkip = new AbortController();
+        const later = (ms, fn) => { const id = setTimeout(() => { if (!document.hidden) fn(); }, ms); openingTimers.push(id); };
         let gone = false;
         const go = () => { if (gone) return; gone = true; if (!stay) window.location.href = dest; };
         const say = () => {
@@ -892,10 +861,10 @@ const HOME_LD = {
         };
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
           scene.classList.add('open', 'reduced'); say(); playUnlock();
-          setTimeout(go, 2800);
+          later(1200, go);
           return;
         }
-        const T = (ms, fn) => setTimeout(fn, ms);
+        const T = later;
         T(400,  () => { scene.classList.add('bolt1'); playBolt(0); });
         T(850,  () => { scene.classList.add('bolt2'); playBolt(1); });
         T(1300, () => { scene.classList.add('bolt3'); playBolt(2); });
@@ -915,11 +884,11 @@ const HOME_LD = {
         T(5600, () => document.getElementById('blackout')?.classList.add('on'));
         T(6250, go);
         // click anywhere to skip the rest
-        setTimeout(() => document.addEventListener('pointerdown', () => { document.getElementById('blackout')?.classList.add('on'); setTimeout(go, 450); }, { once: true }), 900);
+        later(900, () => document.addEventListener('pointerdown', (e) => { if (e.target.closest('button, a, input')) return; document.getElementById('blackout')?.classList.add('on'); later(450, go); }, { signal: openingSkip.signal }));
       }
       if (q.get('open') === '1') {   // preview hook: run the opening without a word (stay=1 keeps the page)
-        scene.classList.add('live'); initAudio();
-        setTimeout(() => openTheDoor('I', q.get('stay') === '1'), 700);
+        scene.classList.add('live');
+        setTimeout(() => { if (!document.hidden) openTheDoor('I', q.get('stay') === '1'); }, 700);
       }
       // A returning solver need not prove the word twice: the passport record opens the way.
       try {
@@ -930,54 +899,175 @@ const HOME_LD = {
           document.querySelectorAll('.remembered').forEach((el) => { el.hidden = false; el.querySelector('.rem-txt').textContent = txt; });
         }
       } catch (e) { /* private mode — the door simply asks again */ }
+      let requestController = null;
       async function tryWord() {
-        if (submitting) return; submitting = true;
-        const word = tileEls.map((t) => t.value).join('');
+        if (submitting || opening) return;
+        const word = wordInput.value.trim().toUpperCase().replace(/[\s-]/g, '');
+        if (!/^[A-Z]{4,12}$/.test(word)) {
+          entryStatus.textContent = 'Enter one word using 4–12 letters.';
+          wordInput.setAttribute('aria-invalid', 'true'); wordInput.focus(); return;
+        }
+        stopMicrophone();
+        wordInput.removeAttribute('aria-invalid');
+        submitting = true; submitWord.disabled = true;
+        document.getElementById('tileForm').setAttribute('aria-busy', 'true');
+        entryStatus.textContent = 'The Keeper is considering your word…';
+        const controller = new AbortController(); requestController = controller;
+        const timeout = setTimeout(() => controller.abort(), 15000);
         try {
           const res = await fetch('/api/unlock', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word, vid: psVid(), at: 'door' }),
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ word, vid: psVid(), at: 'door' }), signal: controller.signal,
           });
+          if (res.status === 429) { entryStatus.textContent = 'The door needs a moment. Wait before offering your word again.'; return; }
+          if (res.status === 503) { entryStatus.textContent = 'The vault is temporarily unavailable. Your word is still here; try again later.'; return; }
+          if (!res.ok) throw new Error('service');
           const data = await res.json();
-          if (data.ok) onCorrect(data); else onWrong();
-        } catch { onWrong(); }
-        setTimeout(() => { submitting = false; }, 900);
+          if (controller.signal.aborted || document.hidden) return;
+          if (data.ok && !['I', 'II', 'III', 'IV'].includes(data.act)) {
+            entryStatus.textContent = 'This door is not available here yet. Use Quiet entry or your book’s help.'; return;
+          }
+          if (data.ok) { entryStatus.textContent = 'The word was true. The vault is opening…'; onCorrect(data); }
+          else { entryStatus.textContent = 'That word did not open the vault. Check it and offer it again.'; onWrong(); wordInput.focus(); }
+        } catch (error) {
+          entryStatus.textContent = controller.signal.reason === 'page-hidden'
+            ? 'Entry paused while you were away. Your word is still here; offer it when ready.'
+            : controller.signal.aborted
+            ? 'The door took too long to answer. Your word is still here; offer it again when ready.'
+            : 'The door could not be reached. Check your connection and offer your word again.';
+        } finally {
+          clearTimeout(timeout); if (requestController === controller) requestController = null;
+          submitting = false; submitWord.disabled = false;
+          document.getElementById('tileForm').removeAttribute('aria-busy');
+        }
       }
-
-      tileEls.forEach((t, i) => {
-        t.addEventListener('input', () => {
-          t.value = t.value.replace(/[^a-z]/gi, '').toUpperCase();
-          if (t.value) { playTick(); t.classList.remove('lit'); void t.offsetWidth; t.classList.add('lit'); }
-          if (t.value && tileEls[i + 1]) tileEls[i + 1].focus();
-          if (tileEls.every((x) => x.value)) setTimeout(tryWord, 320); // auto-submit when full
-        });
-        t.addEventListener('keydown', (e) => {
-          if (e.key === 'Backspace' && !t.value && tileEls[i - 1]) tileEls[i - 1].focus();
-          if (e.key === 'Enter') { e.preventDefault(); tryWord(); }
-        });
+      wordInput.addEventListener('input', () => {
+        wordInput.removeAttribute('aria-invalid');
+        if (!submitting) entryStatus.textContent = '';
+        playTick();
       });
-      document.getElementById('tileForm')?.addEventListener('submit', (e) => { e.preventDefault(); tryWord(); });
+      document.getElementById('tileForm').addEventListener('submit', (e) => { e.preventDefault(); tryWord(); });
 
-      // SPEAK = real voice input via the Web Speech API (Chrome/Edge). Falls back to typing.
-      micBtn?.addEventListener('click', () => {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) { if (promptEl) promptEl.textContent = 'Type the first word'; tileEls[0]?.focus(); return; }
-        const rec = new SR();
+      // Speech is optional input only. A transcript never invokes the unlock API.
+      const SpeechInput = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition = null;
+      let microphoneTimeout = null;
+      function stopMicrophone() {
+        clearTimeout(microphoneTimeout); microphoneTimeout = null;
+        const rec = recognition; recognition = null;
+        if (rec) { try { rec.abort(); } catch (_) {} }
+        micBtn.classList.remove('listening'); micBtn.setAttribute('aria-pressed', 'false');
+        micBtn.textContent = 'Speak instead (optional)';
+      }
+      if (!SpeechInput) {
+        micBtn.disabled = true;
+        micStatus.textContent = 'Voice input is unavailable in this browser. Type your word above.';
+      }
+      micBtn.addEventListener('click', () => {
+        if (recognition) { stopMicrophone(); micStatus.textContent = 'Microphone stopped. You can type or edit your word.'; return; }
+        if (!SpeechInput || submitting || opening) return;
+        silenceAll();
+        let rec;
+        try { rec = new SpeechInput(); } catch (_) { micStatus.textContent = 'Microphone could not start. You can type your word.'; return; }
+        recognition = rec;
         rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
-        micBtn.classList.add('listening');
-        if (promptEl) promptEl.textContent = 'Listening…';
+        micBtn.classList.add('listening'); micBtn.setAttribute('aria-pressed', 'true'); micBtn.textContent = 'Stop microphone';
+        micStatus.textContent = 'Listening for your word…';
+        let received = false;
         rec.onresult = (e) => {
-          const said = (e.results[0][0].transcript || '');
-          const letters = said.replace(/[^a-z]/gi, '').toUpperCase().slice(0, tileEls.length);
-          fillTiles(letters);
-          setTimeout(tryWord, 260);
+          if (recognition !== rec || document.hidden) return;
+          const said = (e.results[0][0].transcript || '').trim();
+          received = true; wordInput.value = said;
+          micStatus.textContent = 'Transcript ready. Check or edit it, then press Offer the word.';
+          wordInput.focus(); stopMicrophone();
         };
-        rec.onerror = () => {};
-        rec.onend = () => { micBtn.classList.remove('listening'); if (promptEl) promptEl.textContent = PROMPT_DEFAULT; };
-        try { rec.start(); } catch (_) {}
+        rec.onerror = (e) => {
+          if (recognition !== rec) return;
+          received = true;
+          micStatus.textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+            ? 'Microphone permission was not granted. Type your word, or change browser permission before trying again.'
+            : e.error === 'network'
+              ? 'The speech service could not connect. Type your word or try speaking again later.'
+              : e.error === 'audio-capture'
+                ? 'No microphone is available. You can type your word.'
+                : 'No clear word was heard. Type your word or choose Speak to try again.';
+          stopMicrophone();
+        };
+        rec.onend = () => {
+          if (recognition !== rec) return;
+          if (!received) micStatus.textContent = 'No word captured. Type your word or choose Speak to try again.';
+          stopMicrophone();
+        };
+        try {
+          rec.start();
+          microphoneTimeout = setTimeout(() => {
+            if (recognition !== rec) return;
+            stopMicrophone(); micStatus.textContent = 'Microphone stopped after waiting. Type your word or choose Speak to try again.';
+          }, 12000);
+        } catch (_) { stopMicrophone(); micStatus.textContent = 'Microphone could not start. You can type your word.'; }
       });
+      function stopEntryActivity() {
+        stopMicrophone(); if (requestController) requestController.abort('page-hidden');
+        if (opening) {
+          openingInterrupted = true;
+          cancelOpening();
+          scene.classList.remove('bolt1', 'bolt2', 'bolt3', 'fracture', 'igniting', 'ajar', 'open', 'pushing', 'reduced');
+          document.getElementById('blackout')?.classList.remove('on');
+          doorbox.querySelectorAll('.dleaf').forEach((el) => el.remove());
+          document.querySelector('.liveblock').prepend(document.getElementById('caption'));
+        }
+      }
+      window.addEventListener('pagehide', stopEntryActivity);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { stopEntryActivity(); return; }
+        if (!openingInterrupted) return;
+        openingInterrupted = false;
+        typeCaption('Your word was true. The vault is ready.', true);
+        const panel = document.getElementById('rewardPanel');
+        if (panel) panel.querySelector('.r-body').textContent = 'Your vault is ready whenever you are.';
+        const link = document.getElementById('continueVault');
+        if (link) { link.textContent = 'Step inside Vault ' + pendingAct; link.classList.add('entry-continue'); link.focus(); }
+      });
+      window.addEventListener('pageshow', (e) => {
+        if (!e.persisted) return;
+        // Restore the editable door after returning from the vault via browser Back.
+        cancelOpening(); opening = false; submitting = false; submitWord.disabled = false;
+        openingInterrupted = false; pendingAct = null;
+        scene.classList.remove('bolt1', 'bolt2', 'bolt3', 'fracture', 'igniting', 'ajar', 'open', 'pushing', 'reduced');
+        document.getElementById('blackout')?.classList.remove('on');
+        doorbox.querySelectorAll('.dleaf').forEach((el) => el.remove());
+        const caption = document.getElementById('caption');
+        document.querySelector('.liveblock').prepend(caption);
+        document.getElementById('rewardPanel')?.remove();
+        document.getElementById('tileForm').style.display = '';
+        document.getElementById('tileForm').removeAttribute('aria-busy');
+        slot.querySelectorAll('.entry-hint').forEach((el) => { el.style.display = ''; });
+        entryStatus.textContent = ''; typeCaption(keeperFirstLine, true);
+      });
+      // Enable only after all handlers are installed; native submission cannot expose a word in a URL.
+      wordInput.disabled = false; submitWord.disabled = false;
     </script>
 
     <style is:global>
+      .word-entry { max-width: 480px; width: 100%; display: flex; flex-wrap: wrap; gap: 12px; }
+      .word-entry .prompt { flex-basis: 100%; text-align: left; margin: 0; }
+      .word-input { min-width: 0; flex: 1 1 180px; width: 100%; height: 58px; padding: 0 14px; border: 1px solid #b98f52; border-radius: 7px; background: #101015; color: #ffd47a; font: 600 24px var(--display); letter-spacing: .08em; text-transform: uppercase; }
+      .word-input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid #ffd47a; outline-offset: 4px; }
+      .word-input[aria-invalid="true"] { border-color: #f2b6c6; }
+      .word-entry .word-submit { margin: 0; letter-spacing: .08em; font-size: 12px; padding: 0 18px; }
+      button:disabled { opacity: .6; cursor: default; }
+      .voice-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 20px; margin-top: 14px; }
+      .voice-tools > * { min-height: 44px; display: inline-flex; align-items: center; }
+      .entry-status { color: #f2e9d6; max-width: 46ch; margin-top: 12px; font-size: 17px; }
+      .entry-status:empty, #audioStatus:empty, #micStatus:empty { display: none; }
+      .entry-continue { display: inline-flex; min-height: 48px; align-items: center; padding: 10px 18px; border: 1px solid var(--gold); border-radius: 6px; color: var(--gold-hi); }
+      #micHelp { max-width: 48ch; }
+      .entry-hint { color: #b8af99 !important; }
+      @media (max-width: 720px) {
+        .word-entry .word-submit { flex-basis: 100%; justify-content: center; }
+        .word-entry .prompt { text-align: center; }
+      }
+
       :root {
         --void: #08080a;
         --steel: #17181d;
@@ -1407,7 +1497,7 @@ const HOME_LD = {
       }
       @media (prefers-reduced-motion: reduce) {
         .enter-ic { transition: none; } .enter:hover .enter-ic { transform: none; }
-        .stage, .door-inner, .seam, .ghosts span, .dust i, .reveal,
+        .stage, .door-inner, .seam, .ghosts span, .dust i, .reveal, .liveblock,
         .scene.igniting, .scene.igniting .door-inner, .scene.igniting .flare, .scene.igniting .seam, .scene.igniting .burst i,
         .scene.bolt1 .door-inner, .scene.bolt2 .door-inner, .scene.bolt3 .door-inner, .room-motes i, .tile.lit, .dwheel { animation: none !important; }
         .scene.pushing .stage { transform: none; }
