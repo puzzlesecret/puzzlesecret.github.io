@@ -262,18 +262,17 @@ const HOME_LD = {
             <div class="slot" id="slot">
               <form class="entry word-entry" id="tileForm" method="post" action="/api/unlock" autocomplete="off" novalidate>
                 <label class="prompt" for="wordInput">Your word</label>
-                <input class="word-input" id="wordInput" name="word" type="text" disabled minlength="4" maxlength="32" pattern="[A-Za-z -]{4,32}" inputmode="text" autocapitalize="characters" spellcheck="false" aria-describedby="wordHelp entryStatus" />
+                <span class="word-input-wrap"><input class="word-input" id="wordInput" name="word" type="text" disabled minlength="4" maxlength="32" pattern="[A-Za-z -]{4,32}" inputmode="text" autocapitalize="characters" spellcheck="false" aria-describedby="wordHelp entryStatus micHelp" /><button class="word-microphone" type="button" id="micBtn" aria-label="Turn microphone off" aria-pressed="false" aria-describedby="micHelp micStatus" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><span data-mic-label>Turn microphone off</span></button></span>
                 <button class="speak word-submit" type="submit" id="submitWord" disabled>Offer the word</button>
               </form>
               <noscript><p class="entry-hint">Enable JavaScript to offer a word at this door, or visit <a href="/start">quiet entry</a> for book help.</p></noscript>
-              <p class="entry-hint" id="wordHelp">Type the word you found · 4–12 letters. Press Offer the word when ready.</p>
+              <p class="entry-hint" id="wordHelp">Speak or type your word · 4–12 letters. Review it, then offer it.</p>
               <p class="entry-status" id="entryStatus" role="status" aria-live="polite" aria-atomic="true"></p>
-              <div class="mic-entry-tools"><button class="word-microphone" type="button" id="micBtn" aria-pressed="false" aria-describedby="micHelp micStatus" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><span data-mic-label>Use microphone</span></button></div>
               <div class="voice-tools">
                 <button class="linklike" type="button" id="replayKeeper">Replay Keeper</button>
                 <a class="linklike" href="/start">Quiet entry</a>
               </div>
-              <p class="entry-hint" id="micHelp">Speak uses your microphone and may send audio to your browser’s speech service. Review the transcript, then offer it yourself.</p>
+              <p class="entry-hint" id="micHelp">Voice input may use your browser’s speech service. <a href="/privacy">Privacy</a></p>
               <p class="microphone-status" id="micStatus" role="status" aria-live="polite"></p>
               <p class="entry-hint" id="audioStatus" role="status" aria-live="polite"></p>
               <p class="entry-hint remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="rem-link" href="/vault">Step back inside →</a></p>
@@ -634,7 +633,19 @@ const HOME_LD = {
         if (!a) return null;
         try { a.currentTime = 0; } catch (e) {}
         document.getElementById('audioStatus').textContent = '';
-        a.play().catch(() => { document.getElementById('audioStatus').textContent = 'Keeper audio unavailable. His words remain above; you can still type your word or replay.'; });
+        a.psPlaybackFinished = new Promise((resolve) => {
+          const finish = () => {
+            a.removeEventListener('ended', finish); a.removeEventListener('error', finish); a.removeEventListener('pause', finish);
+            resolve();
+          };
+          a.addEventListener('ended', finish, { once: true });
+          a.addEventListener('error', finish, { once: true });
+          a.addEventListener('pause', finish, { once: true });
+          a.play().catch(() => {
+            document.getElementById('audioStatus').textContent = 'Keeper audio unavailable. His words remain above; you can still type your word or replay.';
+            finish();
+          });
+        });
         currentKeeperAudio = a;
         return a;
       }
@@ -643,10 +654,10 @@ const HOME_LD = {
         lastCaption = text;
         capText.textContent = text;
         if (silent) { if (currentKeeperAudio) currentKeeperAudio.pause(); }
-        else speakKeeper(text);
+        else return speakKeeper(text);
       }
       document.getElementById('replayKeeper').addEventListener('click', () => {
-        if (voiceInput && voiceInput.active) { stopMicrophone(); micStatus.textContent = 'Microphone stopped for Keeper playback.'; }
+        stopMicrophone('Microphone stopped for Keeper playback.');
         visitorStarted = true;
         if (muted) { setMuted(false); syncSoundIcon(); }
         speakKeeper(lastCaption);
@@ -669,8 +680,15 @@ const HOME_LD = {
           setTimeout(() => scene.classList.remove('igniting'), 1500);
         }
         // Begin the recorded line within the same trusted click as Enter the Vault.
-        typeCaption(keeperFirstLine);
+        const greetingRun = ++entryVoiceRun;
+        const armed = voiceInput && voiceInput.arm();
+        if (armed) micStatus.textContent = 'Waiting for the Keeper to finish…';
+        const greeting = typeCaption(keeperFirstLine);
         document.getElementById('wordInput').focus();
+        Promise.resolve(greeting && greeting.psPlaybackFinished).then(() => {
+          if (greetingRun !== entryVoiceRun || document.hidden) return;
+          if (voiceInput) voiceInput.start({ automatic: true });
+        });
       }
       document.getElementById('entryStartBtn').addEventListener('click', () => beginExperience(!muted));
       document.getElementById('soundPick').addEventListener('click', () => { setMuted(!muted); syncSoundIcon(); });
@@ -951,8 +969,9 @@ const HOME_LD = {
       document.getElementById('tileForm').addEventListener('submit', (e) => { e.preventDefault(); tryWord(); });
 
       // Shared by this door and /start (including Gift entry).
-      const voiceInput = window.psWordMicrophone({ inputId: 'wordInput', buttonId: 'micBtn', statusId: 'micStatus', beforeStart: silenceAll, isBusy: () => submitting || opening });
-      function stopMicrophone(message) { if (voiceInput) voiceInput.stop(message); }
+      let entryVoiceRun = 0;
+      const voiceInput = window.psWordMicrophone({ inputId: 'wordInput', buttonId: 'micBtn', statusId: 'micStatus', autoOnFocus: false, beforeStart: silenceAll, isBusy: () => submitting || opening });
+      function stopMicrophone(message) { entryVoiceRun++; if (voiceInput) voiceInput.stop(message); }
       function stopEntryActivity() {
         stopMicrophone(); if (requestController) requestController.abort('page-hidden');
         if (opening) {

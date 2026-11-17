@@ -8,13 +8,18 @@
     if (!input || !button || !status) return null;
     var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     var session = null, timer = null, received = false;
+    var start = function () {};
+    var armed = false, optedOut = false, automaticAttempted = false, revision = 0;
     var label = button.querySelector('[data-mic-label]') || button;
     function say(text) { status.textContent = text; }
     function state(value, text) {
       button.dataset.micState = value; label.textContent = text;
-      button.setAttribute('aria-pressed', String(value === 'starting' || value === 'listening'));
+      button.setAttribute('aria-pressed', String(value === 'armed' || value === 'starting' || value === 'listening'));
+      var accessible = value === 'armed' ? 'Turn automatic microphone off' : value === 'starting' ? 'Cancel microphone startup' : value === 'listening' ? 'Turn microphone off' : value === 'unavailable' ? 'Microphone unavailable' : 'Turn microphone on';
+      button.setAttribute('aria-label', accessible); button.title = accessible;
     }
     function stop(message) {
+      revision++; armed = false;
       clearTimeout(timer); timer = null;
       var old = session; session = null;
       if (old) { try { old.abort(); } catch (_) {} }
@@ -34,12 +39,16 @@
       say(!window.isSecureContext ? 'Voice input needs a secure HTTPS page. You can still type.' : 'This browser does not offer voice transcription here. Your device keyboard’s microphone may still work, or type your word.');
     } else {
       button.disabled = false; state('idle', 'Use microphone');
-      button.addEventListener('click', function () {
-        if (session) { stop('Microphone stopped. Review or edit your word before submitting it.'); return; }
-        if (options.isBusy && options.isBusy()) return;
+      start = function (settings) {
+        var automatic = !!(settings && settings.automatic);
+        if (automatic && (!armed || optedOut || automaticAttempted)) return;
+        if (session) return;
+        if (document.hidden || (options.isBusy && options.isBusy()) || (automatic && input.value.trim())) { stop(); return; }
+        armed = false; revision++;
+        if (automatic) automaticAttempted = true;
         if (options.beforeStart) options.beforeStart();
         var rec;
-        try { rec = new Recognition(); } catch (_) { say('The microphone could not start in this browser. You can still type.'); return; }
+        try { rec = new Recognition(); } catch (_) { stop('The microphone could not start in this browser. You can still type.'); return; }
         session = rec; received = false;
         rec.lang = 'en-US'; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
         state('starting', 'Starting…');
@@ -72,11 +81,43 @@
           rec.start();
           timer = setTimeout(function () { if (session === rec) stop('The microphone timed out. Check microphone permission and your input device, then try again or type.'); }, 25000);
         } catch (_) { stop('The microphone could not start. Check browser permission, or type your word.'); }
+      };
+      button.addEventListener('click', function () {
+        if (session || armed) { optedOut = true; stop('Microphone off. You can type your word.'); return; }
+        optedOut = false; start();
       });
+      input.addEventListener('input', function (event) {
+        // Real typing wins over both queued listening and recognition. The
+        // synthetic transcript event must not cancel or restart its own session.
+        if (event.isTrusted) { optedOut = true; stop('Microphone off while you type.'); }
+      });
+      if (options.autoOnFocus) {
+        var keyboardFocus = false;
+        input.addEventListener('pointerdown', function (event) { if (event.isTrusted) fromIntent(); });
+        document.addEventListener('keydown', function (event) { keyboardFocus = event.isTrusted && event.key === 'Tab'; setTimeout(function () { keyboardFocus = false; }, 0); }, true);
+        input.addEventListener('focus', function () { if (keyboardFocus) { keyboardFocus = false; fromIntent(); } });
+      }
     }
-    function leave() { if (session) stop('Microphone stopped when you left the page. Your text is still here.'); }
+    function arm() {
+      if (!Recognition || !window.isSecureContext || optedOut || automaticAttempted || document.hidden || input.value.trim() || (options.isBusy && options.isBusy())) return false;
+      armed = true; revision++; state('armed', 'Microphone ready');
+      say(options.waitingMessage || 'Voice is ready. Tap the microphone to switch it off, or type.');
+      return true;
+    }
+    function fromIntent() { if (!arm()) return false; start({ automatic: true }); return true; }
+    function autoStartIfGranted() {
+      var version = revision;
+      if (!Recognition || !window.isSecureContext || !window.navigator || !window.navigator.permissions) return Promise.resolve(false);
+      return window.navigator.permissions.query({ name: 'microphone' }).then(function (permission) {
+        if (revision !== version || optedOut || automaticAttempted || document.hidden || input.value.trim()) return false;
+        if (permission.state === 'denied') { optedOut = true; say('Microphone is blocked. You can type, or enable it in your browser’s site controls.'); return false; }
+        if (permission.state === 'granted') return fromIntent();
+        return false; // A new permission prompt waits for the visitor's input action.
+      }).catch(function () { return false; });
+    }
+    function leave() { stop('Microphone stopped when you left the page. Your text is still here.'); }
     window.addEventListener('pagehide', leave);
     document.addEventListener('visibilitychange', function () { if (document.hidden) leave(); });
-    return { stop: stop, get active() { return !!session; } };
+    return { stop: stop, arm: arm, start: start, autoStartIfGranted: autoStartIfGranted, get active() { return !!session || armed; } };
   };
 })();

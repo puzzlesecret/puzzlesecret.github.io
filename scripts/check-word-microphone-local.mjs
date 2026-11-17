@@ -34,7 +34,7 @@ rec.onresult({ results: [[{ transcript: 'STALE' }]] }); verify(input.value === '
 for (const [code, text] of [['not-allowed', 'blocked'], ['service-not-allowed', 'unavailable'], ['network', 'connect'], ['audio-capture', 'working microphone'], ['language-not-supported', 'English']]) {
   button.click(); instances.at(-1).onerror({ error: code }); verify(!s.control.active && status.textContent.includes(text));
 }
-button.click(); button.click(); verify(!s.control.active && status.textContent.includes('stopped'));
+button.click(); button.click(); verify(!s.control.active && status.textContent.includes('off'));
 button.click(); s.document.hidden = true; s.listeners.visibilitychange(); verify(!s.control.active);
 s.document.hidden = false; button.click(); s.listeners.pagehide(); verify(!s.control.active);
 button.click(); s.control.stop('Audio playback requested.'); verify(!s.control.active && status.textContent.includes('Audio'));
@@ -48,3 +48,63 @@ strict.elements.get('input').value = 'KEEP'; strict.elements.get('button').click
 instances.at(-1).onresult({ results: [[{ transcript: 'OVERLONG WORD' }]] });
 verify(strict.elements.get('input').value === 'KEEP' && strict.elements.get('status').textContent.includes('complete word') && !strict.control.active);
 console.log(JSON.stringify({ ok: true, checks, microphone: 'mocked', network: 'none', uploads: 'none', autoSubmit: false }));
+
+// Automatic entry is finite, cancellable, and never starts from programmatic focus.
+const queued = setup(FakeRecognition);
+let count = instances.length;
+verify(queued.control.arm() && queued.control.active && instances.length === count);
+queued.elements.get('button').click(); queued.control.start({ automatic: true });
+verify(!queued.control.active && instances.length === count && !queued.control.arm());
+const automatic = setup(FakeRecognition);
+automatic.control.arm(); automatic.control.start({ automatic: true });
+verify(instances.length === count + 1 && automatic.control.active);
+instances.at(-1).onend(); automatic.control.arm(); automatic.control.start({ automatic: true });
+verify(instances.length === count + 1 && !automatic.control.active);
+const typing = setup(FakeRecognition); typing.control.arm();
+typing.elements.get('input').input({ isTrusted: true }); typing.control.start({ automatic: true });
+verify(!typing.control.active && !typing.control.arm());
+const focused = setup(FakeRecognition, true, { autoOnFocus: true });
+count = instances.length; focused.elements.get('input').focus();
+verify(instances.length === count);
+focused.elements.get('input').pointerdown({ isTrusted: true });
+verify(instances.length === count + 1 && focused.control.active); focused.control.stop();
+const tabbed = setup(FakeRecognition, true, { autoOnFocus: true });
+count = instances.length; tabbed.listeners.keydown({ isTrusted: true, key: 'Tab' });
+tabbed.elements.get('input').focus(); verify(instances.length === count + 1); tabbed.control.stop();
+const delayed = setup(FakeRecognition);
+let resolvePermission;
+delayed.window.navigator = { permissions: { query: () => new Promise(r => { resolvePermission = r; }) } };
+const pending = delayed.control.autoStartIfGranted(); delayed.control.stop();
+resolvePermission({ state: 'granted' }); count = instances.length;
+verify(await pending === false && instances.length === count);
+for (const permission of ['prompt', 'denied', 'granted']) {
+  const state = setup(FakeRecognition); count = instances.length;
+  state.window.navigator = { permissions: { query: async () => ({ state: permission }) } };
+  verify(await state.control.autoStartIfGranted() === (permission === 'granted'));
+  verify(instances.length === count + (permission === 'granted' ? 1 : 0)); state.control.stop();
+}
+const hidden = setup(FakeRecognition); hidden.control.arm(); hidden.document.hidden = true;
+hidden.listeners.visibilitychange(); hidden.document.hidden = false; hidden.control.start({ automatic: true });
+verify(!hidden.control.active);
+unsupported.control.start(); verify(!unsupported.control.active);
+console.log(JSON.stringify({ ok: true, totalChecks: checks, automaticLifecycle: 'mocked', hardwareMicrophone: 'not tested' }));
+// Independent-review regressions: cancellation of a pending permission lookup.
+for (const action of ['typing-clear', 'hidden-return', 'pagehide']) {
+  const pendingState = setup(FakeRecognition);
+  let finish;
+  pendingState.window.navigator = { permissions: { query: () => new Promise(r => { finish = r; }) } };
+  const promise = pendingState.control.autoStartIfGranted();
+  if (action === 'typing-clear') {
+    pendingState.elements.get('input').value = 'EXAMPLE';
+    pendingState.elements.get('input').input({ isTrusted: true });
+    pendingState.elements.get('input').value = '';
+  } else if (action === 'hidden-return') {
+    pendingState.document.hidden = true; pendingState.listeners.visibilitychange(); pendingState.document.hidden = false;
+  } else pendingState.listeners.pagehide();
+  count = instances.length; finish({ state: 'granted' });
+  verify(await promise === false && instances.length === count && !pendingState.control.active);
+}
+const armedBroken = setup(Throwing); armedBroken.control.arm(); armedBroken.control.start({ automatic: true });
+verify(!armedBroken.control.active && armedBroken.elements.get('button').dataset.micState === 'idle');
+verify(armedBroken.elements.get('button')['aria-pressed'] === 'false' && armedBroken.elements.get('button')['aria-label'] === 'Turn microphone on');
+console.log(JSON.stringify({ ok: true, totalChecks: checks, criticRegressions: 5, hardwareMicrophone: 'not tested' }));

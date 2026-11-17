@@ -4,7 +4,7 @@
   var form = document.getElementById('entry-form');
   if (!form) return;
   var input = document.getElementById('entry-word');
-  var button = form.querySelector('button');
+  var button = form.querySelector('button[type="submit"]');
   var message = document.getElementById('entry-message');
   var picker = document.getElementById('book-picker');
   var recovery = document.getElementById('book-recovery');
@@ -12,7 +12,8 @@
   var choices = Array.from(document.querySelectorAll('[data-book-choice]'));
   var busy = false;
   input.disabled = false; button.disabled = false;
-  var voiceInput = window.psWordMicrophone({ inputId: 'entry-word', buttonId: 'entry-mic', statusId: 'entry-mic-status', isBusy: function () { return busy; } });
+  var voiceInput = window.psWordMicrophone({ inputId: 'entry-word', buttonId: 'entry-mic', statusId: 'entry-mic-status', autoOnFocus: true, isBusy: function () { return busy; } });
+  if (voiceInput) voiceInput.autoStartIfGranted();
   // Add a new room-set route here once its parent family is activated. Editions
   // sharing a room set need no per-book client changes. Unknown sets fail closed.
   var ROOM_ROUTES = { v1: { volumeId: 'v1', destination: '/vault', acts: ['I', 'II', 'III'] } };
