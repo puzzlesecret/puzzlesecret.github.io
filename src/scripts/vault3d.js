@@ -2623,8 +2623,16 @@ function renderTiles() {
     tilesEl.appendChild(t);
   }
 }
+let wbGeneration = 0, wbRequest = null, wordMicrophone = null;
+function invalidateWordbox() {
+  wbGeneration++;
+  if (wbRequest) wbRequest.abort();
+  wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
+  if (wordMicrophone) wordMicrophone.stop();
+}
 let wbOpenFails = 0;                                  // misses since THIS box opened (wbFails drives the VO across the visit)
 function openWordbox(key) {
+  invalidateWordbox();
   wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
   document.getElementById('wbKicker').textContent = DOORS[key].kicker;
   document.getElementById('wbLine').textContent = VO[DOORS[key].vo].text;
@@ -2639,7 +2647,7 @@ function openWordbox(key) {
   if (key === 'door2' && window.psGuest && window.psGuest.door2(document.getElementById('wbKicker'), document.getElementById('wbLine'))) { showCaption(window.psGuest.line('door2'), 9000); return; }
   keeper(DOORS[key].vo);
 }
-function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
+function closeWordbox() { invalidateWordbox(); wordboxEl.hidden = true; wbTarget = null; }
 function sayEntry() { if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else keeper('entry'); }
 // Dismissed without a true word — the "gave up at this door" signal. Success paths call
 // closeWordbox() directly and never reach this.
@@ -2666,35 +2674,38 @@ addEventListener('keydown', (e) => {
   e.stopPropagation();
 }, true);
 async function submitWord() {
-  if (wbBusy || !wbTarget) return;
+  if (wbBusy || !wbTarget || wordboxEl.hidden || document.hidden) return;
   if (wbWord.length < 4) {
     wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
     return;
   }
+  const key = wbTarget, word = wbWord, generation = wbGeneration;
+  if (wordMicrophone) wordMicrophone.stop();
+  const request = wbRequest = new AbortController();
   wbBusy = true; wbSubmit.textContent = 'The vault is listening…';
   let j = null;
   try {
     const r = await fetch('/api/unlock', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ word: wbWord, vid: psVid(), at: '3d' }),
+      method: 'POST', signal: request.signal, headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ word, vid: psVid(), at: '3d' }),
     });
     j = await r.json();
   } catch (e) { /* offline / static preview */ }
-  wbBusy = false; wbSubmit.textContent = 'Open the door';
+  if (generation !== wbGeneration || key !== wbTarget || wordboxEl.hidden || document.hidden) return;
+  wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
   if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
-  const D = DOORS[wbTarget];
+  const D = DOORS[key];
   if (j.ok) holdReward(j.act, j.rewardUrl);       // any true word banks its gift
   if (j.ok && window.psGuest) window.psGuest.note(j);   // a guest key vs a book word (public/js/guest-key.js)
   if (j.ok && !(j.room && j.room.id)) { try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {} }   // a book word ends any guest room for the next load
   if (j.ok && j.act === D.act) {
-    const key = wbTarget;
     if (key === 'first') {
       closeWordbox();
       if (j.room && j.room.id && !GUEST) { try { sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(j.room)); } catch (e) {} location.replace('/vault?from=door&act=I'); return; }
       openReward('I'); return;
     }
     if (key === 'fourth') {
-      fourthWord = wbWord;                              // in-memory proof for this session
+      fourthWord = word;                              // in-memory proof for this session
       try { if (Array.isArray(j.lines) && j.lines.length) { localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); drawLetters(); } } catch (e) {}
       try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); } catch (e) {}
     }
@@ -2718,46 +2729,16 @@ async function submitWord() {
   }
 }
 wbSubmit.addEventListener('click', submitWord);
-// 🎙 the vault listens — same Web Speech trick as the landing
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const speakBtn = document.getElementById('speakBtn');
-let speakRec = null;
-if (!SR) speakBtn.style.display = 'none';
-else speakBtn.addEventListener('click', () => {
-  if (speakRec) { try { speakRec.stop(); } catch (e) {} return; }         // a second tap stops listening
-  let heard = false;
-  try {
-    const rec = speakRec = new SR();                                      // kept in a module variable: never collected mid-listen
-    rec.lang = 'en-US'; rec.maxAlternatives = 3; rec.interimResults = false; rec.continuous = false;
-    speakBtn.classList.add('listening'); speakBtn.textContent = '🎙  Listening…';
-    wbMsg.textContent = 'Listening… say the word clearly.';
-    rec.onresult = (e) => {
-      heard = true;
-      // the first alternative that is a single plain word wins; else the top guess
-      const alts = Array.from(e.results[0] || []).map((a) => (a.transcript || '').trim());
-      const pick = alts.find((t) => /^[a-z]+$/i.test(t)) || alts[0] || '';
-      wbSet(pick);
-      if (wbWord.length >= 4) { wbMsg.textContent = 'I heard \u201C' + wbWord + '\u201D.'; submitWord(); }
-      else wbMsg.textContent = pick ? 'I heard \u201C' + pick + '\u201D. Say it again, or type it.' : 'I heard nothing. Say it again, or type it.';
-    };
-    rec.onerror = (e) => {
-      heard = true;
-      const why = e && e.error;
-      wbMsg.textContent = why === 'not-allowed' || why === 'service-not-allowed'
-        ? 'The vault may not use your microphone. Allow it in the address bar, or type the word.'
-        : why === 'network' ? 'Speech needs a connection right now. Type the word instead.'
-        : why === 'no-speech' ? 'I heard nothing. Say it again, or type it.'
-        : 'I could not make that out. Say it again, or type the word.';
-    };
-    rec.onend = () => {
-      speakRec = null;
-      speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word';
-      if (!heard) wbMsg.textContent = 'I heard nothing. Say it again, or type it.';
-      try { wbInput.focus({ preventScroll: true }); } catch (e) {}
-    };
-    rec.start();
-  } catch (e) { speakRec = null; speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; wbMsg.textContent = 'Speech is not available here. Type the word.'; }
+wordMicrophone = window.psWordMicrophone && window.psWordMicrophone({
+  inputId: 'wbInput', buttonId: 'speakBtn', statusId: 'wbMicStatus',
+  beforeStart: stopVoice,
+  validateTranscript: (text) => text.replace(/[^a-z]/gi, '').length === DOOR_LEN[wbTarget]
+    || 'That recording does not match this door’s letter count. Your word is unchanged. Try again, or type and edit it.',
+  isBusy: () => wbBusy || wordboxEl.hidden || !wbTarget
 });
+document.addEventListener('visibilitychange', () => { if (document.hidden) invalidateWordbox(); });
+addEventListener('pagehide', invalidateWordbox);
+new MutationObserver(() => { if (wordboxEl.hidden) invalidateWordbox(); }).observe(wordboxEl, { attributes: true, attributeFilter: ['hidden'] });
 function psVid() {
   try {
     let v = localStorage.getItem('ps_vid');
@@ -3237,7 +3218,7 @@ const vbCc = document.getElementById('vbCc'), vbCity = document.getElementById('
 const vbReg = document.getElementById('vbReg'), vbRegWrap = document.getElementById('vbRegWrap'), vbRegL = document.getElementById('vbRegL');
 const vbMsg = document.getElementById('vbMsg'), vbCount = document.getElementById('vbCount'), vbList = document.getElementById('vbList');
 const vbPreview = document.getElementById('vbPreview');
-const vbState = { entries: null, total: 0, you: '', place: '', data: {}, codes: null, sending: false, opts: [], active: -1 };
+const vbState = { pageEntries: null, pageTotal: 0, offset: 0, snapshot: '', nextCursor: null, prevCursor: null, loading: false, pageError: '', request: 0, entries: null, total: 0, you: '', place: '', data: {}, codes: null, sending: false, opts: [], active: -1 };
 let ccName = (cc) => cc;
 try { const dn = new Intl.DisplayNames(['en'], { type: 'region' }); ccName = (cc) => { try { return dn.of(cc) || cc; } catch (e) { return cc; } }; } catch (e) { /* old browser: codes */ }
 const ccShort = (cc) => (cc === 'US' ? 'USA' : cc === 'GB' ? 'UK' : ccName(cc));
@@ -3260,25 +3241,66 @@ function vbRow(e, mine) {
   const m = document.createElement('i'); m.textContent = [VB_ROOM_SAY[e.rm || 'pinpoint'], e.m].filter(Boolean).map((x) => '· ' + x).join(' '); li.appendChild(m);
   return li;
 }
+const vbNewer = document.getElementById('vbNewer'), vbOlder = document.getElementById('vbOlder');
+const vbPageStatus = document.getElementById('vbPageStatus'), vbRetry = document.getElementById('vbRetry');
 function vbRender() {
   vbList.textContent = '';
   const mine = study.signed && study.signed.i ? study.signed : null;
-  const rows = (vbState.entries || []).slice();
-  if (mine && !rows.some((e) => vbSame(e, mine))) rows.unshift(mine);
+  const rows = Array.isArray(vbState.pageEntries) ? vbState.pageEntries.slice(0, 10) : [];
   rows.forEach((e) => vbList.appendChild(vbRow(e, vbSame(e, mine))));
-  const n = Math.max(vbState.total, rows.length);
-  if (vbState.entries === null) vbCount.textContent = 'Opening the book…';
-  else if (vbState.entries === false) vbCount.textContent = 'The pages are damp. The list will show when you have signal.';
-  else vbCount.textContent = n >= 5 ? n + ' visitors have signed' : n > 0 ? 'A few visitors have signed so far' : 'Nobody has signed yet. Be the first.';
+  vbList.start = vbState.offset + 1;
+  const own = document.getElementById('vbOwn'), ownList = document.getElementById('vbOwnList');
+  ownList.textContent = ''; own.hidden = !mine || rows.some((e) => vbSame(e, mine));
+  if (!own.hidden) ownList.appendChild(vbRow(mine, true));
+  vbCount.textContent = vbState.total ? vbState.total + ' visitors have signed' : 'The Visitors’ Book';
+  vbList.setAttribute('aria-busy', String(vbState.loading));
+  const n = vbState.pageTotal, first = rows.length ? vbState.offset + 1 : 0;
+  const available = vbState.total > n ? ' latest available signatures (' + vbState.total + ' signed in all)' : ' signatures';
+  vbPageStatus.textContent = vbState.loading ? 'Opening the page…' : vbState.pageError || (n
+    ? first + '–' + (vbState.offset + rows.length) + ' of ' + n + available + ' · Page ' + (Math.floor(vbState.offset / 10) + 1) + ' of ' + Math.ceil(n / 10)
+    : vbState.pageEntries === null ? 'Opening the book…' : vbState.total > 0 ? 'No signatures are currently available to read.' : 'Nobody has signed yet. Be the first.');
+  vbNewer.disabled = vbState.loading || vbState.prevCursor === null;
+  vbOlder.disabled = vbState.loading || vbState.nextCursor === null;
+  vbRetry.hidden = !vbState.pageError;
 }
+async function vbLoadPage(cursor = 0, reset = false, notice = '') {
+  const request = ++vbState.request;
+  vbState.loading = true; vbState.pageError = ''; vbRender();
+  const params = new URLSearchParams({ limit: '10' });
+  if (!reset && vbState.snapshot) {
+    params.set('snapshot', vbState.snapshot);
+    if (cursor) params.set('cursor', String(cursor));
+  }
+  try {
+    const r = await fetch('/api/visitors?' + params, { cache: 'no-store' }); const d = await r.json();
+    if (request !== vbState.request) return;
+    if (r.status === 409 && d.reason === 'page_changed') {
+      vbState.snapshot = ''; return vbLoadPage(0, true, 'The book changed. Showing the newest page. ');
+    }
+    if (!r.ok || !d || !d.ok || !Array.isArray(d.entries)) throw new Error('page');
+    vbState.pageEntries = d.entries.slice(0, 10); vbState.pageTotal = Number(d.availableTotal) || 0;
+    vbState.total = Math.max(Number(d.total) || 0, vbState.pageTotal); vbState.offset = Number(d.offset) || 0;
+    vbState.snapshot = d.snapshot || ''; vbState.nextCursor = d.nextCursor ?? null; vbState.prevCursor = d.prevCursor ?? null;
+    vbState.pageError = ''; vbState.loading = false; vbRender();
+    if (notice) vbPageStatus.textContent = notice + vbPageStatus.textContent;
+  } catch (e) {
+    if (request !== vbState.request) return;
+    vbState.loading = false; vbState.pageError = 'This page could not be opened. Your place is kept. Try again when you have signal.';
+    vbState.retryCursor = cursor; vbState.retryReset = reset; vbRender();
+  }
+}
+vbNewer.addEventListener('click', () => { if (!vbState.loading && vbState.prevCursor !== null) vbLoadPage(vbState.prevCursor); });
+vbOlder.addEventListener('click', () => { if (!vbState.loading && vbState.nextCursor !== null) vbLoadPage(vbState.nextCursor); });
+vbRetry.addEventListener('click', () => vbLoadPage(vbState.retryCursor ?? 0, !!vbState.retryReset));
 async function vbLoad() {
   try {
+    // Keep the full legacy summary for globe pins; a ten-row reading page is never its data source.
     const r = await fetch('/api/visitors', { cache: 'no-store' }); const d = await r.json();
     if (d && /^[A-Z]{2}$/.test(d.you || '')) vbState.you = d.you;
-    if (d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; vbState.total = Number(d.total) || d.entries.length; vbState.visits = (d.visits && typeof d.visits === 'object') ? d.visits : {}; vbState.site = (d.site && typeof d.site === 'object') ? d.site : {}; }
+    if (r.ok && d && d.ok && Array.isArray(d.entries)) { vbState.entries = d.entries; if (vbState.pageEntries === null) vbState.total = Number(d.total) || d.entries.length; vbState.visits = (d.visits && typeof d.visits === 'object') ? d.visits : {}; vbState.site = (d.site && typeof d.site === 'object') ? d.site : {}; }
     else vbState.entries = false;
   } catch (e) { vbState.entries = false; }
-  vbRender();
+  if (vbState.pageEntries === null && !vbState.loading) await vbLoadPage(0, true); else vbRender();
   if (vbState.you && !vbCc.value && vbState.codes && vbState.codes.includes(vbState.you)) { vbCc.value = vbState.you; vbCcChanged(); }
 }
 let vbCodesLoading = null;
@@ -3417,7 +3439,8 @@ vbForm.addEventListener('submit', async (e) => {
     if (GUEST && !draftEl.hidden && !scrapBoard.hidden) updateScrapLogCopy();
     if (!d.dup) vbState.total += 1;
     vbRender(); globePins();
-    if (d.pending) setTimeout(() => { vbState.entries = null; vbLoad(); }, 4000);
+    if (d.pending) setTimeout(() => { vbState.entries = null; vbState.pageEntries = null; vbState.snapshot = ''; vbLoad(); }, 4000);
+    else vbLoadPage(0, true);
     return;
   }
   const why = d && d.reason;
@@ -4134,6 +4157,16 @@ function tickRound(dt, t) {
 /* ================= GAME 2 — THE LISTENING LOCK (treasure room) ================= */
 let heldIII = !!tilesHeld().III;
 const lock = { on: false, targets: [], i: 0, pos: 0, lastMove: 0, dragging: false, lastAngle: 0, acc: 0, dir: 0, dir2: 0, band: '', fellAt: -9, step: null };
+let lockGeneration = 0, lockWinTimer = null, lockPendingWin = false;
+function bankLockTile() {
+  const held = tilesHeld();
+  if (!held.III) { held.III = new Date().toISOString().slice(0, 10); try { localStorage.setItem(TILE_KEY, JSON.stringify(held)); } catch (e) {} psEvent(PS_EV.TILE_7); psTouch('tile-III'); }
+  heldIII = true;
+}
+function invalidateLock() {
+  lockGeneration++; clearTimeout(lockWinTimer); lockWinTimer = null;
+  if (lockPendingWin) { lockPendingWin = false; bankLockTile(); }
+}
 const lockDial = document.getElementById('lockDial'), lockShake = document.getElementById('lockShake'), lockNum = document.getElementById('lockNum'), lockHeat = document.getElementById('lockHeat'), lockMsg = document.getElementById('lockMsg');
 function lockDist() { const t = lock.targets[lock.i]; const d = Math.abs(t - lock.pos); return Math.min(d, 40 - d); }
 function lockRender() {
@@ -4163,11 +4196,12 @@ function lockFall() {
   if (lock.i === 1) lock.dir2 = lock.dir;
   lock.i++; lock.fellAt = simT; lock.band = '';
   lockMsg.textContent = ['One.', 'Two.', 'The last tumbler falls.'][lock.i - 1];
-  if (lock.i >= 3) { lock.on = false; setTimeout(lockWon, 800); }
-  else if (lock.i === 2) setTimeout(() => { if (lock.on) showCaption('The last one is contrary. Come at it from the other side.', 4200); }, 600);
+  if (lock.i >= 3) { lock.on = false; lockPendingWin = true; const generation = lockGeneration; lockWinTimer = setTimeout(() => { if (generation === lockGeneration) lockWon(); }, 800); }
+  else if (lock.i === 2) { const generation = lockGeneration; setTimeout(() => { if (generation === lockGeneration && lock.on) showCaption('The last one is contrary. Come at it from the other side.', 4200); }, 600); }
   lockRender();
 }
 function openLock() {
+  invalidateLock();
   lock.on = true; lock.i = 0; lock.pos = 0; lock.dir = 0; lock.dir2 = 0; lock.band = ''; lock.acc = 0; lock.lastMove = simT;
   lock.targets = [];
   while (lock.targets.length < 3) { const n = Math.floor(Math.random() * 40); if (n !== 0 && lock.targets.every((t) => Math.min(Math.abs(t - n), 40 - Math.abs(t - n)) > 6)) lock.targets.push(n); }
@@ -4178,16 +4212,22 @@ function openLock() {
   psTouch('lock');
   showCaption('Three tumblers. Turn the dial and listen.', 4200);
 }
-function closeLock() { lock.on = false; closeCard(lockboxEl); }
+function closeLock() { invalidateLock(); lock.on = false; lock.dragging = false; closeCard(lockboxEl); }
 function lockWon() {
+  if (lockboxEl.hidden) { invalidateLock(); return; }
+  lockPendingWin = false;
   closeLock();
+  const generation = lockGeneration;
   lidAnim = { from: pbLid.rotation.x, to: -1.6, t0: simT, dur: 0.7 };
   pbInner.visible = true; pbGlow.material.opacity = 0.6; pbLight.intensity = 6;
   playCreak(); setTimeout(playUnlock, 500);
   psEvent(PS_EV.LOCK_SOLVED);
   const had = !!tilesHeld().III;
   const from = new THREE.Vector3(); pbChest.getWorldPosition(from); from.y += 0.25;
-  setTimeout(() => pickupTile(7, from, () => awardTile('III', 'The chest gives up its secret.')), 900);
+  setTimeout(() => {
+    if (generation !== lockGeneration) { bankLockTile(); return; }
+    pickupTile(7, from, () => { if (generation === lockGeneration) awardTile('III', 'The chest gives up its secret.'); else bankLockTile(); });
+  }, 900);
 }
 let lidAnim = null;
 function tickLock(dt) {
@@ -4196,7 +4236,7 @@ function tickLock(dt) {
     pbLid.rotation.x = lidAnim.from + (lidAnim.to - lidAnim.from) * e;
     if (k >= 1) lidAnim = null;
   }
-  if (lock.on && lockboxEl.hidden) { lock.on = false; return; }   // the history guard shut it
+  if ((lock.on || lockPendingWin) && lockboxEl.hidden) { invalidateLock(); lock.on = false; return; }   // the history guard shut it
   if (lock.on) {
     const { d, contrary } = lockRender();
     if (d === 0 && !contrary && simT - lock.lastMove > 0.7 && simT - lock.fellAt > 0.9) { lock.lastMove = simT; lockFall(); }

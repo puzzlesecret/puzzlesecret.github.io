@@ -16,6 +16,7 @@
 // and with none set it answers "not configured". Never test through `astro preview` (it runs as PROD).
 export const prerender = false;
 
+import { createHash } from 'node:crypto';
 import { notify, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 import PLACES from '../../data/visitor-places2.json';
 import { HOOK, AUTH, RE_VISIT_KEY } from '../../lib/visit-counts.js';
@@ -71,6 +72,18 @@ let cache = { t: 0, entries: null, total: 0, visits: {}, site: {} };
 export async function GET({ request }) {
   const you = (request.headers.get('x-vercel-ip-country') || '').toUpperCase();
   const youOk = /^[A-Z]{2}$/.test(you) && has(you) ? you : '';
+  const params = new URL(request.url).searchParams;
+  const paged = ['limit', 'cursor', 'snapshot'].some((key) => params.has(key));
+  const limitText = params.get('limit') ?? '10';
+  const cursor = params.get('cursor');
+  const snapshot = params.get('snapshot');
+  const offset = cursor === null ? 0 : /^v1\.(0|[1-9]\d*)$/.test(cursor) ? Number(cursor.slice(3)) : NaN;
+  const limit = Number(limitText);
+  if (paged && (!/^[1-9]\d*$/.test(limitText) || limit > 25 || !Number.isSafeInteger(offset)
+    || (cursor !== null && !snapshot) || (snapshot !== null && !/^[a-f0-9]{64}$/.test(snapshot))
+    || ['limit', 'cursor', 'snapshot'].some((key) => params.getAll(key).length > 1))) {
+    return json({ ok: false, reason: 'bad_page', you: youOk }, 400);
+  }
   if (!HOOK) return json({ ok: false, reason: 'not_configured', you: youOk }, 503);
   if (!cache.entries || Date.now() - cache.t > 60000) {
     try {
@@ -81,9 +94,9 @@ export async function GET({ request }) {
       // re-check every row on the way out too: only list-valid entries are ever shown
       const entries = [];
       for (const row of d.rows) {
+        if (!row || typeof row !== 'object') continue;
         const c = checkEntry({ initials: row.i, cc: row.cc, region: row.r, town: row.p }, false);
         if (c.ok) entries.push({ i: c.initials, p: c.town, r: c.region, cc: c.cc, m: monthOf(row.t), rm: roomOf(row.room) });
-        if (entries.length >= 150) break;
       }
       // visits: {CC: n} — country counts only (never a time), and only for countries we know
       const visits = {};
@@ -91,12 +104,26 @@ export async function GET({ request }) {
       // site: {US-NY | GB: n} — every site visitor's country (US/Canadian state), counts only, never a time
       const site = {};
       if (d.site && typeof d.site === 'object') for (const [k, v] of Object.entries(d.site)) if (RE_VISIT_KEY.test(k) && has(k.slice(0, 2)) && Number(v) > 0) site[k] = Math.min(999999, Math.floor(Number(v)));
-      cache = { t: Date.now(), entries, total: Number(d.total) || entries.length, visits, site };
+      const reportedTotal = Number(d.total);
+      const total = Number.isSafeInteger(reportedTotal) && reportedTotal >= entries.length ? reportedTotal : entries.length;
+      // Hash public, sanitized fields only. Exact timestamps and other upstream fields never leave here.
+      const snapshot = createHash('sha256').update(JSON.stringify(entries)).digest('hex');
+      cache = { t: Date.now(), entries, total, visits, site, snapshot };
     } catch {
       if (!cache.entries) return json({ ok: false, reason: 'book_unreachable', you: youOk }, 502);
     }
   }
-  return json({ ok: true, entries: cache.entries, total: cache.total, visits: cache.visits || {}, site: cache.site || {}, you: youOk });
+  const availableTotal = cache.entries.length;
+  const common = { total: cache.total, availableTotal, visits: cache.visits || {}, site: cache.site || {}, you: youOk };
+  // Existing globe/signing callers still receive their latest 150 entries. Only the book opts into paging.
+  if (!paged) return json({ ok: true, entries: cache.entries.slice(0, 150), ...common });
+  if (snapshot !== null && snapshot !== cache.snapshot) return json({ ok: false, reason: 'page_changed', you: youOk }, 409);
+  if (offset > availableTotal) return json({ ok: false, reason: 'bad_page', you: youOk }, 400);
+  const hasMore = offset + limit < availableTotal;
+  return json({ ok: true, entries: cache.entries.slice(offset, offset + limit), ...common,
+    limit, offset, snapshot: cache.snapshot, hasMore,
+    nextCursor: hasMore ? `v1.${offset + limit}` : null,
+    prevCursor: offset > 0 ? `v1.${Math.max(0, offset - limit)}` : null });
 }
 
 // ---- A VISIT (Dan, 2026-11-14): each browser's first arrival at the PinPoint door adds one to a public count for

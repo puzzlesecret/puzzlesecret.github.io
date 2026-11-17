@@ -103,6 +103,7 @@ const HOME_LD = {
     <meta name="msvalidate.01" content="1E7692AED2193DF3F92BDD2AFCE1BB0B" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="stylesheet" href="/css/word-microphone.css" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -267,13 +268,13 @@ const HOME_LD = {
               <noscript><p class="entry-hint">Enable JavaScript to offer a word at this door, or visit <a href="/start">quiet entry</a> for book help.</p></noscript>
               <p class="entry-hint" id="wordHelp">Type the word you found · 4–12 letters. Press Offer the word when ready.</p>
               <p class="entry-status" id="entryStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+              <div class="mic-entry-tools"><button class="word-microphone" type="button" id="micBtn" aria-pressed="false" aria-describedby="micHelp micStatus" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><span data-mic-label>Use microphone</span></button></div>
               <div class="voice-tools">
                 <button class="linklike" type="button" id="replayKeeper">Replay Keeper</button>
-                <button class="linklike" type="button" id="micBtn" aria-pressed="false" aria-describedby="micHelp micStatus">Speak instead (optional)</button>
                 <a class="linklike" href="/start">Quiet entry</a>
               </div>
               <p class="entry-hint" id="micHelp">Speak uses your microphone and may send audio to your browser’s speech service. Review the transcript, then offer it yourself.</p>
-              <p class="entry-hint" id="micStatus" role="status" aria-live="polite"></p>
+              <p class="microphone-status" id="micStatus" role="status" aria-live="polite"></p>
               <p class="entry-hint" id="audioStatus" role="status" aria-live="polite"></p>
               <p class="entry-hint remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="rem-link" href="/vault">Step back inside →</a></p>
               <p class="entry-hint daily-word" id="dailyWord" hidden></p>
@@ -429,6 +430,7 @@ const HOME_LD = {
         render();
       })();
     </script>
+    <script is:inline src="/js/word-microphone.js"></script>
     <script define:vars={{ keeperFirstLine }}>
       const scene = document.getElementById('scene');
       const slot = document.getElementById('slot');
@@ -644,7 +646,7 @@ const HOME_LD = {
         else speakKeeper(text);
       }
       document.getElementById('replayKeeper').addEventListener('click', () => {
-        if (recognition) { stopMicrophone(); micStatus.textContent = 'Microphone stopped for Keeper playback.'; }
+        if (voiceInput && voiceInput.active) { stopMicrophone(); micStatus.textContent = 'Microphone stopped for Keeper playback.'; }
         visitorStarted = true;
         if (muted) { setMuted(false); syncSoundIcon(); }
         speakKeeper(lastCaption);
@@ -695,7 +697,7 @@ const HOME_LD = {
       syncSoundIcon();   // header chip and the speaker under the button start in agreement
       // URL review hooks never start audio: sound requires a visitor gesture.
       st?.addEventListener('click', () => {
-        if (recognition) { stopMicrophone(); micStatus.textContent = 'Microphone stopped while you change sound.'; }
+        if (voiceInput && voiceInput.active) { stopMicrophone(); micStatus.textContent = 'Microphone stopped while you change sound.'; }
         initAudio(); resumeAudio();
         setMuted(!muted);
         if (!muted) startAmbient();  // turning sound on starts the ambient bed
@@ -902,12 +904,12 @@ const HOME_LD = {
       let requestController = null;
       async function tryWord() {
         if (submitting || opening) return;
+        stopMicrophone();
         const word = wordInput.value.trim().toUpperCase().replace(/[\s-]/g, '');
         if (!/^[A-Z]{4,12}$/.test(word)) {
           entryStatus.textContent = 'Enter one word using 4–12 letters.';
           wordInput.setAttribute('aria-invalid', 'true'); wordInput.focus(); return;
         }
-        stopMicrophone();
         wordInput.removeAttribute('aria-invalid');
         submitting = true; submitWord.disabled = true;
         document.getElementById('tileForm').setAttribute('aria-busy', 'true');
@@ -948,64 +950,9 @@ const HOME_LD = {
       });
       document.getElementById('tileForm').addEventListener('submit', (e) => { e.preventDefault(); tryWord(); });
 
-      // Speech is optional input only. A transcript never invokes the unlock API.
-      const SpeechInput = window.SpeechRecognition || window.webkitSpeechRecognition;
-      let recognition = null;
-      let microphoneTimeout = null;
-      function stopMicrophone() {
-        clearTimeout(microphoneTimeout); microphoneTimeout = null;
-        const rec = recognition; recognition = null;
-        if (rec) { try { rec.abort(); } catch (_) {} }
-        micBtn.classList.remove('listening'); micBtn.setAttribute('aria-pressed', 'false');
-        micBtn.textContent = 'Speak instead (optional)';
-      }
-      if (!SpeechInput) {
-        micBtn.disabled = true;
-        micStatus.textContent = 'Voice input is unavailable in this browser. Type your word above.';
-      }
-      micBtn.addEventListener('click', () => {
-        if (recognition) { stopMicrophone(); micStatus.textContent = 'Microphone stopped. You can type or edit your word.'; return; }
-        if (!SpeechInput || submitting || opening) return;
-        silenceAll();
-        let rec;
-        try { rec = new SpeechInput(); } catch (_) { micStatus.textContent = 'Microphone could not start. You can type your word.'; return; }
-        recognition = rec;
-        rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
-        micBtn.classList.add('listening'); micBtn.setAttribute('aria-pressed', 'true'); micBtn.textContent = 'Stop microphone';
-        micStatus.textContent = 'Listening for your word…';
-        let received = false;
-        rec.onresult = (e) => {
-          if (recognition !== rec || document.hidden) return;
-          const said = (e.results[0][0].transcript || '').trim();
-          received = true; wordInput.value = said;
-          micStatus.textContent = 'Transcript ready. Check or edit it, then press Offer the word.';
-          wordInput.focus(); stopMicrophone();
-        };
-        rec.onerror = (e) => {
-          if (recognition !== rec) return;
-          received = true;
-          micStatus.textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed'
-            ? 'Microphone permission was not granted. Type your word, or change browser permission before trying again.'
-            : e.error === 'network'
-              ? 'The speech service could not connect. Type your word or try speaking again later.'
-              : e.error === 'audio-capture'
-                ? 'No microphone is available. You can type your word.'
-                : 'No clear word was heard. Type your word or choose Speak to try again.';
-          stopMicrophone();
-        };
-        rec.onend = () => {
-          if (recognition !== rec) return;
-          if (!received) micStatus.textContent = 'No word captured. Type your word or choose Speak to try again.';
-          stopMicrophone();
-        };
-        try {
-          rec.start();
-          microphoneTimeout = setTimeout(() => {
-            if (recognition !== rec) return;
-            stopMicrophone(); micStatus.textContent = 'Microphone stopped after waiting. Type your word or choose Speak to try again.';
-          }, 12000);
-        } catch (_) { stopMicrophone(); micStatus.textContent = 'Microphone could not start. You can type your word.'; }
-      });
+      // Shared by this door and /start (including Gift entry).
+      const voiceInput = window.psWordMicrophone({ inputId: 'wordInput', buttonId: 'micBtn', statusId: 'micStatus', beforeStart: silenceAll, isBusy: () => submitting || opening });
+      function stopMicrophone(message) { if (voiceInput) voiceInput.stop(message); }
       function stopEntryActivity() {
         stopMicrophone(); if (requestController) requestController.abort('page-hidden');
         if (opening) {

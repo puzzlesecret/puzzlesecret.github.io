@@ -12,6 +12,7 @@
   var choices = Array.from(document.querySelectorAll('[data-book-choice]'));
   var busy = false;
   input.disabled = false; button.disabled = false;
+  var voiceInput = window.psWordMicrophone({ inputId: 'entry-word', buttonId: 'entry-mic', statusId: 'entry-mic-status', isBusy: function () { return busy; } });
   // Add a new room-set route here once its parent family is activated. Editions
   // sharing a room set need no per-book client changes. Unknown sets fail closed.
   var ROOM_ROUTES = { v1: { volumeId: 'v1', destination: '/vault', acts: ['I', 'II', 'III'] } };
@@ -90,6 +91,7 @@
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
     if (busy) return;
+    if (voiceInput) voiceInput.stop();
     var raw = input.value.trim().toUpperCase();
     var word = raw.replace(/[\s-]/g, '');
     input.removeAttribute('aria-invalid');

@@ -11,8 +11,8 @@ const books = families.flatMap((volume) => volume.books);
   <title>Enter your word · PuzzleSecret</title>
   <meta name="description" content="Enter the word from your Sudoku with a Secret book or cover. Find your book’s help and sudoku solutions." />
   <link rel="canonical" href="https://puzzlesecret.com/start" /><link rel="icon" href="/favicon.svg" />
-  <link rel="stylesheet" href="/css/book-entry.css" />
-  <script is:inline src="/js/guest-key.js" defer></script><script is:inline src="/js/book-entry.js" defer></script>
+  <link rel="stylesheet" href="/css/book-entry.css" /><link rel="stylesheet" href="/css/word-microphone.css" />
+  <script is:inline src="/js/guest-key.js" defer></script><script is:inline src="/js/word-microphone.js" defer></script><script is:inline src="/js/book-entry.js" defer></script>
 </head>
 <body data-default-book={defaultBook}>
   <header class="entry-header"><a class="brand" href="/">PuzzleSecret<span>Sudoku with a Secret</span></a><a class="header-help" href="#choose-book">Help &amp; solutions</a></header>
@@ -26,6 +26,9 @@ const books = families.flatMap((volume) => volume.books);
           <p id="daily-reminder" class="daily-reminder" hidden></p>
           <label for="entry-word">Your word</label><p id="word-hint" class="field-hint">4–12 letters. You don’t need to choose a book first.</p>
           <div class="entry-input-row"><input id="entry-word" name="word" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="word-hint entry-message" required disabled /><button type="submit" disabled>Open my vault <span aria-hidden="true">→</span></button></div>
+          <div class="mic-entry-tools"><button id="entry-mic" class="word-microphone" type="button" aria-pressed="false" aria-describedby="entry-mic-help entry-mic-status" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><span data-mic-label>Use microphone</span></button></div>
+          <p id="entry-mic-status" class="microphone-status" role="status" aria-live="polite"></p>
+          <p id="entry-mic-help" class="field-hint">Optional voice input. Your browser may send audio to its speech service. Review the text before choosing Open my vault.</p>
           <p id="entry-message" class="entry-message" role="status" aria-live="polite" aria-atomic="true"></p>
         </form>
         <p class="entry-promise">Vault I is free. No account or signup.</p>

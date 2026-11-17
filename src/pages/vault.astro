@@ -177,6 +177,13 @@ import Analytics from '@vercel/analytics/astro';
           </form>
           <p class="vb-count" id="vbCount"></p>
           <ol class="vb-list" id="vbList" aria-label="Visitors who signed" aria-live="off"></ol>
+          <p class="vb-page-status" id="vbPageStatus" role="status" aria-live="polite"></p>
+          <nav class="vb-pages" aria-label="Visitors’ Book pages">
+            <button class="ghost-btn" id="vbNewer" type="button" disabled>← Newer</button>
+            <button class="ghost-btn" id="vbOlder" type="button" disabled>Older →</button>
+            <button class="ghost-btn" id="vbRetry" type="button" hidden>Try again</button>
+          </nav>
+          <div id="vbOwn" hidden><p class="vb-own-label">Your signature</p><ol class="vb-list" id="vbOwnList"></ol></div>
           <p class="vb-credit">Places: GeoNames, CC BY 4.0</p>
         </div>
       </div>
@@ -291,10 +298,11 @@ import Analytics from '@vercel/analytics/astro';
       <div id="tiles"></div>
       <input id="wbInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" aria-label="The secret word" />
       <div class="word-actions">
-        <button id="speakBtn" class="ghost-btn">🎙 &nbsp;Speak the word</button>
+        <button id="speakBtn" class="ghost-btn" type="button" aria-pressed="false" aria-describedby="wbMicStatus">🎙 <span data-mic-label>Use microphone</span></button>
         <button id="wbSubmit" class="gold-btn">Open the door</button>
         <button id="wbCancel" class="ghost-btn">Step back</button>
       </div>
+      <p id="wbMicStatus" class="word-mic-status" role="status" aria-live="polite">You can type the word or use the microphone.</p>
       <div id="wbMsg"></div>
     </div>
   </div>
@@ -316,6 +324,7 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
+  <script is:inline src="/js/word-microphone.js"></script>
   <FlatVault />
 
   <!-- THE FAREWELL (2026-11-09) — shown once per tab when a book visitor leaves by "the landing" or the 3D exit
@@ -569,7 +578,7 @@ import Analytics from '@vercel/analytics/astro';
     .cb-age input { width: 15px; height: 15px; accent-color: #b98f52; cursor: pointer; flex: none; }
     .word-actions .gold-btn, .word-actions .ghost-btn { margin-bottom: 0; }
     #wbMsg { min-height: 22px; margin-top: 12px; font-style: italic; font-size: 15px; color: rgba(232,213,174,0.7); }
-    #speakBtn.listening { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
+    #speakBtn.listening, #speakBtn[data-mic-state="listening"] { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 18px rgba(246,178,60,0.35); }
     #carvebox {
       position: fixed; inset: 0; z-index: 15; display: flex; align-items: center;
       justify-content: center; background: rgba(4,2,0,0.6); backdrop-filter: blur(3px);
@@ -710,11 +719,11 @@ import Analytics from '@vercel/analytics/astro';
     .scrap-wrap { display: none; flex-direction: column; align-items: center; gap: 14px; width: min(520px, 94vw); }
     #draft.scrap .draft-wrap { display: none; }
     #draft.scrap .scrap-wrap { display: flex; }
-    .scrap { position: relative; width: 100%; padding: 26px 26px 20px; color: #2c2011; text-align: center;
+    .scrap-wrap > .scrap { position: relative; width: 100%; padding: 26px 26px 20px; color: #2c2011; text-align: center;
       background: radial-gradient(120% 90% at 30% 20%, #f6efdd 0%, #eadfc2 55%, #d9c79e 100%);
       clip-path: polygon(1% 4%, 12% 0%, 30% 3%, 52% 0%, 71% 4%, 88% 1%, 99% 6%, 100% 40%, 97% 62%, 100% 86%, 92% 100%, 70% 97%, 48% 100%, 27% 96%, 9% 100%, 0% 88%, 2% 58%, 0% 30%);
       box-shadow: 0 24px 60px rgba(0,0,0,.8); animation: pageLift .42s cubic-bezier(.2,.8,.25,1) both; }
-    .scrap::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35;
+    .scrap-wrap > .scrap::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35;
       background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(90,64,26,.12) 22px 23px); }
     .scrap-kick { font-family: Cinzel, serif; font-size: clamp(9px, 1.2vw, 12px); letter-spacing: .32em; color: #6b4d1f; margin-bottom: 10px; }
     .scrap-text { font-family: Cinzel, serif; font-weight: 700; font-size: clamp(26px, 6vw, 44px); letter-spacing: .06em; color: #1a1208; line-height: 1.15; white-space: nowrap; }
@@ -760,7 +769,7 @@ import Analytics from '@vercel/analytics/astro';
     .vb-sign { font-weight: 700; }
     .vb-msg { min-height: 1.3em; font-size: 14px; font-style: italic; color: #7a2a14; text-align: center; margin: 8px 0 0; }
     .vb-count { font-family: Cinzel, serif; font-size: 12px; letter-spacing: .12em; color: #6b4d1f; text-align: center; margin: 14px 0 6px; }
-    .vb-list { list-style: none; margin: 0; padding: 0; max-height: 34vh; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid rgba(90,64,26,.3); }
+    .vb-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(90,64,26,.3); }
     .vb-list li { padding: 7px 4px; border-bottom: 1px solid rgba(90,64,26,.15); font-size: 15px; color: #2c2011; overflow-wrap: anywhere; }
     .vb-list li b { font-family: Cinzel, serif; letter-spacing: .12em; margin-right: 6px; }
     .vb-list li i { color: #6b4d1f; font-size: 13px; }
@@ -786,6 +795,99 @@ import Analytics from '@vercel/analytics/astro';
     }
   </style>
 
+  <style is:global>
+    /* One predictable exit, outside scrolling/animated cards and torn-paper clipping. */
+    .room-close, #deskX.room-close { position: fixed; z-index: 12; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin: 0; padding: 0; display: grid; place-items: center; border: 1px solid #6a4a18; border-radius: 50%; background: linear-gradient(#e2c27a, #b48a3c); color: #2a1a06; font: 600 24px/1 Georgia, serif; box-shadow: 0 2px 6px #0008; cursor: pointer; touch-action: manipulation; }
+    .room-close:hover { background: #f0d796; }
+    #slowBar { padding-right: 66px !important; }
+    body:has(.room-panel:not([hidden])) #slowBar { display: none !important; }
+    #slowBar > .room-close { position: absolute; top: 8px; right: 8px; }
+    .room-close:focus-visible { outline: 3px solid #fff3c4; outline-offset: 3px; }
+    /* The room exit gets its own lane. Content scrolls only below that lane. */
+    .room-panel[id] { top: max(66px, calc(env(safe-area-inset-top) + 58px)) !important; bottom: 0 !important; height: auto !important; padding-top: 12px !important; overflow-y: auto; }
+    .room-panel::before { content: ''; position: fixed; z-index: 11; inset: 0 0 auto; height: max(66px, calc(env(safe-area-inset-top) + 58px)); background: #100c08; pointer-events: none; }
+    #desk.room-panel .desk-card { height: calc(100vh - 90px); height: calc(100dvh - 90px); }
+    .word-mic-status { min-height: 1.4em; font-size: 14px !important; line-height: 1.4; margin: 10px 0 !important; }
+    /* Filters on scrolling roots establish a containing block for fixed descendants;
+       keep the room dimmed while the exit stays anchored to the viewport. */
+    #desk, #notebook, #draft, #reward, #pageview, #wordbox, #carvebox, #roundEnd, #lockbox, #tilecard, #farewell, #pvGame, #certPanel { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; filter: none !important; transform: none !important; }
+    .vb-pages { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .vb-pages button { min-height: 44px; }
+    .vb-pages button:disabled { opacity: .5; cursor: default; }
+    .vb-page-status, .vb-own-label { text-align: center; color: #5a4a2a; font-size: 14px; }
+    #vbOwn[hidden], #vbRetry[hidden] { display: none; }
+  </style>
+  <script is:inline>
+    (function () {
+      var routes = { desk: 'deskX', notebook: 'nbClose', draft: 'draftClose', reward: 'rewardClose', pageview: 'pageClose', wordbox: 'wbCancel', carvebox: 'cbCancel', roundEnd: 'reBack', lockbox: 'lockBack', tilecard: 'tcClose', farewell: 'fwStay', certPanel: 'certClose' };
+      var labels = { desk: 'Rise from the desk and return to the vault', notebook: 'Close the notebook', draft: 'Close the page or Visitors’ Book', reward: 'Close the gift', pageview: 'Close the story page', wordbox: 'Close word entry', carvebox: 'Close the register', roundEnd: 'Close the round result', lockbox: 'Close the listening lock', tilecard: 'Close the key-tile', farewell: 'Stay in the vault', certPanel: 'Close the certificate', pvGame: 'Close this panel' };
+      var focusBefore = new WeakMap(), wasOpen = new WeakMap();
+      function restoreFocus(panel) {
+        var prior = focusBefore.get(panel);
+        if (prior && prior !== document.body && prior.isConnected && !panel.contains(prior) && prior.getClientRects().length && prior.focus) {
+          prior.focus({ preventScroll: true });
+          if (document.activeElement === prior) return;
+        }
+        var painted = document.body.classList.contains('painted');
+        var room = document.getElementById(painted ? 'pvStage' : 'stage');
+        if (room && room.getClientRects().length) {
+          room.setAttribute('tabindex', '-1'); room.focus({ preventScroll: true });
+        }
+      }
+      function dismiss(id) {
+        var panel = document.getElementById(id); if (!panel || panel.hidden) return;
+        if (id === 'globeView') { if (window.__globeClose) window.__globeClose(); return; }
+        if (id === 'pvGame') {
+          var old = panel.querySelector('#lockBack, #regClose, #letClose, #tileClose'); if (old) old.click(); else panel.hidden = true;
+        } else {
+          var target = document.getElementById(id === 'draft' && panel.classList.contains('scrap') ? 'scrapClose' : routes[id]);
+          if (target) target.click();
+        }
+        if (panel.hidden) restoreFocus(panel);
+      }
+      window.__roomDismiss = dismiss;
+      function sync() {
+        var slow = document.getElementById('slowBar');
+        if (slow && !slow.querySelector(':scope > .room-close')) {
+          var sx = document.createElement('button'); sx.type = 'button'; sx.className = 'room-close'; sx.textContent = '×'; sx.setAttribute('aria-label', 'Dismiss the performance suggestion');
+          sx.addEventListener('click', function () { document.getElementById('slowDismiss').click(); }); slow.prepend(sx);
+        }
+        Object.keys(labels).forEach(function (id) {
+          var panel = document.getElementById(id); if (!panel) return;
+          panel.classList.add('room-panel');
+          var isOpen = !panel.hidden, opened = isOpen && !wasOpen.get(panel);
+          if (opened) focusBefore.set(panel, document.activeElement);
+          if (!isOpen && wasOpen.get(panel) && panel.contains(document.activeElement)) {
+            restoreFocus(panel);
+          }
+          wasOpen.set(panel, isOpen);
+          if (!panel.hasAttribute('role') && !panel.querySelector('[role=dialog]')) { panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-modal', 'true'); panel.setAttribute('aria-label', labels[id].replace(/^Close /, '')); }
+          if (!panel.querySelector(':scope > .room-close')) {
+            var x = document.createElement('button'); x.type = 'button'; x.className = 'room-close'; x.textContent = '×'; x.setAttribute('aria-label', labels[id]); x.title = labels[id];
+            x.addEventListener('click', function () { dismiss(id); }); panel.prepend(x);
+          }
+          if (opened && !panel.contains(document.activeElement)) panel.querySelector(':scope > .room-close').focus({ preventScroll: true });
+        });
+      }
+      var deskX = document.getElementById('deskX'); if (deskX) { deskX.classList.add('room-close'); deskX.textContent = '×'; document.getElementById('desk').prepend(deskX); }
+      sync(); new MutationObserver(sync).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+      document.addEventListener('keydown', function (e) {
+        if ((e.key !== 'Escape' && e.key !== 'Tab') || e.defaultPrevented) return;
+        var ids = ['globeView', 'certPanel', 'farewell', 'pvGame', 'wordbox', 'carvebox', 'desk', 'draft', 'notebook', 'lockbox', 'tilecard', 'roundEnd', 'pageview', 'reward'];
+        var id = ids.find(function (id) { var p = document.getElementById(id); return p && !p.hidden; });
+        if (!id) return;
+        if (e.key === 'Tab') {
+          var panel = document.getElementById(id), tabs = Array.from(panel.querySelectorAll('button, a[href], input, select, textarea, iframe, [tabindex]')).filter(function (el) { return !el.disabled && el.tabIndex >= 0 && el.getClientRects().length; });
+          if (!tabs.length) return;
+          var first = tabs[0], last = tabs[tabs.length - 1], active = document.activeElement;
+          if (!panel.contains(active) || (e.shiftKey ? active === first : active === last)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+          return;
+        }
+        e.preventDefault(); e.stopImmediatePropagation(); dismiss(id);
+      }, true);
+    })();
+  </script>
+
   <script is:inline>
     /* THE BACK BUTTON never throws you out of the vault by surprise. Installed here, before any
        scene loads, for BOTH modes. Two entries of our own: [base][top]. Opening any overlay pushes
@@ -805,6 +907,7 @@ import Analytics from '@vercel/analytics/astro';
       function closeAll() {
         IDS.forEach(function (id) {
           var e = el(id); if (!e || e.hidden) return;
+          if (window.__roomDismiss) { window.__roomDismiss(id); return; }
           if (id === 'globeView') { if (window.__globeClose) window.__globeClose(); return; }   // the Keeper's globe close-up
           if (id === 'desk' && window.__vaultRise) window.__vaultRise();
           else if (id === 'wordbox' && el('wbCancel')) el('wbCancel').click();   // through the cancel path, so the "gave up at this door" line still fires

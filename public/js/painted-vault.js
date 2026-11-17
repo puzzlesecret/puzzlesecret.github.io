@@ -628,8 +628,16 @@
   const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
   const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };   // the book states each door's length, so the box shows it
   function renderTiles() { tilesEl.innerHTML = ''; const shown = DOOR_LEN[wbTarget] || 6; for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
+  let wbGeneration = 0, wbRequest = null, wordMicrophone = null;
+  function invalidateWordbox() {
+    wbGeneration++;
+    if (wbRequest) wbRequest.abort();
+    wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
+    if (wordMicrophone) wordMicrophone.stop();
+  }
   let wbOpenFails = 0;                                // misses since THIS box opened (wbFails drives the VO across the visit)
   function openWordbox(key) {
+    invalidateWordbox();
     wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
     $('wbKicker').textContent = DOORS[key].kicker; $('wbLine').textContent = VO[DOORS[key].vo].text;
     wbMsg.textContent = ''; renderTiles(); wordboxEl.hidden = false;
@@ -644,7 +652,7 @@
     if (key === 'door2' && window.psGuest && window.psGuest.door2($('wbKicker'), $('wbLine'))) { caption(window.psGuest.line('door2'), 9000); return; }
     keeper(DOORS[key].vo);
   }
-  function closeWordbox() { wordboxEl.hidden = true; wbTarget = null; }
+  function closeWordbox() { invalidateWordbox(); wordboxEl.hidden = true; wbTarget = null; }
   // Dismissed without a true word — the "gave up at this door" signal. Success paths call
   // closeWordbox() directly and never reach this.
   function dismissWordbox() {
@@ -665,12 +673,16 @@
     e.stopPropagation();
   }, true);
   async function submitWord() {
-    if (wbBusy || !wbTarget) return;
+    if (wbBusy || !wbTarget || wordboxEl.hidden || document.hidden) return;
     if (wbWord.length < 4) { shake(wordboxEl); return; }
+    const key = wbTarget, word = wbWord, generation = wbGeneration;
+    if (wordMicrophone) wordMicrophone.stop();
+    const request = wbRequest = new AbortController();
     wbBusy = true; wbSubmit.textContent = 'The vault is listening…';
     let j = null;
-    try { const r = await fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word: wbWord, vid: psVid(), at: 'painted' }) }); j = await r.json(); } catch (e) { /* offline */ }
-    wbBusy = false; wbSubmit.textContent = 'Open the door';
+    try { const r = await fetch('/api/unlock', { method: 'POST', signal: request.signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word, vid: psVid(), at: 'painted' }) }); j = await r.json(); } catch (e) { /* offline */ }
+    if (generation !== wbGeneration || key !== wbTarget || wordboxEl.hidden || document.hidden) return;
+    wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
     if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
     if (j.error === 'slow_down') { wbMsg.textContent = 'Too many tries at once. Take a breath, then speak again.'; return; }
     if (j.ok) {
@@ -678,8 +690,8 @@
       holdReward(act, j.rewardUrl);
       if (window.psGuest) window.psGuest.note(j);   // a guest key vs a book word (guest-key.js)
       if (!(j.room && j.room.id)) { try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {} }   // a book word ends any guest room for the next load
-      if (act === 'IV') { fourthWord = wbWord; try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); if (Array.isArray(j.lines) && j.lines.length) localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); } catch (e) {} }
-      if (act !== DOORS[wbTarget].act) wbMsg.textContent = 'A true word — but for another door. I will open that one.';
+      if (act === 'IV') { fourthWord = word; try { if (j.carveToken) localStorage.setItem('ps_carve', j.carveToken); if (Array.isArray(j.lines) && j.lines.length) localStorage.setItem(LETTERS_KEY, JSON.stringify(j.lines)); } catch (e) {} }
+      if (act !== DOORS[key].act) wbMsg.textContent = 'A true word — but for another door. I will open that one.';
       closeWordbox(); markDoor(act); stampVault(act); renderStrip();
       playBoom(); burstConfetti();
       // Successful unlock: which door just swung. Fourth is the floor, not a door.
@@ -699,44 +711,16 @@
   }
   wbSubmit.addEventListener('click', submitWord);
   function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, speakBtn = $('speakBtn');
-  let speakRec = null;
-  if (!SR) speakBtn.style.display = 'none';
-  else speakBtn.addEventListener('click', () => {
-    if (speakRec) { try { speakRec.stop(); } catch (e) {} return; }         // a second tap stops listening
-    let heard = false;
-    try {
-      const rec = speakRec = new SR();                                      // kept in a module variable: never collected mid-listen
-      rec.lang = 'en-US'; rec.maxAlternatives = 3; rec.interimResults = false; rec.continuous = false;
-      speakBtn.classList.add('listening'); speakBtn.textContent = '🎙  Listening…';
-      wbMsg.textContent = 'Listening… say the word clearly.';
-      rec.onresult = (e) => {
-        heard = true;
-        // the first alternative that is a single plain word wins; else the top guess
-        const alts = Array.from(e.results[0] || []).map((a) => (a.transcript || '').trim());
-        const pick = alts.find((t) => /^[a-z]+$/i.test(t)) || alts[0] || '';
-        wbSet(pick);
-        if (wbWord.length >= 4) { wbMsg.textContent = 'I heard \u201C' + wbWord + '\u201D.'; submitWord(); }
-        else wbMsg.textContent = pick ? 'I heard \u201C' + pick + '\u201D. Say it again, or type it.' : 'I heard nothing. Say it again, or type it.';
-      };
-      rec.onerror = (e) => {
-        heard = true;
-        const why = e && e.error;
-        wbMsg.textContent = why === 'not-allowed' || why === 'service-not-allowed'
-          ? 'The vault may not use your microphone. Allow it in the address bar, or type the word.'
-          : why === 'network' ? 'Speech needs a connection right now. Type the word instead.'
-          : why === 'no-speech' ? 'I heard nothing. Say it again, or type it.'
-          : 'I could not make that out. Say it again, or type the word.';
-      };
-      rec.onend = () => {
-        speakRec = null;
-        speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word';
-        if (!heard) wbMsg.textContent = 'I heard nothing. Say it again, or type it.';
-        try { wbInput.focus({ preventScroll: true }); } catch (e) {}
-      };
-      rec.start();
-    } catch (e) { speakRec = null; speakBtn.classList.remove('listening'); speakBtn.textContent = '🎙  Speak the word'; wbMsg.textContent = 'Speech is not available here. Type the word.'; }
+  wordMicrophone = window.psWordMicrophone && window.psWordMicrophone({
+    inputId: 'wbInput', buttonId: 'speakBtn', statusId: 'wbMicStatus',
+    beforeStart: stopVoice,
+    validateTranscript: (text) => text.replace(/[^a-z]/gi, '').length === DOOR_LEN[wbTarget]
+      || 'That recording does not match this door’s letter count. Your word is unchanged. Try again, or type and edit it.',
+    isBusy: () => wbBusy || wordboxEl.hidden || !wbTarget
   });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) invalidateWordbox(); });
+  addEventListener('pagehide', invalidateWordbox);
+  new MutationObserver(() => { if (wordboxEl.hidden) invalidateWordbox(); }).observe(wordboxEl, { attributes: true, attributeFilter: ['hidden'] });
 
   /* ---- the sanctum (Vault IV): a dark room, built in HTML ---- */
   let wallMarks = [], wallCount = 0, wallFetched = false;
@@ -867,7 +851,18 @@
 
   /* ================= MINI-GAME 2 — THE LISTENING LOCK (treasure, the locked chest) ================= */
   const lock = { on: false, targets: [], i: 0, pos: 0, holdT: null, dragging: false, lastAngle: 0 };
+  let lockGeneration = 0, lockWinTimer = null, lockPendingWin = false;
+  function bankLockTile() {
+    if (!tiles.III) { tiles.III = new Date().toISOString().slice(0, 10); store.set(TILE_KEY, tiles); try { window.psEvent && window.psEvent('tile.7'); } catch (e) {} }
+  }
+  function invalidateLock() {
+    lockGeneration++; clearTimeout(lock.holdT); clearTimeout(lockWinTimer); lockWinTimer = null;
+    lock.on = false; lock.dragging = false;
+    if (lockPendingWin) { lockPendingWin = false; bankLockTile(); }
+  }
   function openLock() {
+    invalidateLock();
+    const generation = lockGeneration;
     try { window.psEvent && window.psEvent('lock.start'); } catch (e) {}
     if (tiles.III) { say('smallchest'); }
     const G = els.pvGame;
@@ -898,6 +893,7 @@
     const render = () => { dial.style.setProperty('--rot', (-lock.pos * 9) + 'deg'); el('lockNum').textContent = lock.pos; dial.setAttribute('aria-valuenow', lock.pos); };
     const dist = () => { const t = lock.targets[lock.i]; const d = Math.abs(t - lock.pos); return Math.min(d, 40 - d); };
     const step = (dir) => {
+      if (!lock.on || generation !== lockGeneration || G.hidden || !G.contains(dial)) return;
       lock.pos = (lock.pos + dir + 40) % 40; render();
       const d = dist(), near = Math.max(0, 1 - d / 10);
       playTick(0.15 + near * 0.85, 1400 + near * 1600);
@@ -906,7 +902,7 @@
       if (d === 0) lock.holdT = setTimeout(fall, 700);
     };
     const fall = () => {
-      if (!lock.on) return;
+      if (!lock.on || generation !== lockGeneration || G.hidden || !G.contains(dial)) return;
       playThud(120, 45, 0.6, 0.5); playChime(lock.i + 1);
       el('lockTumblers').children[lock.i].classList.add('fell');
       lock.i++;
@@ -914,7 +910,13 @@
       if (lock.i >= 3) {
         lock.on = false; el('lockMsg').textContent = 'The last tumbler falls.';
         try { window.psEvent && window.psEvent('lock.solved'); } catch (e) {}
-        setTimeout(() => { G.hidden = true; burstConfetti(); playUnlock(); awardTile('III', 'The chest gives up its secret.'); }, 900);
+        lockPendingWin = true;
+        lockWinTimer = setTimeout(() => {
+          if (generation !== lockGeneration) return;
+          lockPendingWin = false;
+          if (G.hidden || !G.contains(dial)) { bankLockTile(); return; }
+          G.hidden = true; burstConfetti(); playUnlock(); awardTile('III', 'The chest gives up its secret.');
+        }, 900);
       }
     };
     // drag: angle around the dial's centre
@@ -932,8 +934,8 @@
     const up = () => { lock.dragging = false; };
     dial.addEventListener('pointerup', up); dial.addEventListener('pointercancel', up);
     dial.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { step(1); e.preventDefault(); } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { step(-1); e.preventDefault(); } });
-    el('lockBack').addEventListener('click', () => { lock.on = false; clearTimeout(lock.holdT); G.hidden = true; });
-    render(); setTimeout(() => dial.focus(), 80);
+    el('lockBack').addEventListener('click', () => { invalidateLock(); G.hidden = true; });
+    render(); setTimeout(() => { if (generation === lockGeneration && !G.hidden && G.contains(dial)) dial.focus(); }, 80);
     caption('Three tumblers. Turn the dial and listen.', 5000);
   }
 
