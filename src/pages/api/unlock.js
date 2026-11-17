@@ -4,6 +4,8 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
+import { GIFT_HASHES } from '../../lib/gift-unlocks.js';
+import { entryContext } from '../../lib/entry-context.js';
 import { notify, solverTag, place, isBot, quietPlace } from '../../lib/keeper-telegram.js';
 
 // Spoken words are the one place a stranger's typed letters reach Telegram (bare A-Z,
@@ -31,6 +33,7 @@ const SALT = import.meta.env.VAULT_SALT ?? process.env.VAULT_SALT; // .env in de
 
 // hash( SALT | NORMALIZED_WORD ) -> reward metadata. No plaintext answers here.
 const HASHES = {
+  ...GIFT_HASHES,
   '54cd85880c16e9fdd2e794428ab8cca5e9b9db0dba570914772289495d2fcbee': { act: 'I', reward: '50 bonus Easy puzzles', tier: 'easy', discount: 10 },
   '09ebb42c1c790c0df466c2594ed1f9412746e5fd1183f047bf5509bf77042376': { act: 'II', reward: '100 bonus Medium puzzles', tier: 'medium', discount: 20 },
   '14931225a6efb6f746b42dd5dc7d068af053a88cd3bcec24c7d21827e558f72a': { act: 'III', reward: '200 bonus Hard puzzles', tier: 'hard', discount: 30 },
@@ -186,7 +189,8 @@ const LETTERS = [
 // It reveals nothing (a hash of the salt) and never appears for a non-solver.
 const CARVE_TOKEN = SALT ? crypto.createHash('sha256').update(SALT + '|carve-proof-v1').digest('hex') : '';
 const norm = (w) => String(w || '').toUpperCase().replace(/[^A-Z]/g, '');
-const AT = { door: ' · at the front door', '3d': ' · at the 3D word box', painted: ' · at the painted word box', pinpoint: ' · at the PinPoint door', daily: ' · at a daily puzzle page' };
+const AT = { door: ' · at the front door', '3d': ' · at the 3D word box', painted: ' · at the painted word box', pinpoint: ' · at the PinPoint door', daily: ' · at a daily puzzle page', 'gift-cover': ' · at the Gift cover door', 'gift-book': ' · at the Gift book door' };
+AT['entry-hub'] = ' · at the book entry';
 const hash = (w) => crypto.createHash('sha256').update(SALT + '|' + w).digest('hex');
 
 // Tiny per-IP token bucket (generous for humans, hostile to wordlist scripts).
@@ -224,6 +228,11 @@ export async function POST({ request, clientAddress }) {
   // one. A fixed enum from the client; anything else is dropped, never echoed.
   const atKey = String(body && body.at || '');
   const at = Object.hasOwn(AT, atKey) ? AT[atKey] : '';   // hasOwn: "constructor" / "__proto__" must not resolve
+  // The cover form accepts its own guest code only; no book act is bypassed by this entry route.
+  if (atKey === 'gift-cover' && (!hit || hit.edition !== 'gift-cover')) return json({ ok: false });
+  // Keep hidden entry on existing handlers and require an active known room set.
+  const entry = atKey === 'entry-hub' ? entryContext(hit) : undefined;
+  if (atKey === 'entry-hub' && !entry) return json({ ok: false });
   if (hit) {
     // The word that opened it, as typed and reduced to bare A-Z (the same shape a miss is
     // relayed in). An act can be opened by more than one word (the book's, or any guest key),
@@ -235,7 +244,7 @@ export async function POST({ request, clientAddress }) {
         ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word ${said} \u2014 the floor opens${at}`
         : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act} with ${said}${at}`;
     await notify(line);
-    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined, guest: guestKind(hit) });
+    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, edition: hit.edition, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined, guest: guestKind(hit), entry });
   }
   // A miss from a quiet country is not relayed (a TRUE word above always is).
   if (!isBot(request) && !quietPlace(request)) {

@@ -154,7 +154,7 @@ const HOME_LD = {
         w.s = w.s.replace('-', '');
         el.textContent = 'Your word from game ' + w.s + ': ' + spaced + '. Say it or type it above.';
         el.hidden = false;
-        if (pre) { pre.textContent = 'Your word from game ' + w.s + ' is ' + spaced + '. Tap Enter the Vault, then say it to the Keeper.'; pre.hidden = false; }
+        if (pre) { pre.textContent = 'Your word from game ' + w.s + ' is ' + spaced + '. Choose Enter the Vault, then type it in Your word.'; pre.hidden = false; }
       });
     </script>
   </head>
@@ -239,15 +239,16 @@ const HOME_LD = {
           <div class="enterblock pre-only reveal" style="--d:.5s">
             <p class="tagline"><span>Solve the puzzles.</span> <span>Find the word.</span> <span>Open the vault.</span></p>
             <div class="enter-row">
-            <button class="enter" id="enterBtn">
+            <a class="enter" id="entryStartBtn" href="/start">
               <!-- the door's own spoked wheel; it turns on hover -->
               <svg class="enter-ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7.2"/><circle cx="12" cy="12" r="2.3"/>{[0, 60, 120, 180, 240, 300].map((a) => <line x1="12" y1="9.7" x2="12" y2="1.6" transform={`rotate(${a} 12 12)`} />)}</svg>
               <span>Enter the Vault</span>
-            </button>
+            </a>
             <button class="soundpick" id="soundPick" type="button" title="Sound is on. Press to mute." aria-label="Sound is on. Press to mute.">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><g class="sp-on"><path d="M15.5 8.8a4.5 4.5 0 0 1 0 6.4"/><path d="M18.4 6a8.5 8.5 0 0 1 0 12"/></g><g class="sp-off"><line x1="16" y1="9.5" x2="21" y2="14.5"/><line x1="21" y1="9.5" x2="16" y2="14.5"/></g></svg>
             </button>
             </div>
+            <p class="entry-options"><a class="linklike" href="/start#choose-book">Choose your book</a><button class="linklike" id="legacyEnterBtn" type="button">Speaking door (Volume I)</button></p>
             <p class="g-mute remembered" hidden><span class="rem-txt">The first door remembers you.</span> <a class="linklike rem-link" href="/vault">Step back inside →</a></p>
             <p class="g-mute daily-word-pre" id="dailyWordPre" hidden></p>
           </div>
@@ -710,7 +711,7 @@ const HOME_LD = {
         setTimeout(() => typeCaption(keeperFirstLine), 1150);
         setTimeout(() => { const f = slot?.querySelector('.tile'); if (f) f.focus(); }, 1750);
       }
-      document.getElementById('enterBtn')?.addEventListener('click', () => beginExperience(!muted));
+      document.getElementById('legacyEnterBtn')?.addEventListener('click', () => beginExperience(!muted));
       // the speaker under the button: choose sound before stepping in (the header chip stays in step)
       document.getElementById('soundPick')?.addEventListener('click', () => { setMuted(!muted); syncSoundIcon(); });
 
@@ -763,7 +764,7 @@ const HOME_LD = {
         });
         sv.addEventListener('mouseleave', () => { seriesCap.innerHTML = capDefault; showVolume(0, DEFAULT_SC); });
         sv.addEventListener('click', () => {
-          if (act) beginExperience();
+          if (act) location.assign('/start?volume=v1#choose-book');
           else document.getElementById('soon-anchor')?.scrollIntoView({ behavior: 'smooth' });
         });
       });
@@ -1171,7 +1172,7 @@ const HOME_LD = {
       /* PRE invitation */
       .tagline { font-style: italic; font-size: clamp(16px, 2.1vw, 20px); line-height: 1.45; color: var(--ivory); max-width: 34ch; }
       .enterblock { display: flex; flex-direction: column; align-items: center; }
-      .enter { display: inline-flex; align-items: center; gap: 12px; margin-top: 20px; padding: 16px 38px; cursor: pointer; font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .22em; text-transform: uppercase; color: #1a1206; border: none; border-radius: 8px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); box-shadow: 0 10px 30px rgba(246,178,60,.28), inset 0 1px 0 rgba(255,255,255,.5); transition: transform .15s, box-shadow .3s; }
+      .enter { text-decoration: none; display: inline-flex; align-items: center; gap: 12px; margin-top: 20px; padding: 16px 38px; cursor: pointer; font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .22em; text-transform: uppercase; color: #1a1206; border: none; border-radius: 8px; background: linear-gradient(180deg, var(--gold-hi), var(--gold)); box-shadow: 0 10px 30px rgba(246,178,60,.28), inset 0 1px 0 rgba(255,255,255,.5); transition: transform .15s, box-shadow .3s; }
       .enter:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(246,178,60,.42); }
       .enter-ic { flex: none; opacity: .85; transition: transform .6s cubic-bezier(.3,.7,.2,1); }
       .enter:hover .enter-ic { transform: rotate(90deg); }
@@ -1184,6 +1185,9 @@ const HOME_LD = {
         .console .side a { padding-top: 3px; margin-bottom: 3px; }
       }
       /* a quiet switch, not a second call to action: ash text, only the speaker glows while sound is on */
+      .entry-options { display:flex;flex-wrap:wrap;justify-content:center;gap:10px 18px;margin:12px 0 0;font-size:14px; }
+      .entry-options button { font:inherit;cursor:pointer; }
+      .entry-options :focus-visible { outline:2px solid var(--gold-hi);outline-offset:4px; }
       .enter-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; }
       .enter-row .enter { margin-top: 0; }
       .enter span { white-space: nowrap; }      /* "Enter the Vault" stays on one line beside the speaker */

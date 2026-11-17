@@ -1,0 +1,76 @@
+---
+import { VOLUMES, getBooksForVolume } from '../data/book-catalog.js';
+const { defaultBook = '' } = Astro.props;
+const families = VOLUMES.filter((volume) => volume.status === 'available').map((volume) => ({ ...volume, books: getBooksForVolume(volume.id) })).filter((volume) => volume.books.length);
+const books = families.flatMap((volume) => volume.books);
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Enter your word · PuzzleSecret</title>
+  <meta name="description" content="Enter the word from your Sudoku with a Secret book or cover. Find your book’s help and sudoku solutions." />
+  <link rel="canonical" href="https://puzzlesecret.com/start" /><link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/book-entry.css" />
+  <script is:inline src="/js/guest-key.js" defer></script><script is:inline src="/js/book-entry.js" defer></script>
+</head>
+<body data-default-book={defaultBook}>
+  <header class="entry-header"><a class="brand" href="/">PuzzleSecret<span>Sudoku with a Secret</span></a><a class="header-help" href="#choose-book">Help &amp; solutions</a></header>
+  <main class="entry-wrap">
+    <section class="entry-door" aria-labelledby="entry-title">
+      <div class="entry-copy">
+        <p class="eyebrow">The Keeper’s Vault · Volume I</p>
+        <h1 id="entry-title">You found a word.<br /><em>Find what it opens.</em></h1>
+        <p class="entry-intro">Enter your decoded word from the book, the cover, or a guest puzzle. We’ll find the right door.</p>
+        <form id="entry-form" method="post" action="/api/unlock" novalidate>
+          <p id="daily-reminder" class="daily-reminder" hidden></p>
+          <label for="entry-word">Your word</label><p id="word-hint" class="field-hint">4–12 letters. You don’t need to choose a book first.</p>
+          <div class="entry-input-row"><input id="entry-word" name="word" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="word-hint entry-message" required disabled /><button type="submit" disabled>Open my vault <span aria-hidden="true">→</span></button></div>
+          <p id="entry-message" class="entry-message" role="status" aria-live="polite" aria-atomic="true"></p>
+        </form>
+        <p class="entry-promise">Vault I is free. No account or signup.</p>
+      </div>
+      <div class="door-art" aria-hidden="true"><img src="/art/door-v10.webp" alt="" width="800" height="1200" /><span>Every word has a door.</span></div>
+    </section>
+    <section class="book-section" id="choose-book" aria-labelledby="book-heading">
+      <p class="eyebrow">Need a nudge?</p><h2 id="book-heading">Help belongs to your book.</h2>
+      <p>Choose the cover you have for decoding help and sudoku solutions. This choice won’t limit which word you can enter above.</p>
+      <details id="book-picker">
+        <summary>Choose your book</summary>
+        <div class="book-picker-body">
+          {families.length > 1 && <nav class="family-links" aria-label="Book volumes">{families.map((volume) => <a href={`#family-${volume.id}`}>{volume.label}</a>)}</nav>}
+          {families.map((volume) => <section id={`family-${volume.id}`} class="book-family" aria-label={volume.label}>
+          <h3 class="family-label">{volume.label}{volume.title && ` · ${volume.title}`}</h3>
+          <div class="book-grid">{volume.books.map((book) => (
+            <a class="book-choice" href={`/start?book=${book.id}#book-help`} data-book-choice={book.id}>
+              <img src={book.cover} alt={`${book.title} — ${book.editionLabel}, ${book.puzzleCount} puzzles`} width="270" height="350" loading="lazy" />
+              <span class="book-choice-copy"><strong>{book.editionLabel}</strong><span>{book.title}</span><span class="book-count">{book.puzzleCount} puzzles</span>{book.publicationStatus === 'in-preparation' && <small>In preparation · entry &amp; solutions ready</small>}<span class="choice-action">Help &amp; solutions <span aria-hidden="true">→</span></span></span>
+            </a>
+          ))}</div></section>)}
+          <p class="coming-soon">{VOLUMES.filter((v) => v.status === 'coming-soon').map((v) => v.label).join(' · ')} <span>— coming soon</span></p>
+        </div>
+      </details>
+      <p id="book-recovery" class="book-recovery" role="status" hidden>That book link isn’t recognized. You can still enter your word above, or choose your cover here.</p>
+      <div id="book-help" tabindex="-1">{books.map((book) => (
+        <section class="book-help-panel" data-book-help={book.id} hidden={book.id !== defaultBook} aria-label={`${book.editionLabel} help`}>
+          <p class="eyebrow">{book.editionLabel} · {book.puzzleCount} puzzles</p>
+          {book.id === 'v1-gift-01' ? <>
+            <h3>Your Gift Edition, your next step.</h3>
+            <div class="help-columns">
+              <div id="cover"><h4>Solved the cover?</h4><p>Read the six marked cells in C1–C6 order. Match those digits to the letter strip on the back cover, then enter the six letters in the word box above.</p><a href="/gift/solutions#solution-C">Check the cover sudoku</a></div>
+              <div id="book"><h4>A word from the book?</h4><p>Follow the instructions for that act, keeping the key digits in their printed order. Enter your decoded word above to open its matching room.</p><a href="#entry-word">Enter your word</a></div>
+            </div>
+            <p>The Gift Edition has its own puzzles and words, with the same online rooms I–III as the original Volume I. Another purchase is not needed to finish it.</p>
+            <a class="support-link" href={book.solutionsUrl}>Gift Edition sudoku solutions <span aria-hidden="true">→</span></a>
+          </> : book.id === 'v1-original' ? <>
+            <h3>A little help with the original.</h3><p>Use the shaded cells, tally and keyplate for your act. The completed grids for all 200 sudoku puzzles are printed in the back of your book.</p><a class="support-link" href={book.helpUrl}>Open the original book’s Hint Chamber <span aria-hidden="true">→</span></a>
+          </> : <><h3>{book.editionLabel}</h3><p>Follow the decoding instructions printed in your book, then enter your word above.</p><a class="support-link" href={book.helpUrl}>Decoding help</a>{book.solutionsUrl && <a class="support-link" href={book.solutionsUrl}>Sudoku solutions</a>}</>}
+        </section>
+      ))}</div>
+      <noscript><p>The word box needs JavaScript. You can still read the <a href="/hints">original book’s hints</a> and <a href="/gift/solutions">Gift Edition sudoku solutions</a>. All sudoku answers are also printed in your book.</p><p>Gift cover help: read C1–C6 in label order and use the printed letter strip. Keep those letters in the same order.</p></noscript>
+    </section>
+    <footer class="entry-footer"><p>Online rooms need an internet connection. Your printed puzzles, story, hints and sudoku solutions remain usable offline.</p><p>Submitting a word may send a private activity note to the author. <a href="/privacy">Privacy</a> · <a href="/">Back to PuzzleSecret</a></p></footer>
+  </main>
+</body>
+</html>
+

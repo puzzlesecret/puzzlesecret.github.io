@@ -1,0 +1,57 @@
+---
+import answers from '../../data/gift-solutions.json';
+const solutions = answers.solutions;
+function rows(grid) {
+  if (Array.isArray(grid) && Array.isArray(grid[0])) return grid;
+  const values = Array.isArray(grid) ? grid : String(grid).split('').map(Number);
+  return Array.from({length:9}, (_, r) => values.slice(r*9,r*9+9));
+}
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gift Edition sudoku solutions · PuzzleSecret</title>
+  <meta name="description" content="Numbered sudoku solutions for the PuzzleSecret Gift Edition, with individual answer reveals and a printable download." />
+  <meta name="robots" content="noindex, follow" />
+  <link rel="canonical" href="https://puzzlesecret.com/gift/solutions" />
+  <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/css/gift.css" />
+</head>
+<body>
+  <main class="gift-wrap" id="top">
+    <a class="brand" href="/gift">PuzzleSecret · Gift Edition</a>
+    <h1>Check a sudoku.</h1>
+    <p class="edition">{answers.edition}. These answers belong to the 75-puzzle Gift Edition, not the 200-puzzle original Volume I.</p>
+    <p>Choose the number printed above your puzzle, then open its answer. The three keepsake extras are X1–X3; the front-cover puzzle is C. No code, purchase proof, login or signup is required.</p>
+    <a class="button" href="/gift/Gift-Edition-Solutions.pdf" download>Download all 79 solutions (PDF)</a>
+    <p>Save the PDF to check answers offline. All these sudoku solutions are also printed in the back of the book. This page shows completed grids, not a list of the secret book words.</p>
+    <nav aria-label="Choose a sudoku solution">
+      <ul class="solution-index">{solutions.map((p) => <li><a href={'#solution-'+p.id} aria-label={'Go to '+p.label+' answer'}>{p.id}</a></li>)}</ul>
+    </nav>
+    {solutions.map((p) => (
+      <details class="answer" id={'solution-'+p.id}>
+        <summary>Reveal {p.label} solution</summary>
+        <div class="grid-scroll">
+          <table class="answer-grid" aria-label={p.label+' completed sudoku grid'}>
+            <caption>{p.label} — completed grid</caption>
+            <tbody>{rows(p.solution).map((row,ri) => <tr>{row.map((digit,ci) => <td aria-label={'Row '+(ri+1)+', column '+(ci+1)+': '+digit}>{digit}</td>)}</tr>)}</tbody>
+          </table>
+        </div>
+        <a href="#top">Back to solution choices</a>
+      </details>
+    ))}
+    <p><a href="/gift#cover">Enter the cover code</a> · <a href="/gift#book">Unlock a book vault</a> · <a href="/">PuzzleSecret home</a></p>
+  </main>
+  <script is:inline>
+    (function(){
+      function reveal(){
+        var id=location.hash.slice(1), el=document.getElementById(id);
+        if(el && el.tagName==='DETAILS'){el.open=true;el.scrollIntoView({block:'start'});}
+      }
+      window.addEventListener('hashchange',reveal); reveal();
+    })();
+  </script>
+</body>
+</html>
