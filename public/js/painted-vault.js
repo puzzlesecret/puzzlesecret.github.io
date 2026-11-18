@@ -624,10 +624,8 @@
   $('pageClose').addEventListener('click', () => { $('pageview').hidden = true; });
 
   /* ---- the word box (shared #wordbox; the server decides) ---- */
-  const wordboxEl = $('wordbox'), tilesEl = $('tiles'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
+  const wordboxEl = $('wordbox'), wbInput = $('wbInput'), wbMsg = $('wbMsg'), wbSubmit = $('wbSubmit');
   const WORD_LEN = 12; let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false, fourthWord = '';
-  const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };   // the book states each door's length, so the box shows it
-  function renderTiles() { tilesEl.innerHTML = ''; const shown = DOOR_LEN[wbTarget] || 6; for (let i = 0; i < shown; i++) { const t = document.createElement('div'); t.className = 'tile' + (wbWord[i] ? ' filled' : ''); t.textContent = wbWord[i] || ''; tilesEl.appendChild(t); } }
   let wbGeneration = 0, wbRequest = null, wordMicrophone = null;
   function invalidateWordbox() {
     wbGeneration++;
@@ -640,7 +638,7 @@
     invalidateWordbox();
     wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
     $('wbKicker').textContent = DOORS[key].kicker; $('wbLine').textContent = VO[DOORS[key].vo].text;
-    wbMsg.textContent = ''; renderTiles(); wordboxEl.hidden = false;
+    wbMsg.textContent = ''; wordboxEl.hidden = false;
     wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; try { wbInput.focus({ preventScroll: true }); } catch (err) {}
     try { window.psEvent && window.psEvent('wordbox.open', key); } catch (e) {}
     if (GUEST && key === 'door2') {
@@ -660,21 +658,16 @@
     closeWordbox();
   }
   $('wbCancel').addEventListener('click', dismissWordbox);
-  function wbSet(w) { wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, DOOR_LEN[wbTarget] || WORD_LEN); renderTiles(); }   // exactly the door's length; extra typing is dropped
+  function wbSet(w) { wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, WORD_LEN); wbInput.value = wbWord; }
   wbInput.addEventListener('input', () => { wbSet(wbInput.value); if (wbInput.value !== wbWord) wbInput.value = wbWord; });
   addEventListener('keydown', (e) => {
     if (wordboxEl.hidden) return;
-    if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
-    else if (e.key === 'Escape') dismissWordbox();
-    else if (e.target !== wbInput) {   // typed with the box open but the field unfocused: still counts
-      if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
-      else if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { wbSet(wbWord + e.key); wbInput.value = wbWord; e.preventDefault(); try { wbInput.focus({ preventScroll: true }); wbInput.setSelectionRange(wbWord.length, wbWord.length); } catch (err) {} }
-    }
-    e.stopPropagation();
+    if (e.key === 'Escape') { dismissWordbox(); e.preventDefault(); e.stopPropagation(); }
+    else if (e.key === 'Enter' && e.target === wbInput) { submitWord(); e.preventDefault(); e.stopPropagation(); }
   }, true);
   async function submitWord() {
     if (wbBusy || !wbTarget || wordboxEl.hidden || document.hidden) return;
-    if (wbWord.length < 4) { shake(wordboxEl); return; }
+    if (wbWord.length < 4) { wbMsg.textContent = 'Enter one word of 4–12 letters from your book or cover.'; wbInput.focus(); shake(wordboxEl); return; }
     const key = wbTarget, word = wbWord, generation = wbGeneration;
     if (wordMicrophone) wordMicrophone.stop();
     const request = wbRequest = new AbortController();
@@ -714,8 +707,8 @@
   wordMicrophone = window.psWordMicrophone && window.psWordMicrophone({
     inputId: 'wbInput', buttonId: 'speakBtn', statusId: 'wbMicStatus',
     beforeStart: stopVoice,
-    validateTranscript: (text) => text.replace(/[^a-z]/gi, '').length === DOOR_LEN[wbTarget]
-      || 'That recording does not match this door’s letter count. Your word is unchanged. Try again, or type and edit it.',
+    validateTranscript: (text) => /^(?:[a-z]{4,12}|(?:[a-z]\s+){3,11}[a-z])$/i.test(text.trim())
+      || 'Say one word of 4–12 letters. Your word is unchanged. Try again, or type and edit it.',
     isBusy: () => wbBusy || wordboxEl.hidden || !wbTarget
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden) invalidateWordbox(); });

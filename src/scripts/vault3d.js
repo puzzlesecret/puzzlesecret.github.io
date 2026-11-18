@@ -2604,25 +2604,11 @@ function openVaultDoor(key) {
 }
 
 const wordboxEl = document.getElementById('wordbox');
-const tilesEl = document.getElementById('tiles');
 const wbInput = document.getElementById('wbInput');
 const wbMsg = document.getElementById('wbMsg');
 const wbSubmit = document.getElementById('wbSubmit');
 const WORD_LEN = 12;                     // hard cap on what can be typed
-// The book tells the solver how many letters each door's word has (the tally page has one box per
-// key), so the box shows that many tiles from the start: six for the first door, seven for the rest.
-const DOOR_LEN = { first: 6, door2: 7, door3: 7, fourth: 7 };
 let wbTarget = null, wbWord = '', wbFails = 0, wbBusy = false;
-function renderTiles() {
-  tilesEl.innerHTML = '';
-  const shown = DOOR_LEN[wbTarget] || 6;                                  // exactly the door's length, always
-  for (let i = 0; i < shown; i++) {
-    const t = document.createElement('div');
-    t.className = 'tile' + (wbWord[i] ? ' filled' : '');
-    t.textContent = wbWord[i] || '';
-    tilesEl.appendChild(t);
-  }
-}
 let wbGeneration = 0, wbRequest = null, wordMicrophone = null;
 function invalidateWordbox() {
   wbGeneration++;
@@ -2636,7 +2622,7 @@ function openWordbox(key) {
   wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
   document.getElementById('wbKicker').textContent = DOORS[key].kicker;
   document.getElementById('wbLine').textContent = VO[DOORS[key].vo].text;
-  wbMsg.textContent = ''; renderTiles();
+  wbMsg.textContent = '';
   wordboxEl.hidden = false;
   wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; wbInput.focus();
   // Which door's word box this is (first/door2/door3/fourth) is high-signal — Dan wants
@@ -2657,25 +2643,20 @@ function dismissWordbox() {
 }
 document.getElementById('wbCancel').addEventListener('click', dismissWordbox);
 function wbSet(w) {
-  wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, DOOR_LEN[wbTarget] || WORD_LEN);   // exactly the door's length; extra typing is dropped
-  renderTiles();
+  wbWord = w.toUpperCase().replace(/[^A-Z]/g, '').slice(0, WORD_LEN);
+  wbInput.value = wbWord;
 }
 wbInput.addEventListener('input', () => { wbSet(wbInput.value); if (wbInput.value !== wbWord) wbInput.value = wbWord; });
 addEventListener('keydown', (e) => {
   if (wordboxEl.hidden) return;
-  if (e.key === 'Enter') { submitWord(); e.preventDefault(); }
-  else if (e.key === 'Escape') dismissWordbox();
-  else if (e.target !== wbInput) {   // typed with the box open but the field unfocused: still counts.
-    // When the field IS focused, the browser's own insert fires the 'input' handler above — appending
-    // here as well doubled every letter (A → AA), and every typed word was refused at the door.
-    if (e.key === 'Backspace') { wbSet(wbWord.slice(0, -1)); wbInput.value = wbWord; e.preventDefault(); }
-    else if (/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) { wbSet(wbWord + e.key); wbInput.value = wbWord; e.preventDefault(); try { wbInput.focus({ preventScroll: true }); } catch (x) {} }
-  }
-  e.stopPropagation();
+  if (e.key === 'Escape') { dismissWordbox(); e.preventDefault(); e.stopPropagation(); }
+  else if (e.key === 'Enter' && e.target === wbInput) { submitWord(); e.preventDefault(); e.stopPropagation(); }
 }, true);
 async function submitWord() {
   if (wbBusy || !wbTarget || wordboxEl.hidden || document.hidden) return;
   if (wbWord.length < 4) {
+    wbMsg.textContent = 'Enter one word of 4–12 letters from your book or cover.';
+    wbInput.focus();
     wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
     return;
   }
@@ -2732,8 +2713,8 @@ wbSubmit.addEventListener('click', submitWord);
 wordMicrophone = window.psWordMicrophone && window.psWordMicrophone({
   inputId: 'wbInput', buttonId: 'speakBtn', statusId: 'wbMicStatus',
   beforeStart: stopVoice,
-  validateTranscript: (text) => text.replace(/[^a-z]/gi, '').length === DOOR_LEN[wbTarget]
-    || 'That recording does not match this door’s letter count. Your word is unchanged. Try again, or type and edit it.',
+  validateTranscript: (text) => /^(?:[a-z]{4,12}|(?:[a-z]\s+){3,11}[a-z])$/i.test(text.trim())
+    || 'Say one word of 4–12 letters. Your word is unchanged. Try again, or type and edit it.',
   isBusy: () => wbBusy || wordboxEl.hidden || !wbTarget
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) invalidateWordbox(); });

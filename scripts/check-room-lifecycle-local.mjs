@@ -14,14 +14,15 @@ for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
   const nodes = new Map();
   const node = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
   const deferred = [];
+  const keyboard = {};
   let micStops = 0, voiceStops = 0, microphoneOptions;
   const context = vm.createContext({
     console, AbortController, setTimeout, clearTimeout,
     window: { psWordMicrophone: options => { microphoneOptions = options; return { stop() { micStops++; } }; } },
     document: { hidden: false, getElementById: node, addEventListener() {}, createElement: element },
-    MutationObserver: class { observe() {} }, addEventListener() {},
+    MutationObserver: class { observe() {} }, addEventListener(type, handler) { keyboard[type] = handler; },
     $: node, wordboxEl: node('wordbox'), tilesEl: node('tiles'), wbInput: node('wbInput'), wbMsg: node('wbMsg'), wbSubmit: node('wbSubmit'),
-    DOORS: { first: { act: 'I' }, door2: { act: 'II' } }, DOOR_LEN: { first: 6, door2: 7 },
+    DOORS: { first: { act: 'I' }, door2: { act: 'II' } }, WORD_LEN: 12,
     fetch: (_url, options) => new Promise(resolve => deferred.push({ options, resolve })),
     psVid: () => 'synthetic',
     stopVoice: () => { voiceStops++; },
@@ -29,8 +30,31 @@ for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
   vm.runInContext(source.slice(start, end), context);
   microphoneOptions.beforeStart(); assert.equal(voiceStops, 1, 'microphone stops Keeper narration before capture');
   vm.runInContext("wbTarget = 'first';", context);
-  assert.equal(microphoneOptions.validateTranscript('A B C D E F'), true);
-  assert.equal(typeof microphoneOptions.validateTranscript('ABCDEFG'), 'string', 'overlong transcript is rejected before tile truncation');
+  for (const target of ['first', 'door2', 'door3', 'fourth']) {
+    vm.runInContext(`wbTarget = ${JSON.stringify(target)};`, context);
+    for (const word of ['ABCD', 'ABCDEF', 'ABCDEFG', 'ABCDEFGHI', 'ABCDEFGHIJKL']) {
+      assert.equal(microphoneOptions.validateTranscript(word), true, `${file}: speech supports every valid length`);
+      vm.runInContext(`wbSet(${JSON.stringify(word)});`, context);
+      assert.equal(node('wbInput').value, word, `${file}: typing never truncates to a door-specific length`);
+    }
+  }
+  assert.equal(typeof microphoneOptions.validateTranscript('ABC'), 'string');
+  assert.equal(typeof microphoneOptions.validateTranscript('ABCDEFGHIJKLM'), 'string');
+  assert.equal(typeof microphoneOptions.validateTranscript('TWO WORDS'), 'string');
+  assert.equal(microphoneOptions.validateTranscript('A B C D'), true, 'spoken single-letter spelling is accepted');
+  assert.equal(microphoneOptions.validateTranscript('A B C D E F G H I J K L'), true);
+  let prevented = 0, stopped = 0;
+  for (const key of ['Enter', 'Tab']) for (const id of ['speakBtn', 'wbCancel', 'closeButton']) {
+    keyboard.keydown({key, target: node(id), preventDefault() { prevented++; }, stopPropagation() { stopped++; }});
+  }
+  assert.equal(prevented, 0, 'native buttons and Tab focus trap remain available');
+  assert.equal(stopped, 0);
+  assert.equal(deferred.length, 0, 'button Enter never submits a word');
+  vm.runInContext("wbTarget = 'first'; wbSet('');", context);
+  keyboard.keydown({key: 'Enter', target: node('wbInput'), preventDefault() {}, stopPropagation() {}});
+  assert.match(node('wbMsg').textContent, /4–12 letters/, 'short entry has a live explanation');
+  vm.runInContext("wbSet(' ab-cd ');", context);
+  assert.equal(node('wbInput').value, 'ABCD', 'paste normalizes whitespace and punctuation');
   vm.runInContext("wbTarget = 'first'; wbSet('ABCD'); globalThis.pending = submitWord();", context);
   assert.equal(deferred.length, 1);
   vm.runInContext("closeWordbox(); wordboxEl.hidden = false; wbTarget = 'door2'; wbSet('EFGH'); wbMsg.textContent = 'fresh panel';", context);
