@@ -259,13 +259,20 @@ export async function POST({ request, clientAddress }) {
     // relayed in). An act can be opened by more than one word (the book's, or any guest key),
     // so Dan sees exactly which one was spoken. Echoed from the request, never from this file.
     const said = `\u201c${w}\u201d`;
-    const line = hit.guest
+    // THE KEEPER'S GALLERY (Dan, 2026-11-24): the Gift cover's word opens a showroom copy of the
+    // study, not Vault I. It answers act 'G' so no client ever stamps Vault I for it; the gift PDF is
+    // still the first vault's fifty (the reward token stays act I). Vault I itself opens only with a
+    // word from inside a book.
+    const gallery = hit.edition === 'gift-cover';
+    const line = gallery
+      ? `\u{1F5BC} ${tag} \u00b7 ${geo} \u00b7 entered the KEEPER'S GALLERY with the cover word ${said}${at}`
+      : hit.guest
       ? `\u{1F4F0} ${tag} \u00b7 ${geo} \u00b7 GUEST KEY ${said} \u2014 came in from ${hit.guest}${at}`
       : hit.act === 'IV'
         ? `\u{1F56F} ${tag} \u00b7 ${geo} \u00b7 found the FOURTH word ${said} \u2014 the floor opens${at}`
         : `\u{1F513} ${tag} \u00b7 ${geo} \u00b7 opened Vault ${hit.act} with ${said}${at}`;
     await notify(line);
-    return json({ ok: true, act: hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, edition: hit.edition, rewardUrl: rewardUrl(hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined, guest: guestKind(hit), entry });
+    return json({ ok: true, act: gallery ? 'G' : hit.act, reward: hit.reward, tier: hit.tier, discount: hit.discount, hidden: !!hit.hidden, edition: hit.edition, rewardUrl: rewardUrl(gallery ? 'G' : hit.act, body && body.vid), carveToken: hit.act === 'IV' ? CARVE_TOKEN : undefined, lines: hit.act === 'IV' ? LETTERS : undefined, room: hit.room ? guestRoom(hit.room) : undefined, guest: guestKind(hit), entry });
   }
   // A miss from a quiet country is not relayed (a TRUE word above always is).
   if (!isBot(request) && !quietPlace(request)) {

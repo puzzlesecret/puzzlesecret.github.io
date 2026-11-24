@@ -30,7 +30,7 @@ let checks=0;
 for(let i=0;i<3;i++)for(const route of ['gift-book','door','3d','painted','entry-hub']){
  const r=await post(production.meta.book_words_private[i],route);assert(r.data.ok);assert.equal(r.data.act,['I','II','III'][i]);assert.equal(r.data.edition,'gift');assert.equal(r.data.hidden,false);assert(!r.data.guest);checks++;
 }
-const cover=await post(production.meta.cover_guest_word_private,'gift-cover');assert(cover.data.ok);assert.equal(cover.data.act,'I');assert.equal(cover.data.edition,'gift-cover');assert.equal(cover.data.guest,'outlet');assert.equal(cover.data.hidden,false);checks++;
+const cover=await post(production.meta.cover_guest_word_private,'gift-cover');assert(cover.data.ok);assert.equal(cover.data.act,'G');assert.equal(cover.data.edition,'gift-cover');assert.equal(cover.data.guest,'outlet');assert.equal(cover.data.hidden,false);checks++;
 const rejected=await post(production.meta.book_words_private[2],'gift-cover');assert.equal(rejected.data.ok,false);checks++;
 const original=JSON.parse(fs.readFileSync(path.join(root,'../scripts/sudoku_v1_dataset.json'),'utf8'));
 for(let i=0;i<3;i++)for(const route of ['door','3d','painted']){const prior=await post(original.meta.passphrase_words[i],route);assert(prior.data.ok);assert.equal(prior.data.act,['I','II','III'][i]);assert.equal(prior.data.edition,undefined);checks++;}

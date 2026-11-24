@@ -59,7 +59,7 @@ const books = families.flatMap((volume) => volume.books);
           {book.id === 'v1-gift-01' ? <>
             <h3>Your Gift Edition, your next step.</h3>
             <div class="help-columns">
-              <div id="cover"><h4>Solved the cover?</h4><p>Read the six marked cells in C1–C6 order. Match those digits to the letter strip on the back cover, then enter the six letters in the word box above.</p><a href="/gift/solutions#solution-C">Check the cover sudoku</a></div>
+              <div id="cover"><h4>Solved the cover?</h4><p>Read the six marked cells in A1–A6 order. Match those digits to the letter strip on the back cover, then enter the six letters in the word box above. The cover word opens the Keeper’s Gallery.</p><a href="/gift/solutions#solution-C">Check the cover sudoku</a></div>
               <div id="book"><h4>A word from the book?</h4><p>Follow the instructions for that act, keeping the key digits in their printed order. Enter your decoded word above to open its matching room.</p><a href="#entry-word">Enter your word</a></div>
             </div>
             <p>The Gift Edition has its own puzzles and words, with the same online rooms I–III as the original Volume I. Another purchase is not needed to finish it.</p>
@@ -69,7 +69,7 @@ const books = families.flatMap((volume) => volume.books);
           </> : <><h3>{book.editionLabel}</h3><p>Follow the decoding instructions printed in your book, then enter your word above.</p><a class="support-link" href={book.helpUrl}>Decoding help</a>{book.solutionsUrl && <a class="support-link" href={book.solutionsUrl}>Sudoku solutions</a>}</>}
         </section>
       ))}</div>
-      <noscript><p>The word box needs JavaScript. You can still read the <a href="/hints">original book’s hints</a> and <a href="/gift/solutions">Gift Edition sudoku solutions</a>. All sudoku answers are also printed in your book.</p><p>Gift cover help: read C1–C6 in label order and use the printed letter strip. Keep those letters in the same order.</p></noscript>
+      <noscript><p>The word box needs JavaScript. You can still read the <a href="/hints">original book’s hints</a> and <a href="/gift/solutions">Gift Edition sudoku solutions</a>. All sudoku answers are also printed in your book.</p><p>Gift cover help: read A1–A6 in label order and use the printed letter strip. Keep those letters in the same order.</p></noscript>
     </section>
     <footer class="entry-footer"><p>Online rooms need an internet connection. Your printed puzzles, story, hints and sudoku solutions remain usable offline.</p><p>Submitting a word may send a private activity note to the author. <a href="/privacy">Privacy</a> · <a href="/">Back to PuzzleSecret</a></p></footer>
   </main>
