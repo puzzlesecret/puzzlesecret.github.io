@@ -99,8 +99,9 @@ const stairSeen = { down: false, up: false };
 
 /* ================= setup / params ================= */
 const qs = new URLSearchParams(location.search);
-// Test switches below work only on local/preview hosts (2026-11-24): on the live site they would open doors with no word.
-const DEV_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /\.vercel\.app$/.test(location.hostname);
+// Test switches work only on loopback hosts: public deployment aliases must not bypass a word.
+const LOCAL_DEBUG_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const DEV_HOST = LOCAL_DEBUG_HOST;
 const devQ = (k) => (DEV_HOST ? qs.get(k) : null);
 const DEBUG_CAM = devQ('cam');            // "x,z,yaw,pitch" — skip gate, no audio
 const FORCE_OPEN = devQ('open') === '1';  // bookcase pre-opened (screenshots)
@@ -4375,7 +4376,7 @@ if (GALLERY) {
 }
 
 /* ================= debug hooks (headless verification) ================= */
-if (DEV_HOST) window.__vault = {
+if (LOCAL_DEBUG_HOST) window.__vault = {
   scene, camera, renderer, get gallery() { return galleryRoom; },
   player, moveTo, openBookcase, closeBookcase, oddHit, exitHit, openReward, activate, openWordbox, submitWord,
   round, startRound, roundHit, endRound, ROUND_DEFS, lock, openLock, lockStep, pbLid, awardTile, tilesHeld, get darkAmt() { return darkAmt; },
