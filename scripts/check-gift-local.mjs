@@ -36,13 +36,13 @@ const original=JSON.parse(fs.readFileSync(path.join(root,'../scripts/sudoku_v1_d
 for(let i=0;i<3;i++)for(const route of ['door','3d','painted']){const prior=await post(original.meta.passphrase_words[i],route);assert(prior.data.ok);assert.equal(prior.data.act,['I','II','III'][i]);assert.equal(prior.data.edition,undefined);checks++;}
 const wrong=await post('ZZZZZZ','gift-cover');assert.equal(wrong.data.ok,false);checks++;
 assert.equal(globalThis.__giftTestNotifications,25);
-const answers=JSON.parse(fs.readFileSync('src/data/gift-solutions.json','utf8'));assert.equal(answers.solutions.length,79);assert.equal(new Set(answers.solutions.map(x=>x.id)).size,79);checks++;
-const expected=[...production.puzzles,...production.extras,production.cover];answers.solutions.forEach((a,i)=>assert.deepEqual(a.solution,expected[i].solution));checks++;
+const answers=JSON.parse(fs.readFileSync('src/data/gift-solutions.json','utf8'));assert.equal(answers.solutions.length,76);assert.equal(new Set(answers.solutions.map(x=>x.id)).size,76);checks++;
+const expected=[...production.puzzles,production.cover];assert.deepEqual(answers.solutions.map(x=>x.id),[...production.puzzles.map(x=>String(x.id)),'A']);answers.solutions.forEach((a,i)=>assert.deepEqual(a.solution,expected[i].solution));checks++;
 const exposed=fs.readFileSync('src/data/gift-solutions.json','utf8');assert(!/book_words|guest_word|mapping|marks|columns/.test(exposed));checks++;
 for(const word of [...production.meta.book_words_private,production.meta.cover_guest_word_private]){
  for(const file of ['public/js/gift-entry.js','src/pages/gift/index.astro','src/pages/gift/solutions.astro','src/data/gift-solutions.json','src/lib/gift-unlocks.js'])assert(!fs.readFileSync(file,'utf8').toUpperCase().includes(word.toUpperCase()));
 }
 checks++;globalThis.fetch=originalFetch;
 const hashFile=(file)=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-assert.equal(hashFile('public/gift/Gift-Edition-Solutions.pdf'),hashFile('../output/gift/kdp/Gift-Edition-Solutions.pdf'),'Staged answer download must match the final print edition PDF');checks++;
-console.log(JSON.stringify({ok:true,checks,api_cases:27,public_solutions:79,notifications:'mocked',network:'blocked',plaintext_words_in_gift_client_sources:false}));
+assert.equal(hashFile('public/gift/Gift-Edition-Solutions.pdf'),hashFile('../FINAL-KDP-GIFT-EDITION/REFERENCE/Gift-Edition-Solutions.pdf'),'Staged answer download must match the final print edition PDF');checks++;
+console.log(JSON.stringify({ok:true,checks,api_cases:27,public_solutions:76,notifications:'mocked',network:'blocked',plaintext_words_in_gift_client_sources:false}));

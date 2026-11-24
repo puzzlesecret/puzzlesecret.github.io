@@ -99,8 +99,9 @@ const stairSeen = { down: false, up: false };
 
 /* ================= setup / params ================= */
 const qs = new URLSearchParams(location.search);
-// Test switches below work only on local/preview hosts (2026-11-24): on the live site they would open doors with no word.
-const DEV_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /\.vercel\.app$/.test(location.hostname);
+// Test switches work only on loopback hosts: public deployment aliases must not bypass a word.
+const LOCAL_DEBUG_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const DEV_HOST = LOCAL_DEBUG_HOST;
 const devQ = (k) => (DEV_HOST ? qs.get(k) : null);
 const DEBUG_CAM = devQ('cam');            // "x,z,yaw,pitch" — skip gate, no audio
 const FORCE_OPEN = devQ('open') === '1';  // bookcase pre-opened (screenshots)
@@ -2556,6 +2557,20 @@ document.getElementById('pageClose').addEventListener('click', () => { pageviewE
 /* the gifts' addresses — handed out by /api/unlock for a true word, kept in this browser only */
 const REWARD_KEY = 'ps_rewards_v1';
 function rewardsHeld() { try { const v = JSON.parse(localStorage.getItem(REWARD_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } }
+// A query is a destination, never proof. The entry page must already have banked
+// the matching server-issued reward address before a later act can be restored.
+function earnedArrivalAct() {
+  const act = qs.get('act');
+  if (!FROM_DOOR || GALLERY || !['II', 'III'].includes(act)) return null;
+  const pass = rewardsHeld()[act];
+  if (typeof pass !== 'string' || !pass.startsWith('/api/reward?')) return null;
+  try {
+    const u = new URL(pass, location.origin);
+    return u.origin === location.origin && u.pathname === '/api/reward' &&
+      u.searchParams.get('act') === act && /^[a-f0-9]{40}$/.test(u.searchParams.get('t') || '') ? act : null;
+  } catch (e) { return null; }
+}
+const ARRIVAL_ACT = earnedArrivalAct();
 function holdReward(act, url) { if (!url) return; try { const r = rewardsHeld(); r[act] = url; localStorage.setItem(REWARD_KEY, JSON.stringify(r)); } catch (e) {} }
 const DOOR_FOR_ACT = { I: 'first', II: 'door2', III: 'door3', IV: 'fourth' };
 let lastRewardAct = null;
@@ -2669,7 +2684,7 @@ function galleryDoorLine() {
   document.getElementById('wbKicker').textContent = 'THE DOOR TO VAULT I';
   document.getElementById('wbLine').textContent = 'My study is through here. It wants a word from inside a book, not off the back of one.';
 }
-function sayEntry() { if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else keeper('entry'); }
+function sayEntry() { if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else if (ARRIVAL_ACT) showCaption('Vault ' + ARRIVAL_ACT + ' is open. Your gift is here.', 6500); else keeper('entry'); }
 // Dismissed without a true word — the "gave up at this door" signal. Success paths call
 // closeWordbox() directly and never reach this.
 function dismissWordbox() {
@@ -3862,6 +3877,21 @@ function tickConfetti(dt) {
   if (!confParts.length) cg.clearRect(0, 0, conf.width, conf.height);
 }
 
+// Restore the earned destination after the scene and doors exist. Earlier passages
+// are transit only: no earlier reward pass or passport stamp is manufactured.
+function restoreEarnedArrival() {
+  if (!ARRIVAL_ACT) return;
+  hinge.rotation.y = -1.62; doorAmt = 1; doorOpened = true;
+  door2Open = true; door2.rotation.y = 2.05; door2.userData.kind = null;
+  if (ARRIVAL_ACT === 'III') { door3Open = true; door3.rotation.y = 2.05; door3.userData.kind = null; }
+  const p = DOORS[ARRIVAL_ACT === 'II' ? 'door2' : 'door3'].inside;
+  player.pos.set(p.x, 0, p.z); player.target.copy(player.pos);
+  yaw = 0; pitch = -0.02;
+  // Run after module initialization; openReward still checks the saved matching pass.
+  setTimeout(() => openReward(ARRIVAL_ACT), 400);
+}
+restoreEarnedArrival();
+
 /* ================= entry / gate ================= */
 let entered = false;
 function begin(withAudio) {
@@ -3879,7 +3909,7 @@ function begin(withAudio) {
     initAudio(); startAmbient(); playBoom();
     setTimeout(() => sayEntry(), 1300);
   } else {
-    if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else showCaption(VO.entry.text, 6500);
+    if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else if (ARRIVAL_ACT) sayEntry(); else showCaption(VO.entry.text, 6500);
   }
   setTimeout(() => { hintEl.style.opacity = '1'; }, 2500);
 }
@@ -4346,7 +4376,7 @@ if (GALLERY) {
 }
 
 /* ================= debug hooks (headless verification) ================= */
-window.__vault = {
+if (LOCAL_DEBUG_HOST) window.__vault = {
   scene, camera, renderer, get gallery() { return galleryRoom; },
   player, moveTo, openBookcase, closeBookcase, oddHit, exitHit, openReward, activate, openWordbox, submitWord,
   round, startRound, roundHit, endRound, ROUND_DEFS, lock, openLock, lockStep, pbLid, awardTile, tilesHeld, get darkAmt() { return darkAmt; },

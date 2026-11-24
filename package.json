@@ -8,7 +8,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "test:entry": "node scripts/check-entry-local.mjs",
-    "prebuild": "npm run test:entry && npm run test:usability",
+    "prebuild": "npm run test:entry && npm run test:arrival && npm run test:usability",
+    "test:arrival": "node scripts/check-earned-arrival-local.mjs",
     "test:usability": "node scripts/check-word-microphone-local.mjs && node scripts/check-room-panels-local.mjs && node scripts/check-visitors-paging-local.mjs && node scripts/check-room-lifecycle-local.mjs"
   },
   "dependencies": {
