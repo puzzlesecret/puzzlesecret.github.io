@@ -100,6 +100,12 @@ export const CLIENT_EV = Object.freeze({
 
   // the daily Pinterest puzzles' vault word (2026-10-27): six gold squares + a decoder on /daily/<slug>/
   DAILY_DECODE:     'daily.decode',        // the decoder spelled a full word; extra = solved | revealed | typed (how the digits got there)
+  // the Keeper's Gallery (the Gift cover's room, 2026-11-24): its little game. Counts and right/wrong only.
+  GALLERY_SCRAP:    'gallery.scrap',       // a scrap of his grid found; extra = "2 of 4"
+  GALLERY_GRID:     'gallery.grid',        // the little 4x4 grid solved
+  GALLERY_CLOCK:    'gallery.clock',       // the hall clock set; extra = right | wrong
+  GALLERY_DONE:     'gallery.done',        // the clock was right: prints on the path
+  GALLERY_BOOKMARK: 'gallery.bookmark',    // "Save the bookmark" pressed
   GUEST_CARD:       'guest.card',          // a guest was shown "the other words are in the book"; extra = daily | gift | door2 | passport
 
   // the quiet review note on the front door (2026-11-09, Option B): book-word browsers only, a later visit, no gift on screen
@@ -203,6 +209,11 @@ export function parts(ev, extra) {
     case CLIENT_EV.GUEST_SOLVED:     return ['🎯', 'pins all four pieces — the full position is on the board'];
     case CLIENT_EV.GUEST_COPY:       return ['📋', 'copies the position'];
     case CLIENT_EV.DAILY_DECODE:     return ['🔤', 'decodes a daily puzzle’s vault word' + (extra ? ' (' + extra + ')' : '')];
+    case CLIENT_EV.GALLERY_SCRAP:    return ['🧩', 'finds a scrap in the Keeper’s Gallery' + (extra ? ' (' + extra + ')' : '')];
+    case CLIENT_EV.GALLERY_GRID:     return ['🔢', 'solves the little grid in the Keeper’s Gallery'];
+    case CLIENT_EV.GALLERY_CLOCK:    return ['🕰', 'sets the hall clock in the Keeper’s Gallery' + (extra ? ' (' + extra + ')' : '')];
+    case CLIENT_EV.GALLERY_DONE:     return ['👣', 'finishes the Keeper’s Gallery game: prints on the path'];
+    case CLIENT_EV.GALLERY_BOOKMARK: return ['🔖', 'saves the Keeper’s bookmark'];
     case CLIENT_EV.GUEST_CARD:       return ['📖', 'is shown "the other words are in the book"' + (extra ? ' · ' + extra : '')];
     case CLIENT_EV.REVIEW_ASK:       return ['✍️', extra === 'clicked' ? 'clicks "Leave a review on Amazon" on the front-door note'
                                               : extra === 'dismissed' ? 'dismisses the review note on the front door'
@@ -250,7 +261,7 @@ const PAGES = '(home|vault|play|hints|passport|shop|faq|privacy|terms|newsletter
 // site may carry its country ending (".uk") — two letters, which cannot form a link.
 export const GENERIC_SOURCES = ['pinterest', 'youtube', 'tiktok', 'instagram', 'facebook', 'threads', 'reddit', 'x', 'linkedin', 'whatsapp', 'messenger', 'telegram', 'google', 'bing', 'duckduckgo', 'yahoo', 'brave', 'ecosia', 'chatgpt', 'perplexity', 'claude', 'gemini', 'amazon', 'mensa', 'goodreads', 'librarything', 'bookbub', 'substack', 'email', 'geocaching'];
 const SOURCES = '(' + GENERIC_SOURCES.concat(PLACEMENTS.map((p) => p.id)).join('|') + '|another site( \\.[a-z]{2})?)';
-const ROOMS = '(the study|the library|the treasure room|the sanctum)';
+const ROOMS = '(the study|the library|the treasure room|the sanctum|the gallery)';
 const DOORS = '(first|door2|door3|fourth)';
 export const EXTRA_RULES = Object.freeze({
   // "<page>[ from <src>] · <device>[ · first visit|visit 2..9|visit 10 or more][ · back same day|back after N days][ · N vaults opened][ · en-GB][ · keeper]"
@@ -268,6 +279,8 @@ export const EXTRA_RULES = Object.freeze({
   [CLIENT_EV.OUTBOUND_AMAZON]: new RegExp('^' + PAGES + '$'),
   [CLIENT_EV.GUEST_SCRAP]:     /^[0-4] of 4$/,   // 0 only if the browser blocks storage
   [CLIENT_EV.GUEST_BOARD]:     /^[0-4] of 4 pinned$/,
+  [CLIENT_EV.GALLERY_SCRAP]:   /^[1-4] of 4$/,
+  [CLIENT_EV.GALLERY_CLOCK]:   /^(right|wrong)$/,
   [CLIENT_EV.DAILY_DECODE]:    /^(solved|revealed|typed)$/,
   [CLIENT_EV.GUEST_CARD]:      /^(daily|gift|door2|passport)$/,
   [CLIENT_EV.REVIEW_ASK]:      /^(shown|clicked|dismissed)$/,

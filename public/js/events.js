@@ -60,6 +60,11 @@
     GUEST_COPY:       'guest.copy',
     DAILY_DECODE:     'daily.decode',
     GUEST_CARD:       'guest.card',
+    GALLERY_SCRAP:    'gallery.scrap',
+    GALLERY_GRID:     'gallery.grid',
+    GALLERY_CLOCK:    'gallery.clock',
+    GALLERY_DONE:     'gallery.done',
+    GALLERY_BOOKMARK: 'gallery.bookmark',
     REVIEW_ASK:       'review.ask',
     SESSION_DEPTH:    'session.depth',
   });
