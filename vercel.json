@@ -2,6 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "redirects": [
     {
+      "source": "/learn",
+      "destination": "/how-to-play-sudoku/",
+      "permanent": true
+    },
+    {
+      "source": "/learn/",
+      "destination": "/how-to-play-sudoku/",
+      "permanent": true
+    },
+    {
       "source": "/sudoku",
       "destination": "/",
       "permanent": true
