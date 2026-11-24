@@ -215,8 +215,8 @@
   let roomState = store.get(ROOM_KEY, {}) || {};
   const sessionDoors = (() => { try { return JSON.parse(sessionStorage.getItem('ps_doors_ok') || '{}'); } catch (e) { return {}; } })();
   function doorOpen(act) { return act === 'I' || !!opened[act] || !!sessionDoors[act]; }
-  function markDoor(act) { sessionDoors[act] = 1; try { sessionStorage.setItem('ps_doors_ok', JSON.stringify(sessionDoors)); } catch (e) {} }
-  function stampVault(act) { if (!opened[act]) { opened[act] = new Date().toISOString().slice(0, 10); store.set(VAULT_KEY, opened); } }
+  function markDoor(act) { if (!ORDER.includes(act)) return; sessionDoors[act] = 1; try { sessionStorage.setItem('ps_doors_ok', JSON.stringify(sessionDoors)); } catch (e) {} }
+  function stampVault(act) { if (ORDER.includes(act) && !opened[act]) { opened[act] = new Date().toISOString().slice(0, 10); store.set(VAULT_KEY, opened); } }
   function psVid() {
     try {
       let v = localStorage.getItem('ps_vid');
@@ -678,6 +678,13 @@
     wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
     if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
     if (j.error === 'slow_down') { wbMsg.textContent = 'Too many tries at once. Take a breath, then speak again.'; return; }
+    if (j.ok && j.act === 'G') {
+      // the Gift cover's word opens the Keeper's Gallery, never a door in here; bank its gift and stay put
+      holdReward('G', j.rewardUrl);
+      playThud(); shake(wordboxEl);
+      wbMsg.textContent = 'That is the cover’s word: it opens the Keeper’s Gallery, not this door. Its gift is banked.';
+      return;
+    }
     if (j.ok) {
       const act = j.act;
       holdReward(act, j.rewardUrl);
@@ -1056,14 +1063,38 @@
   function guardHistory() {}
 
   /* ================= boot ================= */
+  /* THE KEEPER'S GALLERY (Dan, 2026-11-24) lives in the 3D view for now. A Gallery visitor (the Gift
+     cover's gift only, no book word) must never be shown the painted Vault I, so this mode shows a
+     plain Gallery card: the gift, the books, and the way back to the 3D Gallery or the front door. */
+  function galleryCard() {
+    const held = store.get('ps_rewards_v1', {}) || {};
+    ['gate', 'fade', 'hud', 'pv'].forEach((id) => { const e = $(id); if (e) e.style.display = 'none'; });
+    const wrap = document.createElement('main');
+    wrap.setAttribute('style', 'position:fixed;inset:0;overflow:auto;background:#100c08;color:#f2e6cc;font:18px/1.55 Georgia,serif;display:flex;align-items:center;justify-content:center;padding:24px;z-index:50');
+    const card = document.createElement('section');
+    card.setAttribute('style', 'max-width:560px;border:1px solid #6a4a18;border-radius:10px;padding:28px 24px;background:#1b140c;box-shadow:0 8px 40px #000a');
+    const add = (tag, text, style) => { const e = document.createElement(tag); if (text) e.textContent = text; if (style) e.setAttribute('style', style); card.appendChild(e); return e; };
+    add('p', "THE KEEPER'S GALLERY", 'letter-spacing:.14em;color:#e2c27a;font-size:15px;margin:0 0 10px');
+    add('h1', 'The cover was only the invitation.', 'font-size:26px;margin:0 0 14px;font-weight:600');
+    add('p', 'Every book here hides a vault of its own. Vault I opens with a word from inside your book (the Large Print Gift Edition or Volume 1), typed at the front door.');
+    const btn = 'display:inline-block;margin:6px 10px 6px 0;padding:10px 16px;border-radius:6px;text-decoration:none;font:600 16px/1.2 Georgia,serif;';
+    const link = (href, text, primary, blank) => { const a = document.createElement('a'); a.href = href; a.textContent = text; a.setAttribute('style', btn + (primary ? 'background:#e2c27a;color:#2a1a06' : 'border:1px solid #e2c27a;color:#e2c27a')); if (blank) { a.target = '_blank'; a.rel = 'noopener'; } card.appendChild(a); return a; };
+    if (typeof held.G === 'string' && held.G.indexOf('/api/reward') === 0) link(held.G, 'Download your 50 puzzles (PDF)', true, false);
+    link('https://www.amazon.com/dp/B0HB9K8PXC', 'Volume 1 on Amazon', false, true);   // plain link: the cover word marks this browser as a guest (guest-key.js)
+    add('p', '', 'margin:0 0 8px');
+    if (window.__hasWebGL !== false) link('/vault', 'Walk the Gallery in 3D', false, false);
+    link('/', 'Back to the front door', false, false);
+    wrap.appendChild(card); document.body.appendChild(wrap);
+  }
   function boot(reason) {
+    if (window.__psGallery) { galleryCard(); return; }
     grab();
     els.pv.hidden = false;
     document.body.classList.add('painted');
     guardHistory();
     ['gate', 'fade', 'hud'].forEach((id) => { const e = $(id); if (e) e.style.display = 'none'; });
     // the arriving act (from the landing's door) opens that door for this session
-    const act = qs.get('act'); if (act && ROOMS[act] && act !== 'IV') markDoor(act);
+    const act = qs.get('act'); if (act && ROOMS[act] && act !== 'IV' && (rewardsHeld()[act] || opened[act])) markDoor(act);   // only a word this browser holds
     if (COARSE) els.pv.classList.add('reveal');
     // the gate: the study painting, one button
     const fromDoor = qs.get('from') === 'door' || Object.keys(opened).length > 0;

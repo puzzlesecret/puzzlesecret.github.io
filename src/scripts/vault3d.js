@@ -96,9 +96,12 @@ const stairSeen = { down: false, up: false };
 
 /* ================= setup / params ================= */
 const qs = new URLSearchParams(location.search);
-const DEBUG_CAM = qs.get('cam');            // "x,z,yaw,pitch" — skip gate, no audio
-const FORCE_OPEN = qs.get('open') === '1';  // bookcase pre-opened (screenshots)
-const FORCE_PANEL = qs.get('panel') === '1';
+// Test switches below work only on local/preview hosts (2026-11-24): on the live site they would open doors with no word.
+const DEV_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /\.vercel\.app$/.test(location.hostname);
+const devQ = (k) => (DEV_HOST ? qs.get(k) : null);
+const DEBUG_CAM = devQ('cam');            // "x,z,yaw,pitch" — skip gate, no audio
+const FORCE_OPEN = devQ('open') === '1';  // bookcase pre-opened (screenshots)
+const FORCE_PANEL = devQ('panel') === '1';
 const FORCE_SLOW = qs.get('slowtest') === '1';  // exercise the slow-device offer
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -115,7 +118,21 @@ const FROM_DOOR = qs.get('from') === 'door';
    sessionStorage. Nothing in the URL can switch it on; a bad or stale stash reads as null and
    the canonical room is built, byte for byte. The four position pieces are validated here
    and rendered with textContent only. */
+/* THE KEEPER'S GALLERY (Dan, 2026-11-24). The Gift cover's word opens a showroom copy of this study,
+   never Vault I: /api/unlock answers it with act 'G'. A browser holding only that gift and no book word
+   is a Gallery visitor on every load, in every tab. Its far door is the door to Vault I: a word from
+   inside a book (or any true book word) turns this browser into an ordinary visitor and walks it in. */
+const GALLERY = (() => {
+  try {
+    const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {};
+    const v = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {};
+    return !['I', 'II', 'III', 'IV'].some((a) => r[a] || v[a]) && !!r.G;
+  } catch (e) { return false; }
+})();
+const GALLERY_ENTRY = 'Welcome to my gallery. The cover was only the invitation: every book here hides a vault of its own. Somewhere behind these shelves is the door to Vault I. It opens with a word from inside a book.';
+const GALLERY_BOOK_URL = 'https://www.amazon.com/dp/B0HB9K8PXC';   // plain link: the cover word marks this browser as a guest (guest-key.js)
 const GUEST = (() => {
+  if (GALLERY) return null;   // the Gallery is the book's study, never an outlet's guest room
   try {
     const s = JSON.parse(sessionStorage.getItem('ps_guest_room_v1') || 'null');
     if (!s || typeof s !== 'object' || !/^[a-z]{2,16}$/.test(String(s.id || ''))) return null;
@@ -2465,6 +2482,11 @@ const REWARDS = {
     text: 'Two hundred hard puzzles, the deepest hoard. And on the wall behind you… four seals, four secrets still to come.',
     btn: 'Download the 200 puzzles (PDF)', vo: 'finale',
   },
+  G: {
+    kicker: "THE GALLERY'S GIFT", title: 'FIFTY PUZZLES, YOURS',
+    text: 'A thank-you for solving the cover: fifty easy puzzles from my desk. The vaults themselves open with words from inside the books.',
+    btn: 'Download the 50 puzzles (PDF)', vo: null,
+  },
   IV: {
     kicker: "THE KEEPER'S SECRET SANCTUM", title: 'TWENTY MASTER PUZZLES',
     text: "You found what was never lit, and decoded what was never written. Twenty master puzzles from the Keeper's private collection.",
@@ -2547,18 +2569,18 @@ function openReward(act) {
   // Instrument the button so a click on the actual gift is a distinct signal from
   // "opened the card." Bind exactly once — repeated openReward calls are cheap because
   // the previous listener is a no-op on the new act.
-  b.onclick = () => psBeacon(PS_EV['REWARD_CLICK_' + act], '');   // beacon: iOS may open the PDF in-tab and abort a plain fetch
-  psEvent(PS_EV['REWARD_OPEN_' + act]);
-  psTouch('reward-' + act);
+  const logged = act !== 'G';   // the Gallery's card adds no new event type (privacy page unchanged)
+  b.onclick = logged ? () => psBeacon(PS_EV['REWARD_CLICK_' + act], '') : null;   // beacon: iOS may open the PDF in-tab and abort a plain fetch
+  if (logged) { psEvent(PS_EV['REWARD_OPEN_' + act]); psTouch('reward-' + act); }
   // No review ask on a gift card, ever (Dan 2026-11-09, Option B): the neutral ask lives only on the
   // front door, on a LATER visit, for a book-word holder (public/js/review-ask.js).
   if (window.psGuest) window.psGuest.fill(document.getElementById('rwGuest'), act === 'I' ? 'gift' : 'none');
   rewardEl.hidden = false;
   burstConfetti();
   playUnlock();
-  if (!rewardsGiven[act]) { keeper(RW.vo); rewardsGiven[act] = true; }
+  if (!rewardsGiven[act]) { if (RW.vo) keeper(RW.vo); rewardsGiven[act] = true; }
   if (act === 'III') sealFlareT = simT; // the series wall flares with the finale
-  stampVault(act);
+  if (act !== 'G') stampVault(act);   // the Gallery is never stamped as a vault
 }
 /* the passport is a RECORD, not a gate — the PDFs stay open to everyone either way */
 const VAULT_KEY = 'ps_vaults_v1';
@@ -2629,12 +2651,28 @@ function openWordbox(key) {
   // to see which doors people even try. Extra is the target key; server sanitizes.
   psEvent(PS_EV.WORDBOX_OPEN, key);
   psTouch('wordbox-' + key);
+  if (GALLERY && (key === 'door2' || key === 'first')) { galleryDoorLine(); return; }
   if (GUEST && key === 'door2') { guestDoorLine(); return; }
   if (key === 'door2' && window.psGuest && window.psGuest.door2(document.getElementById('wbKicker'), document.getElementById('wbLine'))) { showCaption(window.psGuest.line('door2'), 9000); return; }
   keeper(DOORS[key].vo);
 }
 function closeWordbox() { invalidateWordbox(); wordboxEl.hidden = true; wbTarget = null; }
-function sayEntry() { if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else keeper('entry'); }
+// The Gallery's far door: the door to Vault I, which only a word from inside a book opens.
+function galleryBookLinks(el, lead) {
+  el.textContent = lead;
+  const a = document.createElement('a');
+  a.href = GALLERY_BOOK_URL; a.target = '_blank'; a.rel = 'noopener'; a.style.color = 'var(--gold)';
+  el.appendChild(document.createTextNode('your book, the Large Print Gift Edition or '));
+  a.textContent = 'Sudoku with a Secret, Volume 1';
+  el.appendChild(a);
+  el.appendChild(document.createTextNode('.'));
+}
+function galleryDoorLine() {
+  document.getElementById('wbKicker').textContent = 'THE DOOR TO VAULT I';
+  galleryBookLinks(document.getElementById('wbLine'), 'Vault I opens with a word from inside ');
+  showCaption('This door opens with a word from inside a book, not from its cover.', 7000);
+}
+function sayEntry() { if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else keeper('entry'); }
 // Dismissed without a true word — the "gave up at this door" signal. Success paths call
 // closeWordbox() directly and never reach this.
 function dismissWordbox() {
@@ -2675,6 +2713,30 @@ async function submitWord() {
   if (generation !== wbGeneration || key !== wbTarget || wordboxEl.hidden || document.hidden) return;
   wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
   if (!j) { wbMsg.textContent = 'The vault cannot hear you right now — try again in a moment.'; return; }
+  if (GALLERY) {
+    // Outlet guest words (Pinterest, magazines, press pool) open Vault I from here too: Dan, 2026-11-24.
+    if (j.ok && ['I', 'II', 'III', 'IV'].includes(j.act)) {
+      // a true book word: bank its gift (this browser now holds a book word, so it is an ordinary
+      // visitor from here on) and walk into the real Vault I
+      holdReward(j.act, j.rewardUrl);
+      if (window.psGuest) window.psGuest.note(j);
+      try {   // an outlet's own room (PinPoint) travels with its word; a book word ends any old one
+        if (j.room && j.room.id) sessionStorage.setItem('ps_guest_room_v1', JSON.stringify(j.room));
+        else sessionStorage.removeItem('ps_guest_room_v1');
+      } catch (e) {}
+      closeWordbox(); playUnlock();
+      showCaption(j.act === 'I' ? 'The word is true. Vault I opens.' : 'The word is true. The vaults open.', 4000);
+      setTimeout(() => location.replace('/vault?from=door&act=' + j.act), 1400);
+      return;
+    }
+    playThud();
+    wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
+    if (j.ok) { wbMsg.textContent = 'That is the cover’s word: it opened this Gallery. Vault I needs a word from inside a book.'; return; }
+    wbFails++; wbOpenFails++;
+    galleryBookLinks(wbMsg, 'Not that word. Vault I’s word is inside ');
+    wbSet('');
+    return;
+  }
   const D = DOORS[key];
   if (j.ok) holdReward(j.act, j.rewardUrl);       // any true word banks its gift
   if (j.ok && window.psGuest) window.psGuest.note(j);   // a guest key vs a book word (public/js/guest-key.js)
@@ -2869,8 +2931,8 @@ function activate(kind, hitObj) {
     const d = Math.hypot(player.pos.x - sp.x, player.pos.z - sp.z);
     if (d > 2.4) {
       const dirx = (player.pos.x - sp.x) / d, dirz = (player.pos.z - sp.z) / d;
-      moveTo(sp.x + dirx * 1.9, sp.z + dirz * 1.9, () => openReward('I'));
-    } else openReward('I');
+      moveTo(sp.x + dirx * 1.9, sp.z + dirz * 1.9, () => openReward(GALLERY ? 'G' : 'I'));
+    } else openReward(GALLERY ? 'G' : 'I');
   } else if (kind === 'tome') {
     goThen(AX + 0.85, -11.3, () => openReward('II'));
   } else if (kind === 'chest') {
@@ -3818,7 +3880,7 @@ function begin(withAudio) {
     initAudio(); startAmbient(); playBoom();
     setTimeout(() => sayEntry(), 1300);
   } else {
-    if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else showCaption(VO.entry.text, 6500);
+    if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else showCaption(VO.entry.text, 6500);
   }
   setTimeout(() => { hintEl.style.opacity = '1'; }, 2500);
 }
@@ -3847,10 +3909,10 @@ if (DEBUG_CAM) {
   fadeEl.style.transition = 'none'; fadeEl.style.display = 'none'; // instant — no transition race in headless captures
 }
 if (FORCE_OPEN) { hinge.rotation.y = -1.62; doorAmt = 1; doorOpened = true; }
-if (qs.get('d2') === '1') { door2Open = true; door2.rotation.y = 2.05; door2.userData.kind = null; }
-if (qs.get('d3') === '1') { door3Open = true; door3.rotation.y = 2.05; door3.userData.kind = null; }
+if (devQ('d2') === '1') { door2Open = true; door2.rotation.y = 2.05; door2.userData.kind = null; }
+if (devQ('d3') === '1') { door3Open = true; door3.rotation.y = 2.05; door3.userData.kind = null; }
 if (FORCE_PANEL) rewardEl.hidden = false;
-if (qs.get('wb') === '1') openWordbox(qs.get('wbk') || 'door2');
+if (devQ('wb') === '1') openWordbox(qs.get('wbk') || 'door2');
 
 
 /* ================= THE KEY-TILE GAMES (2026-09-03) =================
@@ -4459,7 +4521,7 @@ function tick(dt) {
   const zp = player.pos.z;
   const label = player.pos.y < -0.4 || (door4Open && floorYAt(player.pos.x, zp) < -0.4)
     ? 'VAULT IV — THE SECRET SANCTUM'
-    : zp > -7.2 ? "VAULT I — THE WRITER'S STUDY"
+    : zp > -7.2 ? (GALLERY ? "THE KEEPER'S GALLERY" : "VAULT I — THE WRITER'S STUDY")
     : zp > -19.4 ? 'VAULT II — THE LIBRARY OF PUZZLES'
     : 'VAULT III — THE GRAND TREASURE VAULT';
   if (roomNameEl.textContent !== label) roomNameEl.textContent = label;

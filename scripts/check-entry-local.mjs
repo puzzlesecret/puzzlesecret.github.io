@@ -69,7 +69,10 @@ try {
   };
   for (const [word, hit] of fixtures.slice(0, 10)) {
     const hub = (await post(word)).data;
-    verify(hub.ok && hub.act === hit.act, 'Hub must preserve recognized act');
+    // The Gift cover's word opens the Keeper's Gallery (act 'G', Dan 2026-11-24); its gift is still the first fifty.
+    const expectedAct = hit.edition === 'gift-cover' ? 'G' : hit.act;
+    verify(hub.ok && hub.act === expectedAct, 'Hub must preserve recognized act');
+    if (hit.edition === 'gift-cover') verify(hub.rewardUrl === '/mock-reward/G', 'Gallery gift rides its own pass, not Vault I pass');
     const isGift = hit.edition === 'gift' || hit.edition === 'gift-cover';
     verify(hub.entry.bookId === (isGift ? 'v1-gift-01' : 'v1-original'), 'Correct book family');
     verify(hub.entry.volumeId === 'v1' && hub.entry.roomSetId === 'v1' && hub.entry.destination === '/vault', 'Allowlisted shared rooms');
@@ -86,7 +89,7 @@ try {
     verify((await post('TESTALPHA', at)).data.ok, 'Legacy at route must still unlock');
     verify(!(await post('TESTALPHA', at)).data.entry, 'No added metadata on legacy routes');
   }
-  verify((await post('TESTCOVER', 'gift-cover')).data.ok, 'Legacy cover route accepts cover');
+  verify((await post('TESTCOVER', 'gift-cover')).data.ok && (await post('TESTCOVER', 'gift-cover')).data.act === 'G', 'Cover route opens the Gallery');
   verify(!(await post('TESTGIFTEND', 'gift-cover')).data.ok, 'Legacy cover route rejects book');
   const beforeRejects = { ...ledger };
   for (const word of ['TESTHIDDEN', 'TESTUNKNOWN', 'TESTFUTURE', 'TESTEDITION', 'WRONGWORD', 'A']) {

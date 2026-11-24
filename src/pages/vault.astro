@@ -68,6 +68,25 @@ import Analytics from '@vercel/analytics/astro';
     <div id="label"></div>
     <div id="studyCount" hidden></div>
     <script is:inline>
+      // THE KEEPER'S GALLERY (Dan, 2026-11-24): a browser holding only the Gift cover's gift ('G') and no
+      // book word sees the Gallery, never Vault I. Name it here before the room loads; the 3D view is the
+      // Gallery's home for now, so the painted switch is hidden.
+      (function () {
+        try {
+          var r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {}, v = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {};
+          var book = ['I', 'II', 'III', 'IV'].some(function (a) { return r[a] || v[a]; });
+          if (book || !r.G) return;
+          window.__psGallery = true;
+          // the Gallery is never an outlet's guest room: drop a stale one so its title, exits and farewell stay the Gallery's
+          try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {}
+          document.title = "The Keeper's Gallery · PuzzleSecret";
+          var rn = document.getElementById('roomName'); if (rn) rn.textContent = "THE KEEPER'S GALLERY";
+          var mc = document.getElementById('modeChip'); if (mc) mc.hidden = true;
+          var st = document.createElement('style'); st.textContent = '#gate2d{display:none!important}'; document.head.appendChild(st);   // the painted switch on the gate (built later in the page)
+        } catch (e) {}
+      })();
+    </script>
+    <script is:inline>
       // A guest room with its own front door (PinPoint's /pinpoint, 2026-10-13): in BOTH modes its way out
       // is that door, and the switch to the other mode is hidden, so a cacher is never one tap from the book's homepage.
       (function () {

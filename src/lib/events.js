@@ -115,6 +115,7 @@ export const SERVER_EV = Object.freeze({
   REWARD_SERVED_II:  'reward.served.II',
   REWARD_SERVED_III: 'reward.served.III',
   REWARD_SERVED_IV:  'reward.served.IV',
+  REWARD_SERVED_G:   'reward.served.G',
 });
 
 // Fast lookup — the /api/event allowlist. Client-only.
@@ -215,6 +216,7 @@ export function parts(ev, extra) {
     case SERVER_EV.REWARD_SERVED_II: return ['📄', 'Vault II reward downloaded'];
     case SERVER_EV.REWARD_SERVED_III:return ['📄', 'Vault III reward downloaded'];
     case SERVER_EV.REWARD_SERVED_IV: return ['📄', 'Vault IV reward downloaded'];
+    case SERVER_EV.REWARD_SERVED_G:  return ['📄', "Keeper's Gallery gift downloaded"];
 
     default: return ['·', ev + e];
   }

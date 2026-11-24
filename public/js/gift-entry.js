@@ -32,10 +32,10 @@
         var response = await fetch('/api/unlock', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({word:word,vid:visitor(),at:cover?'gift-cover':'gift-book'})});
         var data = await response.json();
         if (!data.ok) {
-          message.textContent = response.status === 429 ? 'Please wait a few seconds before trying again.' : response.status === 503 ? 'The online door is temporarily unavailable. Your printed book still works; please return later.' : cover ? 'That code did not open this door. Check C1–C6 and the cover letter strip.' : 'That word did not open a door. Check the act instructions and your recorded digits.';
+          message.textContent = response.status === 429 ? 'Please wait a few seconds before trying again.' : response.status === 503 ? 'The online door is temporarily unavailable. Your printed book still works; please return later.' : cover ? 'That code did not open this door. Check A1–A6 and the cover letter strip.' : 'That word did not open a door. Check the act instructions and your recorded digits.';
           message.classList.add('error'); input.setAttribute('aria-invalid', 'true'); return;
         }
-        keep(data); message.textContent = 'Vault ' + data.act + ' is open. Taking you inside…';
+        keep(data); message.textContent = data.act === 'G' ? 'The Keeper’s Gallery is open. Taking you inside…' : 'Vault ' + data.act + ' is open. Taking you inside…';
         window.location.assign('/vault?from=door&act=' + encodeURIComponent(data.act));
       } catch (_) {
         message.textContent = 'The door could not connect. Check your connection and try again later.'; message.classList.add('error');

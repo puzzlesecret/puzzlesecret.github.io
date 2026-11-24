@@ -170,7 +170,23 @@ import Layout from '../layouts/Layout.astro';
   <!-- passport.view (once per session) — events.js + Amazon click delegation come from Layout.astro -->
   <script is:inline>
     // A visitor whose only stamp came from a guest key: show where the other words are. Nothing for book owners.
-    window.addEventListener('load', function () { if (window.psGuest) window.psGuest.fill(document.getElementById('pGuest'), 'passport'); });
+    // A Gift-cover visitor (the Keeper's Gallery, 2026-11-24) holds no stamp: show the Gallery's gift and the way back instead.
+    window.addEventListener('load', function () {
+      var box = document.getElementById('pGuest'), r = {}, v = {};
+      try { r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {}; v = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {}; } catch (e) {}
+      var book = ['I', 'II', 'III', 'IV'].some(function (a) { return r[a] || v[a]; });
+      if (!book && typeof r.G === 'string' && r.G.indexOf('/api/reward') === 0) {
+        var p = document.createElement('p'); p.className = 'gallery-note';
+        p.appendChild(document.createTextNode('The cover’s word opened the Keeper’s Gallery. '));
+        var dl = document.createElement('a'); dl.href = r.G; dl.textContent = 'Download its 50 puzzles (PDF)'; p.appendChild(dl);
+        p.appendChild(document.createTextNode(' · '));
+        var back = document.createElement('a'); back.href = '/vault'; back.textContent = 'Return to the Gallery'; p.appendChild(back);
+        p.appendChild(document.createTextNode('. Your first stamp comes from a word inside your book.'));
+        box.appendChild(p);
+        return;
+      }
+      if (window.psGuest) window.psGuest.fill(box, 'passport');
+    });
   </script>
   <script is:inline defer>
     document.addEventListener('DOMContentLoaded', function () {
@@ -183,6 +199,8 @@ import Layout from '../layouts/Layout.astro';
     /* the certificate panel (shared with /vault; markup is built by /js/keeper-certificate.js) */
     #certPanel { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(4,2,0,.72); backdrop-filter: blur(3px); padding: 16px; overflow-y: auto; }
     #certPanel[hidden] { display: none; }
+    .gallery-note { max-width: 640px; margin: 0 auto 18px; text-align: center; color: #e8dcc0; }
+    .gallery-note a { color: var(--gold, #e2c27a); }
     .cert-card { max-width: 480px; width: 100%; margin: auto; text-align: center; background: linear-gradient(180deg, #1d1207, #120a04); border: 1px solid rgba(246,178,60,.45); border-radius: 8px; padding: 28px 24px 20px; box-shadow: 0 0 60px rgba(246,178,60,.18), 0 18px 50px rgba(0,0,0,.7); font-family: var(--serif); color: var(--ivory); }
     .cert-kicker { font-family: var(--display); font-size: 12px; letter-spacing: .3em; color: #c78d2e; margin-bottom: 12px; }
     .cert-line { font-size: 16px; font-style: italic; color: var(--ash); margin-bottom: 16px; line-height: 1.45; }

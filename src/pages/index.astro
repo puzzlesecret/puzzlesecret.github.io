@@ -779,6 +779,7 @@ const HOME_LD = {
         II: 'The word was true. The second vault opens.',
         III: 'The word was true. The third vault opens.',
         IV: 'The word was true. The vault opens.',
+        G: 'The cover was true. The Keeper’s Gallery opens.',
       };
       function onWrong() {
         misses += 1;
@@ -807,7 +808,7 @@ const HOME_LD = {
         let panel = document.getElementById('rewardPanel');
         if (!panel && slot) { panel = document.createElement('div'); panel.id = 'rewardPanel'; panel.className = 'reward'; slot.appendChild(panel); }
         if (panel) panel.innerHTML =
-          `<p class="r-tag">Vault ${data.act} — the word was true</p>` +
+          (data.act === 'G' ? `<p class="r-tag">The Keeper’s Gallery — the cover was true</p>` : `<p class="r-tag">Vault ${data.act} — the word was true</p>`) +
           `<p class="r-body">…</p><p class="entry-hint"><a id="continueVault" href="/vault?from=door&amp;act=${encodeURIComponent(data.act || '')}">Step inside →</a></p>`;
         openTheDoor(data.act);
       }
@@ -875,7 +876,9 @@ const HOME_LD = {
         const say = () => {
           // caption only: the vault is seconds away, and the Keeper speaks first INSIDE it, on the
           // visitor's first tap — a line started here would be cut off by the hand-off
-          typeCaption(successLines[act] || 'The vault opens.', true);
+          // a reader who already holds a book word goes on to their own vaults, not the Gallery
+          let bookHeld = false; try { const rw = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {}, vs = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {}; bookHeld = ['I', 'II', 'III', 'IV'].some((a) => rw[a] || vs[a]); } catch (e) {}
+          typeCaption(act === 'G' && bookHeld ? 'The cover was true. Its gift is yours, and your vaults are waiting.' : (successLines[act] || 'The vault opens.'), true);
           const p = document.getElementById('rewardPanel');
           if (p) p.querySelector('.r-body').textContent = 'The door swings wide. Step inside…';
         };
@@ -944,10 +947,10 @@ const HOME_LD = {
           if (!res.ok) throw new Error('service');
           const data = await res.json();
           if (controller.signal.aborted || document.hidden) return;
-          if (data.ok && !['I', 'II', 'III', 'IV'].includes(data.act)) {
+          if (data.ok && !['I', 'II', 'III', 'IV', 'G'].includes(data.act)) {
             entryStatus.textContent = 'This door is not available here yet. Use Quiet entry or your book’s help.'; return;
           }
-          if (data.ok) { entryStatus.textContent = 'The word was true. The vault is opening…'; onCorrect(data); }
+          if (data.ok) { entryStatus.textContent = data.act === 'G' ? 'The cover’s word was true. The Keeper’s Gallery is opening…' : 'The word was true. The vault is opening…'; onCorrect(data); }
           else { entryStatus.textContent = 'That word did not open the vault. Check it and offer it again.'; onWrong(); wordInput.focus(); }
         } catch (error) {
           entryStatus.textContent = controller.signal.reason === 'page-hidden'

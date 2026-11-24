@@ -16,7 +16,7 @@
   if (voiceInput) voiceInput.autoStartIfGranted();
   // Add a new room-set route here once its parent family is activated. Editions
   // sharing a room set need no per-book client changes. Unknown sets fail closed.
-  var ROOM_ROUTES = { v1: { volumeId: 'v1', destination: '/vault', acts: ['I', 'II', 'III'] } };
+  var ROOM_ROUTES = { v1: { volumeId: 'v1', destination: '/vault', acts: ['I', 'II', 'III', 'G'] } };   // 'G' = the Keeper's Gallery (the Gift cover's word)
   try {
     var earned = JSON.parse(sessionStorage.getItem('ps_daily_word_v1') || 'null');
     if (earned && /^[A-Z]{4,6}$/.test(earned.w || '') && /^[EMH]-?\d{3}$/.test(earned.s || '')) {
@@ -131,7 +131,7 @@
       var origin = recognized ? recognized + (source === 'gift-cover' ? ' · cover puzzle' : source === 'guest' ? ' · guest puzzle' : '') : '';
       var selected = new URLSearchParams(location.search).get('book') || document.body.dataset.defaultBook;
       var differs = data.entry && selected && data.entry.bookId !== selected;
-      say((origin ? origin + ' recognized. ' : '') + 'Vault ' + data.act + ' is open.' + (differs ? ' Your word found its matching book; your help selection stays the same.' : '') + ' Taking you inside…', false);
+      say((origin ? origin + ' recognized. ' : '') + (data.act === 'G' ? 'The Keeper’s Gallery is open.' : 'Vault ' + data.act + ' is open.') + (differs ? ' Your word found its matching book; your help selection stays the same.' : '') + ' Taking you inside…', false);
       input.value = '';
       window.location.assign(destination);
       leaving = true;
