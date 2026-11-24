@@ -1100,6 +1100,7 @@
     const fromDoor = qs.get('from') === 'door' || Object.keys(opened).length > 0;
     $('pvGateKicker').textContent = fromDoor ? 'THE WORD WAS TRUE' : 'THE KEEPER’S VAULTS';
     $('pvGateLine').textContent = GUEST ? (GUEST.frags.length ? GUEST.entry : GUEST.retired)
+      : (['II', 'III'].includes(act) && doorOpen(act)) ? 'Vault ' + act + ' stands open. Your gift waits inside.'
       : fromDoor ? 'The first door stands open. Two more wait in the dark — each sealed with a word.' : 'Step in. The first room is open to anyone who knocks; the doors beyond are sealed with the book’s words.';
     $('pvEnter').addEventListener('click', () => {
       unlockVO(); initAudio(); if (actx && actx.state === 'suspended') actx.resume();

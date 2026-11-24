@@ -24,8 +24,8 @@ function rows(grid) {
     <a class="brand" href="/gift">PuzzleSecret · Gift Edition</a>
     <h1>Check a sudoku.</h1>
     <p class="edition">{answers.edition}. These answers belong to the 75-puzzle Gift Edition, not the 200-puzzle original Volume I.</p>
-    <p>Choose the number printed above your puzzle, then open its answer. The three keepsake extras are X1–X3; the front-cover puzzle is C. No code, purchase proof, login or signup is required.</p>
-    <a class="button" href="/gift/Gift-Edition-Solutions.pdf" download>Download all 79 solutions (PDF)</a>
+    <p>Choose the number printed above your puzzle, then open its answer. The front-cover puzzle is A, with marked cells A1–A6. No code, purchase proof, login or signup is required.</p>
+    <a class="button" href="/gift/Gift-Edition-Solutions.pdf" download>Download all sudoku solutions (PDF)</a>
     <p>Save the PDF to check answers offline. All these sudoku solutions are also printed in the back of the book. This page shows completed grids, not a list of the secret book words.</p>
     <nav aria-label="Choose a sudoku solution">
       <ul class="solution-index">{solutions.map((p) => <li><a href={'#solution-'+p.id} aria-label={'Go to '+p.label+' answer'}>{p.id}</a></li>)}</ul>
@@ -47,7 +47,7 @@ function rows(grid) {
   <script is:inline>
     (function(){
       function reveal(){
-        var id=location.hash.slice(1), el=document.getElementById(id);
+        var id=location.hash.slice(1); if(id==='solution-C') id='solution-A'; var el=document.getElementById(id);
         if(el && el.tagName==='DETAILS'){el.open=true;el.scrollIntoView({block:'start'});}
       }
       window.addEventListener('hashchange',reveal); reveal();

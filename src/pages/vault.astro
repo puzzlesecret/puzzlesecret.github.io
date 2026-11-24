@@ -956,6 +956,15 @@ import Analytics from '@vercel/analytics/astro';
       } catch (e) { /* no history API — nothing lost */ }
     })();
   </script>
+  <script is:inline>
+    // Switching view must retain the earned act and door hand-off.
+    (function () {
+      var u = new URL(location.href); u.searchParams.set('mode', 'painted');
+      ['modeChip', 'gate2d'].forEach(function (id) {
+        var a = document.getElementById(id); if (a) a.href = u.pathname + u.search + u.hash;
+      });
+    })();
+  </script>
   <script>
     // Mode is decided synchronously by FlatVault's inline script (window.__flatMode). The 3D
     // crawl is a dynamic import so the painted vault never pays for three.js.
