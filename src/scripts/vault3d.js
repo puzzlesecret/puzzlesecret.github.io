@@ -3,6 +3,7 @@
 // on 2026-09-02 so the painted path never downloads three.js. Nothing inside changed.
 import * as THREE from 'three';
 import { PAGE_WORDS, FINAL_LETTER, NUM_WORD, NOTEBOOK } from '../lib/lore.js';
+import { buildGallery } from './gallery-room.js';
 
 /* Small event helpers — the same shape as public/js/events.js so a call reads the same in
    both vault modules. Non-blocking, silent on failure. Every string here must match the
@@ -27,6 +28,7 @@ const PS_EV = Object.freeze({
   PASSPORT_VIEW: 'passport.view', SHARE_COPY: 'share.copy', OUTBOUND_AMAZON: 'outbound.amazon',
   GUEST_SCRAP: 'guest.scrap', GUEST_BOARD: 'guest.board', GUEST_SOLVED: 'guest.solved', GUEST_COPY: 'guest.copy', DAILY_DECODE: 'daily.decode', GUEST_CARD: 'guest.card',
   REVIEW_ASK: 'review.ask',
+  GALLERY_SCRAP: 'gallery.scrap', GALLERY_GRID: 'gallery.grid', GALLERY_CLOCK: 'gallery.clock', GALLERY_DONE: 'gallery.done', GALLERY_BOOKMARK: 'gallery.bookmark',
   SESSION_DEPTH: 'session.depth',
 });
 function psEvent(ev, extra) {
@@ -60,6 +62,7 @@ const PS_ROOM_SHORT = {
   'VAULT II — THE LIBRARY OF PUZZLES': 'the library',
   'VAULT III — THE GRAND TREASURE VAULT': 'the treasure room',
   'VAULT IV — THE SECRET SANCTUM': 'the sanctum',
+  "THE KEEPER'S GALLERY": 'the gallery',
 };
 /* Sent on every tab-hide and on pagehide, re-armed when the tab comes back, so a glance
    at a text message mid-visit does not end the story early. The server collapses identical
@@ -118,7 +121,7 @@ const FROM_DOOR = qs.get('from') === 'door';
    sessionStorage. Nothing in the URL can switch it on; a bad or stale stash reads as null and
    the canonical room is built, byte for byte. The four position pieces are validated here
    and rendered with textContent only. */
-/* THE KEEPER'S GALLERY (Dan, 2026-11-24). The Gift cover's word opens a showroom copy of this study,
+/* THE KEEPER'S GALLERY (Dan, 2026-11-24). The Gift cover's word opens the Keeper's front room (gallery-room.js),
    never Vault I: /api/unlock answers it with act 'G'. A browser holding only that gift and no book word
    is a Gallery visitor on every load, in every tab. Its far door is the door to Vault I: a word from
    inside a book (or any true book word) turns this browser into an ordinary visitor and walks it in. */
@@ -129,8 +132,8 @@ const GALLERY = (() => {
     return !['I', 'II', 'III', 'IV'].some((a) => r[a] || v[a]) && !!r.G;
   } catch (e) { return false; }
 })();
-const GALLERY_ENTRY = 'Welcome to my gallery. The cover was only the invitation: every book here hides a vault of its own. Somewhere behind these shelves is the door to Vault I. It opens with a word from inside a book.';
-const GALLERY_BOOK_URL = 'https://www.amazon.com/dp/B0HB9K8PXC';   // plain link: the cover word marks this browser as a guest (guest-key.js)
+let galleryRoom = null;   // set near the end of this file when GALLERY (declared early: activate/overlayOpen read it)
+const GALLERY_ENTRY = 'The front room. Your fifty are on the end table. My study is through that door. It wants a word from inside a book.';
 const GUEST = (() => {
   if (GALLERY) return null;   // the Gallery is the book's study, never an outlet's guest room
   try {
@@ -763,6 +766,7 @@ let globe = null;   // the Keeper's globe, built below (both rooms since 2026-11
 // The book's own study shares the furniture, the globe and the visitors' book (Dan, 2026-11-14) — but never the
 // scraps, the desk panels or anything to do with co-ordinates. BOOK_ROOM picks each room's wording and spots.
 const BOOK_ROOM = !GUEST;
+let paperBallFn = null, paperBallMat = null;   // lent to the Keeper's Gallery for its one paper ball
 {
   // seeded so every visit sees the same four balls, each crumpled differently
   const rng = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -803,6 +807,7 @@ const BOOK_ROOM = !GUEST;
     g.globalAlpha = 1;
   }, 2, 2);
   const scrapMat = new THREE.MeshStandardMaterial({ map: scrapTex, color: 0xfff4e2, roughness: 0.92, metalness: 0, flatShading: true, emissive: 0x1c160c, emissiveIntensity: 0.25 });
+  paperBallFn = crumpledPaper; paperBallMat = scrapMat;
   const contact = (w, d, x, z, ry = 0, parent = scene) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     m.rotation.x = -Math.PI / 2; m.rotation.z = ry; m.position.set(x, 0.011, z); m.raycast = () => {}; parent.add(m); return m;
@@ -2007,7 +2012,7 @@ function buildAmbience(ctx, dest) {
   return { bus, setRoom, spawnDrip, spawnCrack, spawnShimmer };
 }
 function startAmbient() {
-  if (!audioReady || ambient) return;
+  if (!audioReady || ambient || GALLERY) return;   // the front room is quiet; creaks and thuds still play
   ambient = buildAmbience(actx, master);
   ambient.setRoom('study', 0.4);
   ambient.bus.gain.linearRampToValueAtTime(0.85, actx.currentTime + 3);
@@ -2318,8 +2323,9 @@ const overlayOpen = () => !rewardEl.hidden || !document.getElementById('wordbox'
   || !document.getElementById('lockbox').hidden || !document.getElementById('tilecard').hidden || !document.getElementById('roundEnd').hidden
   || !document.getElementById('pageview').hidden || !document.getElementById('desk').hidden
   || !document.getElementById('notebook').hidden || !document.getElementById('draft').hidden
-  || !(document.getElementById('farewell')?.hidden ?? true) || gvOpen;
+  || !(document.getElementById('farewell')?.hidden ?? true) || gvOpen || !!(galleryRoom && galleryRoom.overlayOpen());
 
+const walkFloors = () => (GALLERY ? [floor] : [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
 function pick(clientX, clientY, targets) {
   ndc.set((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
@@ -2413,7 +2419,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   if (hit) { activate(hit.userData.kind, hit); return; }
   if (round.on) { const near = nearestTargetOnScreen(e.clientX, e.clientY); if (near) { roundHit(near.id); return; } }
   // 2) otherwise walk to the tapped floor point
-  const fhits = pick(e.clientX, e.clientY, [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
+  const fhits = pick(e.clientX, e.clientY, walkFloors());
   if (fhits.length) moveTo(fhits[0].point.x, fhits[0].point.z);
   else if (round.on) roundMiss();
 });
@@ -2457,7 +2463,7 @@ walkRing.rotation.x = -Math.PI / 2; walkRing.position.y = 0.02; walkRing.visible
 scene.add(walkRing);
 let holdWalk = false, holdTimer = null;
 function walkToward(cx, cy) {
-  const fhits = pick(cx, cy, [floor, corrFloor, libFloor, corr2Floor, v3Floor]);
+  const fhits = pick(cx, cy, walkFloors());
   if (fhits.length) {
     moveTo(fhits[0].point.x, fhits[0].point.z);
     walkRing.position.set(player.target.x, 0.02, player.target.z);
@@ -2483,8 +2489,8 @@ const REWARDS = {
     btn: 'Download the 200 puzzles (PDF)', vo: 'finale',
   },
   G: {
-    kicker: "THE GALLERY'S GIFT", title: 'FIFTY PUZZLES, YOURS',
-    text: 'A thank-you for solving the cover: fifty easy puzzles from my desk. The vaults themselves open with words from inside the books.',
+    kicker: "THE GALLERY'S GIFT", title: 'FIFTY EASY ONES',
+    text: 'Fifty easy ones, tied with string. For solving the cover. Take them. I have more string.',
     btn: 'Download the 50 puzzles (PDF)', vo: null,
   },
   IV: {
@@ -2658,19 +2664,10 @@ function openWordbox(key) {
 }
 function closeWordbox() { invalidateWordbox(); wordboxEl.hidden = true; wbTarget = null; }
 // The Gallery's far door: the door to Vault I, which only a word from inside a book opens.
-function galleryBookLinks(el, lead) {
-  el.textContent = lead;
-  const a = document.createElement('a');
-  a.href = GALLERY_BOOK_URL; a.target = '_blank'; a.rel = 'noopener'; a.style.color = 'var(--gold)';
-  el.appendChild(document.createTextNode('your book, the Large Print Gift Edition or '));
-  a.textContent = 'Sudoku with a Secret, Volume 1';
-  el.appendChild(a);
-  el.appendChild(document.createTextNode('.'));
-}
+// No buy link at this door (critics, 2026-11-24): the one link in the Gallery is on the Volume 1 picture.
 function galleryDoorLine() {
   document.getElementById('wbKicker').textContent = 'THE DOOR TO VAULT I';
-  galleryBookLinks(document.getElementById('wbLine'), 'Vault I opens with a word from inside ');
-  showCaption('This door opens with a word from inside a book, not from its cover.', 7000);
+  document.getElementById('wbLine').textContent = 'My study is through here. It wants a word from inside a book, not off the back of one.';
 }
 function sayEntry() { if (GALLERY) showCaption(GALLERY_ENTRY, 10000); else if (GUEST) showCaption(GUEST.frags.length ? GUEST.entry : GUEST.retired, 8000); else keeper('entry'); }
 // Dismissed without a true word — the "gave up at this door" signal. Success paths call
@@ -2733,7 +2730,7 @@ async function submitWord() {
     wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
     if (j.ok) { wbMsg.textContent = 'That is the cover’s word: it opened this Gallery. Vault I needs a word from inside a book.'; return; }
     wbFails++; wbOpenFails++;
-    galleryBookLinks(wbMsg, 'Not that word. Vault I’s word is inside ');
+    wbMsg.textContent = 'Not that one. The word is inside a book, not on it.';
     wbSet('');
     return;
   }
@@ -2875,6 +2872,7 @@ function goThen(x, z, fn) {
 }
 function stackWorldPos() { const v = new THREE.Vector3(); stack.getWorldPosition(v); return v; }
 function activate(kind, hitObj) {
+  if (galleryRoom && galleryRoom.activate(kind, hitObj)) return;   // the Keeper's Gallery handles its own things
   if (round.on) {                                   // in the dark, only the Round matters
     if (kind === 'roundTarget') roundHit(hitObj.userData.id);
     else if (kind !== 'hoodLamp') roundMiss();
@@ -2952,7 +2950,7 @@ function activate(kind, hitObj) {
     goThen(0, 3.05, () => {
       // 2026-11-09: once per tab, a book visitor leaving by the door sees the optional farewell card (vault.astro)
       // with the email box and a "Continue" button that goes on to the landing. Guests never see it.
-      if (!GUEST && window.__vaultFarewell && window.__vaultFarewell('/')) return;
+      if (!GUEST && !GALLERY && window.__vaultFarewell && window.__vaultFarewell('/')) return;   // the Gallery has no sign-up box
       showCaption('Back to the beginning. The door remembers you.', 2400);
       fadeEl.classList.remove('clear');
       setTimeout(() => { window.location.href = GUEST ? GUEST.home : '/'; }, 900);
@@ -3025,7 +3023,7 @@ function closeBookcase() {
    Object lines, the candle that stays snuffed, the Keeper's Notebook, three rejects that unfold
    into two-answer drafts, the discovery count, and the desk where today's page is played.
    Nothing here gates anything; no line may ever contain an answer word. */
-const STUDY_KEY = GUEST ? 'ps_study_guest_v1' : 'ps_study_v1';
+const STUDY_KEY = GUEST ? 'ps_study_guest_v1' : GALLERY ? 'ps_gallery_study_v1' : 'ps_study_v1';   // the Gallery never touches Vault I's count
 const STUDY_ITEMS = GUEST ? GUEST.items : ['stack', 'p1', 'p4', 'p7', 'candle', 'quill', 'board', 'reject0', 'reject1', 'reject2', 'shelf', 'sconce', 'notebook', 'chart', 'desk'];
 let study = (() => { try { const v = JSON.parse(localStorage.getItem(STUDY_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; } catch (e) { return {}; } })();
 if (!Array.isArray(study.found)) study.found = [];
@@ -3138,7 +3136,7 @@ const DRAFT_NOTES = [
 const DRAFT_BORDERS = ['/art/page-border-easy.webp', '/art/page-border-medium.webp', '/art/page-border-hard.webp'];
 let DRAFTS = [];
 function loadDrafts() { return fetch('/data/rejects.json').then((r) => r.json()).then((d) => { if (Array.isArray(d)) DRAFTS = d; }).catch(() => {}); }
-loadDrafts();
+if (!GALLERY) loadDrafts();
 const draftEl = document.getElementById('draft'), draftGrid = document.getElementById('draftGrid');
 let draftCur = 0, draftShow = null;
 function drawDraft() {
@@ -3638,6 +3636,7 @@ function globeCountVisit() {
       .then((r) => r.json()).then((d) => { if (d && d.ok && d.final) localStorage.setItem('ps_globe_counted_v1', '1'); return !!(d && d.counted); }).catch(() => false);
   } catch (e) { return Promise.resolve(false); }
 }
+if (GALLERY) globe = null;   // the Gallery keeps no globe and no visitors' book: nothing to fetch
 if (globe) {
   if (GUEST) globeAddPin(52.68, -2.45, globePinMat.red, { home: true });
   globeCountVisit().then((fresh) => { globe.freshVisit = fresh; return vbLoad(); }).then(globePins);
@@ -4321,9 +4320,34 @@ addEventListener('keydown', (e) => {
 // a held tile leaves the small chest open on every visit
 if (tilesHeld().III) { pbLid.rotation.x = -1.6; pbInner.visible = true; pbGlow.material.opacity = 0.6; pbLight.intensity = 6; pbChest.userData.label = 'The small chest, open. Its tile is yours.'; }
 
+/* ================= THE KEEPER'S GALLERY (2026-11-24) =================
+   A browser that holds only the Gift cover's gift sees the Keeper's front room, never Vault I. Vault I and the
+   deeper vaults are built as usual above, then everything is taken out of the scene here before the first frame
+   (hidden meshes would still catch taps and lights would still cost phones), and the front room is built instead
+   by src/scripts/gallery-room.js. Only the floor (for walking), the exit doorway and the walk ring stay. */
+if (GALLERY) {
+  scene.updateMatrixWorld(true);
+  for (const o of [...scene.children]) if (o !== floor && o !== exitHit && o !== walkRing && o !== camera) {
+    scene.remove(o);
+    o.traverse((m) => { if (m.geometry && m !== floor) m.geometry.dispose(); });   // geometry only: shared materials/textures stay usable
+  }
+  interactables.length = 0; OBSTACLES.length = 0;
+  interactables.push(exitHit);
+  psRoom = 'the gallery'; psRooms.clear(); psRooms.add('the gallery');
+  renderer.toneMappingExposure = 1.05;
+  try { galleryRoom = buildGallery({
+    THREE, scene, box, sprite, canvasTex, texLoader, M, interactables, OBSTACLES, floor, player, exitHit,
+    paperBall: paperBallFn, paperMat: paperBallMat, EV: PS_EV,
+    goThen, moveTo, showCaption, playCreak, playThud, playUnlock, burstConfetti, openReward, openWordbox, psEvent, activate,
+    setView: (y, p) => { yaw = y; pitch = p; }, getView: () => [yaw, pitch], setEye: (h) => { eyeTarget = h; },
+    isEntered: () => entered, overlayOpen: () => overlayOpen(),
+  }); } catch (e) { location.replace('/vault?flat=1'); throw e; }
+  if (!DEBUG_CAM) { yaw = 0.2; pitch = -0.04; }   // the gold door in the first frame
+}
+
 /* ================= debug hooks (headless verification) ================= */
 window.__vault = {
-  scene, camera, renderer,
+  scene, camera, renderer, get gallery() { return galleryRoom; },
   player, moveTo, openBookcase, closeBookcase, oddHit, exitHit, openReward, activate, openWordbox, submitWord,
   round, startRound, roundHit, endRound, ROUND_DEFS, lock, openLock, lockStep, pbLid, awardTile, tilesHeld, get darkAmt() { return darkAmt; },
   floorYAt, get door4Open() { return door4Open; }, STAIR,
@@ -4549,7 +4573,7 @@ function tick(dt) {
   }
 
   // dust drift
-  if (dust) {
+  if (dust && !GALLERY) {
     const a = dust.geometry.attributes.position;
     for (let i = 0; i < dustN; i++) {
       let y = a.getY(i) + dt * 0.05;
@@ -4560,6 +4584,7 @@ function tick(dt) {
     a.needsUpdate = true;
   }
 
+  if (galleryRoom) galleryRoom.tick(dt, t);
   tickConfetti(dt);
   // a full-cover overlay is up: render every third frame, not every one (phones thank you)
   frameNo++;

@@ -1075,13 +1075,13 @@
     card.setAttribute('style', 'max-width:560px;border:1px solid #6a4a18;border-radius:10px;padding:28px 24px;background:#1b140c;box-shadow:0 8px 40px #000a');
     const add = (tag, text, style) => { const e = document.createElement(tag); if (text) e.textContent = text; if (style) e.setAttribute('style', style); card.appendChild(e); return e; };
     add('p', "THE KEEPER'S GALLERY", 'letter-spacing:.14em;color:#e2c27a;font-size:15px;margin:0 0 10px');
-    add('h1', 'The cover was only the invitation.', 'font-size:26px;margin:0 0 14px;font-weight:600');
-    add('p', 'Every book here hides a vault of its own. Vault I opens with a word from inside your book (the Large Print Gift Edition or Volume 1), typed at the front door.');
+    add('h1', 'The front room.', 'font-size:26px;margin:0 0 14px;font-weight:600');
+    add('p', 'Your fifty easy puzzles are below. My study is through the gold door, and it wants a word from inside a book, not off the back of one. Type it at the front door.');
+    add('p', window.__hasWebGL === false ? 'The room itself, with its little game, needs a device that can show 3D.' : 'The room itself, with its little game, is in the 3D view.', 'font-size:15px;color:#cdbb95;margin:0 0 10px');
     const btn = 'display:inline-block;margin:6px 10px 6px 0;padding:10px 16px;border-radius:6px;text-decoration:none;font:600 16px/1.2 Georgia,serif;';
     const link = (href, text, primary, blank) => { const a = document.createElement('a'); a.href = href; a.textContent = text; a.setAttribute('style', btn + (primary ? 'background:#e2c27a;color:#2a1a06' : 'border:1px solid #e2c27a;color:#e2c27a')); if (blank) { a.target = '_blank'; a.rel = 'noopener'; } card.appendChild(a); return a; };
     if (typeof held.G === 'string' && held.G.indexOf('/api/reward') === 0) link(held.G, 'Download your 50 puzzles (PDF)', true, false);
     link('https://www.amazon.com/dp/B0HB9K8PXC', 'Volume 1 on Amazon', false, true);   // plain link: the cover word marks this browser as a guest (guest-key.js)
-    add('p', '', 'margin:0 0 8px');
     if (window.__hasWebGL !== false) link('/vault', 'Walk the Gallery in 3D', false, false);
     link('/', 'Back to the front door', false, false);
     wrap.appendChild(card); document.body.appendChild(wrap);
