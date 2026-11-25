@@ -68,3 +68,12 @@
 .rk-inspect-art { display:block; width:100%; height:clamp(8rem,33dvh,21rem); margin:.85rem 0 .6rem; object-fit:contain; background:#17130f; }
 .rk-dialog .rk-caption {color:#e6bf80; font-style:italic;}
 @media (max-height:430px) { .rk-dock { max-height:40dvh; overflow:auto; } }
+
+/* The walking view exposes individual actions only when reached by keyboard. */
+.rk-walk-controls, .rk-walk-controls .rk-dock-actions { display:contents; }
+.rk-walk-controls[hidden] { display:none; }
+.rk-walk-controls button { position:fixed; top:1rem; left:1rem; z-index:180; }
+.rk-walk-controls button:not(:focus-visible) {
+  clip-path:inset(50%); width:1px; height:1px; min-height:0;
+  padding:0; border:0; overflow:hidden; pointer-events:none;
+}

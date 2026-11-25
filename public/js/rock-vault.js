@@ -227,10 +227,9 @@
       document.body.append(dock);
     }
     dock.hidden=false;
+    dock.classList.toggle('rk-walk-controls', !hooks.painted);
     const oldControl=(focusControls===false ? document.activeElement : roomFocus)?.dataset?.control;
     dock.replaceChildren();
-    const heading=node('h2',stations[station].name);
-    const note=node('p', hooks.painted ? 'Choose a place to explore.' : 'Tap the floor to walk. Drag to look around, or use the room guide.');
     const controls=node('div',null,'rk-dock-actions');
     const guideButton=button('Room guide',guide); guideButton.dataset.control='guide';
     controls.append(guideButton);
@@ -242,8 +241,9 @@
     if(station==='landing'){
       const up=button('Climb the stairs',askExit); up.dataset.control='stairs'; controls.append(up);
     }
-    dock.append(heading,note,controls);
-    if(focusControls!==false || oldControl) {
+    if(hooks.painted) dock.append(node('h2',stations[station].name),node('p','Choose a place to explore.'));
+    dock.append(controls);
+    if((hooks.painted && focusControls!==false) || oldControl) {
       (Array.from(controls.children).find(b=>b.dataset.control===oldControl)||guideButton).focus({preventScroll:true});
     }
   }
