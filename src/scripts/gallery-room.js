@@ -1,7 +1,8 @@
+import { buildRockPassage } from './gallery-rock-passage.js';
 import { buildCabin } from './gallery-cabin.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
-/* THE KEEPER'S GALLERY — the front room (Dan, 2026-11-24).
+/* THE KEEPER'S GALLERY â€” the front room (Dan, 2026-11-24).
    The Gift Edition's cover word opens this room instead of Vault I. It is the Keeper's bright front room on the
    snowy evening the Gift story ends: a couch, his copies of the shelf of four on the wall, the kettle, the chair
    he stood on to see the 75 grids, the clock and radio in the hall, and the gold door to his study (Vault I),
@@ -10,7 +11,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 
    vault3d.js clears every Vault I object out of the scene first, then calls buildGallery(ctx). Everything here is
    Gallery-only; Vault I, the deeper vaults and guest rooms never run this file. No line may contain an answer word.
-   Nothing is sent except the five gallery.* events (privacy.astro §2 + faq.astro list them). */
+   Nothing is sent except the five gallery.* events (privacy.astro Â§2 + faq.astro list them). */
 
 const STORE = 'ps_gallery_v1';
 const AMAZON_V1 = 'https://www.amazon.com/dp/B0HB9K8PXC';   // plain link: the cover word marks this browser as a guest
@@ -19,13 +20,12 @@ const AMAZON_V1 = 'https://www.amazon.com/dp/B0HB9K8PXC';   // plain link: the c
 const GIVENS = [1, 0, 0, 4, 0, 4, 0, 0, 0, 0, 0, 3, 0, 3, 2, 0];
 const SOLUTION = [1, 2, 3, 4, 3, 4, 1, 2, 2, 1, 4, 3, 4, 3, 2, 1];
 const GREY = 10;   // row 3, column 3
-const ROW_TEXT = (r) => GIVENS.slice(r * 4, r * 4 + 4).map((v, i) => (r * 4 + i === GREY ? '▒' : v || '·')).join('  ');
+const ROW_TEXT = (r) => GIVENS.slice(r * 4, r * 4 + 4).map((v, i) => (r * 4 + i === GREY ? 'â–’' : v || 'Â·')).join('  ');
 
 const SAY = {
   arrival: 'The front room. Your fifty are on the end table. I dropped something on the way in. My study is through that door. It wants a word from inside a book.',
   window: 'The snow has stopped. No prints on the path yet. I have looked more often than I need to.',
   windowAfter: 'There are prints on the path now. Yours, I expect.',
-  stone: 'This is where the stone lives. It is out on the step tonight, holding a book down.',
   kettle: 'Boiled. No tea again. The kettle does not mind.',
   couch: 'From here I can see all of them. One cushion sits higher than the other.',
   chair: 'Seventy-five grids, three rows. From up here they look like a field after snow. The chair creaked. It still does.',
@@ -54,16 +54,16 @@ const HINTS = {
 const BOOKS = [   // the picture rail, south to north. Only Volume 1 carries a link.
   { key: 'gift', z: 2.65, img: '/art/cover-v1-gift-01.webp', mat: 0xb9c7d8, kicker: 'THE GIFT EDITION',
     text: 'The book with the stone on it. If you have it, you found the way in. If you know someone who looks twice, it is a good thing to leave on a step.' },
-  { key: 'v1', z: 1.5, img: '/art/cover-v1-360.webp', mat: 0xd8b25a, kicker: 'VOLUME 1 · CRACK THE KEEPER’S VAULT', lit: true,
+  { key: 'v1', z: 1.5, img: '/art/cover-v1-360.webp', mat: 0xd8b25a, kicker: 'VOLUME 1 Â· CRACK THE KEEPERâ€™S VAULT', lit: true,
     text: 'Volume 1. The gold door I sealed, and the vault behind it. Two hundred puzzles, in three acts. If you would rather hold the whole of it, it is here.',
     link: AMAZON_V1, linkText: 'Volume 1 on Amazon' },
-  { key: 'v2', z: 0.3, sketch: 'chart', mat: 0x6b7864, kicker: 'VOLUME 2 · THE CORSAIR’S CHART',
+  { key: 'v2', z: 0.3, sketch: 'chart', mat: 0x6b7864, kicker: 'VOLUME 2 Â· THE CORSAIRâ€™S CHART',
     text: 'My copy of something on the shelf above my desk: a sea chart in pieces. I copied it larger. One corner stays empty.' },
-  { key: 'v3', z: -0.9, sketch: 'letters', mat: 0x937877, kicker: 'VOLUME 3 · THE LOST LOVE LETTERS',
+  { key: 'v3', z: -0.9, sketch: 'letters', mat: 0x937877, kicker: 'VOLUME 3 Â· THE LOST LOVE LETTERS',
     text: 'My copy of something on the shelf above my desk: letters tied with rose ribbon. Some still sealed. Some came back unopened. The replies are missing.' },
-  { key: 'v4', z: -2.1, sketch: 'notebook', mat: 0x658285, kicker: 'VOLUME 4 · THE SILENT SIGNAL',
+  { key: 'v4', z: -2.1, sketch: 'notebook', mat: 0x658285, kicker: 'VOLUME 4 Â· THE SILENT SIGNAL',
     text: 'My copy of something on the shelf above my desk: a notebook of numbers in my own young hand. I copied every digit and never the gaps. And the radio in the hall.' },
-  { key: 'v5', z: -3.25, sketch: 'rubbing', mat: 0x998054, kicker: 'VOLUME 5 · THE HOLLOW OAK',
+  { key: 'v5', z: -3.25, sketch: 'rubbing', mat: 0x998054, kicker: 'VOLUME 5 Â· THE HOLLOW OAK',
     text: 'My copy of something on the shelf above my desk: the oldest thing on it. A rubbing of notches cut along the edge of an old standing stone. I do not know where it stands.' },
 ];
 const TAG_LINE = 'Planned, one shelf puzzle at a time.';
@@ -92,7 +92,6 @@ export function buildGallery(ctx) {
     enamel: new THREE.MeshStandardMaterial({ color: 0xdfe5ea, roughness: 0.35, metalness: 0.1 }),
     brownPaper: new THREE.MeshStandardMaterial({ color: 0xb48a5c, roughness: 0.9 }),
     string: new THREE.MeshStandardMaterial({ color: 0xece2c8, roughness: 0.9 }),
-    stoneMark: new THREE.MeshStandardMaterial({ color: 0x9f8c74, roughness: 0.9 }),
   };
   floor.material = mats.boards;
 
@@ -128,7 +127,7 @@ export function buildGallery(ctx) {
   scene.background = new THREE.Color(0x1c2433);
   scene.fog = new THREE.FogExp2(0x493c35, 0.009);
 
-  /* ---------- the gold door to the study (Vault I) — the only gold in the room ---------- */
+  /* ---------- the gold door to the study (Vault I) â€” the only gold in the room ---------- */
   const door = new THREE.Group(); door.position.set(-1.5, 0, -3.93); scene.add(door);
   // a gold that reads in daylight (the vault's metal gold needs candlelight to show)
   const brassPatina = canvasTex(256,256,(g,w,h)=>{
@@ -176,13 +175,10 @@ export function buildGallery(ctx) {
   B(2.3, 3.1, 0.08, mats.woodDark, 0, 1.55, 3.95);
   B(0.18, 0.05, 0.05, M.iron, 0.9, 1.15, 3.89);
   const mat = B(1.1, 0.02, 0.6, new THREE.MeshStandardMaterial({ color: 0x6d5236, roughness: 1 }), 0, 0.01, 3.5); mat.raycast = () => {};
-  // the stone's place: a little shelf by the door with a clean oval where it sits
-  B(0.5, 0.04, 0.18, mats.wood, 1.75, 1.15, 3.86);
-  const mark = new THREE.Mesh(new THREE.CircleGeometry(0.07, 18), mats.stoneMark); mark.scale.set(1.4, 1, 1);
-  mark.rotation.x = -PI / 2; mark.position.set(1.75, 1.173, 3.84); scene.add(mark);
-  const stoneHit = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.3), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
-  stoneHit.position.set(1.75, 1.2, 3.82); scene.add(stoneHit);
-  tap(stoneHit, 'gsay', 'Where the stone lives', { say: 'stone', stand: [1.5, 2.9], look: [1.75, 1.15, 3.86] });
+  const passage = buildRockPassage(ctx, mats);
+  const stoneHit = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.42, 0.52), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+  stoneHit.position.set(1.75, 1.24, 3.76); scene.add(stoneHit);
+  tap(stoneHit, 'grock', 'The Rock');
 
   /* ---------- the window: snow, a path, and (after the game) footprints ---------- */
   function drawWindow(prints) {
@@ -367,7 +363,7 @@ export function buildGallery(ctx) {
     const pic = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 }));
     pic.position.z = 0.004; g.add(pic);
     if (bk.sketch) {   // a paper tag on a string: "Being drawn."
-      const tagTex = canvasTex(400, 96, (c, cw, ch) => { c.fillStyle = '#f4ecd8'; c.fillRect(0, 0, cw, ch); c.fillStyle = '#3a2c1c'; c.font = 'italic 46px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Vol. ' + bk.key.slice(1) + ' · planned', cw / 2, ch / 2); });
+      const tagTex = canvasTex(400, 96, (c, cw, ch) => { c.fillStyle = '#f4ecd8'; c.fillRect(0, 0, cw, ch); c.fillStyle = '#3a2c1c'; c.font = 'italic 46px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Vol. ' + bk.key.slice(1) + ' Â· planned', cw / 2, ch / 2); });
       const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.15), new THREE.MeshStandardMaterial({ map: tagTex, roughness: 0.9 }));
       tag.position.set(0, -h / 2 - 0.2, 0.006); tag.rotation.z = -0.05; g.add(tag);
     }
@@ -377,7 +373,7 @@ export function buildGallery(ctx) {
     }
     const hit = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, h + 0.5, 0.1), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     hit.position.set(0, -0.1, 0.04); g.add(hit);
-    tap(hit, 'gframe', bk.kicker.split(' · ')[0] === 'THE GIFT EDITION' ? 'The Gift Edition' : bk.kicker.replace(/ · .*/, ''), { idx: i, stand: [-2.05, bk.z], look: [-3.95, 1.6, bk.z] });
+    tap(hit, 'gframe', bk.kicker.split(' Â· ')[0] === 'THE GIFT EDITION' ? 'The Gift Edition' : bk.kicker.replace(/ Â· .*/, ''), { idx: i, stand: [-2.05, bk.z], look: [-3.95, 1.6, bk.z] });
     frames.push(hit);
   });
 
@@ -506,6 +502,7 @@ export function buildGallery(ctx) {
   css.textContent = `
     body.ps-gallery #studyCount { display: none !important; }
     #gHud[hidden] { display: none; }
+    body.ps-rock-visit :is(#gHud,#brand,#fwdBtn,#caption,#hint,#slowBar) { visibility:hidden; }
     #gHud { position: fixed; top: 58px; left: 12px; z-index: 12; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
     #gHud button { pointer-events: auto; font: 600 13px/1 Georgia, serif; letter-spacing: .04em; color: #f3e6c8; background: rgba(18,22,30,.72);
       border: 1px solid rgba(246,178,60,.55); border-radius: 999px; padding: 10px 14px; min-height: 40px; cursor: pointer; }
@@ -585,7 +582,7 @@ export function buildGallery(ctx) {
   const renderScraps = () => {
     bScraps.textContent = '';
     bScraps.append('Scraps ', el('b', null, String(st.found.length)), ' of 4');
-    if (st.gridSolved) { bScraps.textContent = st.done ? 'The path ✓' : 'The grid ✓ · now the clock'; }
+    if (st.gridSolved) { bScraps.textContent = st.done ? 'The path âœ“' : 'The grid âœ“ Â· now the clock'; }
   };
   renderScraps();
 
@@ -597,13 +594,13 @@ export function buildGallery(ctx) {
     const r = SCRAPS.indexOf(s);
     const n = st.found.length;
     const btns = n === 4 ? [{ text: 'Put them together', gold: true, fn: openGrid }, { text: 'Later', fn: close }] : [{ text: 'Keep looking', fn: close }];
-    card('A SCRAP · ' + n + ' OF 4 FOUND', null, [el('p', 'g-row', ROW_TEXT(r)), s.line, ...(n < 4 ? [el('p', 'g-note', (4 - n) + (4 - n === 1 ? ' more is' : ' more are') + ' somewhere in this room.')] : [])], btns);
+    card('A SCRAP Â· ' + n + ' OF 4 FOUND', null, [el('p', 'g-row', ROW_TEXT(r)), s.line, ...(n < 4 ? [el('p', 'g-note', (4 - n) + (4 - n === 1 ? ' more is' : ' more are') + ' somewhere in this room.')] : [])], btns);
     if (id === 'floor') { ball.visible = false; ballHit.raycast = () => {}; }
   }
   function openScrapsCard() {
     if (st.found.length === 4) { openGrid(); return; }
     const rows = [0, 1, 2, 3].map((r) => el('p', 'g-row', st.found.includes(SCRAPS[r].id) ? ROW_TEXT(r) : '?  ?  ?  ?'));
-    card('YOUR SCRAPS · ' + st.found.length + ' OF 4', null, [...rows, el('p', 'g-note', 'Four rows of a small grid. The Keeper drops things. Look around the room.')]);
+    card('YOUR SCRAPS Â· ' + st.found.length + ' OF 4', null, [...rows, el('p', 'g-note', 'Four rows of a small grid. The Keeper drops things. Look around the room.')]);
   }
 
   /* ---------- the grid ---------- */
@@ -643,7 +640,7 @@ export function buildGallery(ctx) {
     let hh = 12, mm = 0, misses = 0;
     const t = el('div', 't', ''); const msg = el('p', 'g-msg', '');
     const show = () => { t.textContent = hh + ':' + String(mm).padStart(2, '0'); drawFace(hh, mm); };
-    const col = (up, dn) => { const c = el('div', 'col'); const a = el('button', null, '+'), b = el('button', null, '−'); a.type = b.type = 'button'; a.addEventListener('click', up); b.addEventListener('click', dn); c.append(a, b); return c; };
+    const col = (up, dn) => { const c = el('div', 'col'); const a = el('button', null, '+'), b = el('button', null, 'âˆ’'); a.type = b.type = 'button'; a.addEventListener('click', up); b.addEventListener('click', dn); c.append(a, b); return c; };
     const wrap = el('div', 'g-clock');
     wrap.append(col(() => { hh = hh % 12 + 1; show(); }, () => { hh = (hh + 10) % 12 + 1; show(); }), t,
       col(() => { mm = (mm + 15) % 60; show(); }, () => { mm = (mm + 45) % 60; show(); }));
@@ -686,7 +683,7 @@ export function buildGallery(ctx) {
     g.beginPath(); g.moveTo(200, 980); g.lineTo(270, 1060); g.lineTo(410, 870); g.stroke();
     g.fillStyle = '#2b2218'; g.textAlign = 'center'; g.font = 'italic 46px Georgia, serif';
     g.fillText('Slow down here.', 300, 1230); g.fillText('This is the good part.', 300, 1300);
-    g.font = '30px Georgia, serif'; g.fillStyle = '#6b4d1f'; g.fillText('— the Keeper', 300, 1380);
+    g.font = '30px Georgia, serif'; g.fillStyle = '#6b4d1f'; g.fillText('â€” the Keeper', 300, 1380);
     g.font = '28px Georgia, serif'; g.fillText('puzzlesecret.com', 300, 1700);
     bookmarkCanvas = c;
     try { bookmarkURL = c.toDataURL('image/png'); } catch (e) { bookmarkURL = ''; }
@@ -703,7 +700,7 @@ export function buildGallery(ctx) {
         if (!blob) { fallback(); return; }
         try {
           const file = new File([blob], 'the-keepers-bookmark.png', { type: 'image/png' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'The Keeper’s bookmark' }).catch(() => {}); return; }
+          if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: 'The Keeperâ€™s bookmark' }).catch(() => {}); return; }
         } catch (e) { /* no File or share: download instead */ }
         const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = 'the-keepers-bookmark.png';
         document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
@@ -718,11 +715,12 @@ export function buildGallery(ctx) {
   /* ---------- the room list (walk to anything without steering) ---------- */
   const LIST = [
     ['Your gift', () => act('ggift', parcelHit)], ['Door to Vault I', () => act('gdoor', doorHit)],
-    ['The window', () => act('gwindow', win)], ['The couch' + (st.found.includes('couch') ? ' ✓' : ''), () => act('gcouch', cparts[0])],
-    ['The kettle' + (st.found.includes('kettle') ? ' ✓' : ''), () => act('gkettle', kettleHit)], ['The chair' + (st.found.includes('chair') ? ' ✓' : ''), () => act('gchair', chParts[0])],
+    ['The window', () => act('gwindow', win)], ['The couch' + (st.found.includes('couch') ? ' âœ“' : ''), () => act('gcouch', cparts[0])],
+    ['The kettle' + (st.found.includes('kettle') ? ' âœ“' : ''), () => act('gkettle', kettleHit)], ['The chair' + (st.found.includes('chair') ? ' âœ“' : ''), () => act('gchair', chParts[0])],
     ['Volume 1', () => act('gframe', frames[1])], ['The shelf pictures', () => act('gframe', frames[2])],
     ['The clock (hall)', () => act('gclock', clockParts[0])], ['The radio (hall)', () => act('gradio', radio)],
-    ['By the front door', () => (st.found.includes('floor') ? act('gsay', stoneHit) : act('gscrap', ballHit))],
+    ['The Rock', () => act('grock', stoneHit)],
+    ['By the front door', () => st.found.includes('floor') ? ctx.showCaption('You found the scrap by the front door.', 4500) : act('gscrap', ballHit)],
     ['The bookcase', () => act('gsay', bcParts[0])], ['The upside-down book', () => act('gupside', upside)],
     ['The pencil tin', () => act('gsay', lbParts[0])], ['The stove', () => act('gsay', sParts[0])],
     ['Leave the house', () => card('LEAVE THE HOUSE?', null, ['Back to the front page. Your scraps and the path stay as they are.'], [{ text: 'Leave', gold: true, fn: () => { close(); ctx.activate('exit', ctx.exitHit); } }, { text: 'Stay', fn: close }])],
@@ -730,9 +728,9 @@ export function buildGallery(ctx) {
   function openList() {
     const g = el('div', 'g-list');
     LIST.forEach(([label, fn]) => {
-      const fixed = label.replace(/ ✓$/, '');
+      const fixed = label.replace(/ âœ“$/, '');
       const done = (fixed === 'The couch' && st.found.includes('couch')) || (fixed === 'The kettle' && st.found.includes('kettle')) || (fixed === 'The chair' && st.found.includes('chair')) || (fixed === 'By the front door' && st.found.includes('floor'));
-      const b = el('button', null, fixed + (done ? ' ✓' : '')); b.type = 'button'; b.addEventListener('click', () => { close(); fn(); }); g.appendChild(b);
+      const b = el('button', null, fixed + (done ? ' âœ“' : '')); b.type = 'button'; b.addEventListener('click', () => { close(); fn(); }); g.appendChild(b);
     });
     card('THE FRONT ROOM', null, [g]);
   }
@@ -746,10 +744,22 @@ export function buildGallery(ctx) {
   function act(kind, obj) {
     const u = (obj && obj.userData) || {};
     switch (kind) {
+      case 'grock': {
+        if (!window.PSRock) { ctx.showCaption('The clock could not load. Please reload the Gallery.', 6000); return true; }
+        // Inspecting the shelf from the list works even across the couch or the rug.
+        onChair = false; ctx.setEye(1.6); ctx.moveTo(1.73, 3.08);
+        player.pos.copy(player.target); look(1.75, 1.16, 3.76);
+        document.body.classList.add('ps-rock-visit');
+        window.PSRock.open({
+          lift: passage.lift, openStairs: passage.openStairs, descend: passage.descend, returnToRoom: passage.returnToRoom,
+          close: () => { passage.close(); document.body.classList.remove('ps-rock-visit'); bList.focus({ preventScroll: true }); }
+        });
+        return true;
+      }
       case 'gdoor': ctx.goThen(-1.5, -2.95, () => { look(-1.5, 1.4, -3.9); ctx.openWordbox('first'); }); return true;
       case 'ggift': go(u, () => ctx.openReward('G')); return true;
       case 'gwindow': go(u, () => ctx.showCaption(st.done ? SAY.windowAfter : SAY.window, 6500)); return true;
-      case 'gsay': go(u, () => ctx.showCaption(SAY[u.say] || '…', 6000)); return true;
+      case 'gsay': go(u, () => ctx.showCaption(SAY[u.say] || 'â€¦', 6000)); return true;
       case 'gupside': go(u, () => { ctx.playThud(); card('INSIDE THE UPSIDE-DOWN BOOK', null, ['A slip of paper, in his hand:', el('p', 'g-title', nextHint() || 'Things in this house are not where they belong. Try the things I use every day.')]); }); return true;
       case 'gkettle': go(u, () => { if (st.found.includes('kettle')) ctx.showCaption(SAY.kettle, 5000); else { ctx.showCaption(SAY.kettle, 4000); foundScrap('kettle'); } }); return true;
       case 'gcouch': go(u, () => { if (st.found.includes('couch')) ctx.showCaption(SAY.couch, 5000); else { ctx.showCaption(SAY.couch, 4000); foundScrap('couch'); } }); return true;
@@ -789,6 +799,7 @@ export function buildGallery(ctx) {
   /* ---------- per frame ---------- */
   let hintAt = 0;
   function tick(dt, t) {
+    passage.tick();
     if (onChair && Math.hypot(player.pos.x - CHAIR.x, player.pos.z - CHAIR.z) > 0.35) { onChair = false; ctx.setEye(1.6); ctx.showCaption(SAY.chairDown, 2500); if (!st.found.includes('chair')) { tickMat.map = sheetTex; tickMat.needsUpdate = true; } }
     if (hud.hidden && ctx.isEntered && ctx.isEntered()) hud.hidden = false;
     parcelGlow.material.opacity = 0.25 + 0.15 * Math.sin(t * 2.2);
@@ -812,7 +823,7 @@ export function buildGallery(ctx) {
   return {
     activate: (kind, obj) => act(kind, obj),
     tick,
-    overlayOpen: () => !overlay.hidden,
+    overlayOpen: () => !overlay.hidden || !!window.PSRock?.isOpen(),
     arrival: SAY.arrival,
   };
 }

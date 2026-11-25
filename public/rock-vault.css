@@ -1,0 +1,50 @@
+.rk-dialog {
+  --rk-paper: #eee4d2; --rk-gold: #ead0a0;
+  box-sizing: border-box; inline-size: min(31rem, calc(100% - 1.5rem));
+  max-block-size: calc(100dvh - 2rem); padding: 0; border: 1px solid #aa8961;
+  border-radius: .65rem; background: #211d18; color: var(--rk-paper);
+  box-shadow: 0 15px 65px #000a, inset 0 0 0 4px #2f2820;
+  font: 1rem/1.45 Georgia, serif; color-scheme: dark; overflow: auto;
+  overscroll-behavior: contain; transition: opacity .18s ease;
+}
+.rk-dialog::backdrop {background: rgb(12 10 8 / 48%);}
+.rk-dialog.rk-moving, .rk-dialog.rk-moving::backdrop {opacity:0;}
+.rk-panel {padding: clamp(1.1rem,4vw,1.85rem);text-align: start;}
+.rk-dialog h2,.rk-dialog h3,.rk-dialog p {margin:0;}
+.rk-dialog h2 {font: 500 clamp(1.7rem,6vw,2.5rem)/1.1 Georgia,serif;color:#fff0d2;}
+.rk-dialog h2:focus {outline:none;}
+.rk-dialog .rk-eyebrow {margin:0 0 .5rem; font: 600 .72rem/1.2 Georgia,serif;letter-spacing:.16em;text-transform:uppercase;color:#e6bf80;}
+.rk-dialog .rk-copy {margin:.65rem 0 .85rem;}
+.rk-actions {display:flex;gap:.6rem;flex-wrap:wrap;margin-block-start:1rem;}
+.rk-dialog button,.rk-dialog input,.rk-dialog select,.gallery-cabin__rock {
+  min-height:44px;box-sizing:border-box;border:1px solid #8d795d;border-radius:4px;
+  background:#312c23;color:#fff0d2;padding:.5rem .8rem;font:inherit;
+}
+.rk-dialog button,.gallery-cabin__rock {cursor:pointer;}
+.rk-dialog button:disabled {opacity:.65;cursor:wait;}
+.rk-dialog .rk-primary {background:#e9c990;color:#261c10;border-color:#f6ddb0;font-weight:bold;}
+.rk-dialog :is(button,select,input):focus-visible,.gallery-cabin__rock:focus-visible {outline:3px solid #fff0c2;outline-offset:3px;}
+.rk-instrument {display:flex;flex-direction:column;align-items:center;gap:.4rem;}
+.rk-instrument output {font: bold 1.1rem/1.15 Georgia,serif; font-variant-numeric:tabular-nums; color:var(--rk-gold);}
+.rk-face {position:relative;width:clamp(7rem,23dvh,12.75rem);aspect-ratio:1;border:6px ridge #b18c55;border-radius:50%;background:radial-gradient(ellipse at 40% 28%,#f6e7c7,#d5b788 85%);box-shadow:inset 0 0 0 2px #705437,0 3px 8px #0008;color:#322518;}
+.rk-face:before {content:'';position:absolute;inset:4%;border-radius:50%;background:repeating-conic-gradient(#645134 0deg 1deg,transparent 1deg 6deg);mask-image:radial-gradient(transparent 65%,#000 66%);}
+.rk-numeral {position:absolute;transform:translate(-50%,-50%);font:bold clamp(.72rem,2.35dvh,1.16rem)/1 Georgia,serif;}
+.rk-hand {display:block;position:absolute;bottom:50%;left:50%;border-radius:99px 99px 0 0;transform-origin:50% 100%;}
+.rk-short {height:23%;width:6px;margin-left:-3px;background:#392819;}
+.rk-long {height:35%;width:3px;margin-left:-1.5px;background:#151813;}
+.rk-pin {position:absolute;inset:50% auto auto 50%;width:11px;height:11px;transform:translate(-50%,-50%);border-radius:50%;background:#ae7738;border:2px solid #544026;}
+.rk-controls {display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:.65rem;}
+.rk-dialog label {display:flex;flex-direction:column;gap:.2rem;color:var(--rk-gold);}
+.rk-dialog select,.rk-dialog input {width:100%;color:#fff8e7;}
+.rk-dialog .rk-status:not(:empty){margin-top:.7rem;}
+.rk-register {border-block:1px solid #685944;margin:1rem 0;padding:.85rem 0;}
+.rk-register h3 {font:500 1.35rem/1.15 Georgia,serif; color:var(--rk-gold);margin-bottom:.35rem;}
+.rk-register form {display:flex;align-items:end;flex-wrap:wrap;gap:.6rem;margin-top:.55rem;}
+.rk-register input {max-width:7rem;text-transform:uppercase;}
+.rk-dialog[data-stage="stairs"],.rk-dialog[data-stage="vault"] {margin:auto auto max(1rem,env(safe-area-inset-bottom));}
+.rk-dialog[data-stage="stairs"]::backdrop,.rk-dialog[data-stage="vault"]::backdrop {background:rgb(10 8 6 / 12%);}
+@media(prefers-reduced-motion:reduce){.rk-dialog{transition:none;}}
+.rk-face {touch-action:none;cursor:grab;}
+.rk-face:active {cursor:grabbing;}
+.rk-dialog .rk-dial-help {margin-top:.4rem;text-align:center;font-size:.91rem;}
+.rk-dialog a {color:#f1d39a;}

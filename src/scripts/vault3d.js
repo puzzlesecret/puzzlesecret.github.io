@@ -126,13 +126,7 @@ const FROM_DOOR = qs.get('from') === 'door';
    never Vault I: /api/unlock answers it with act 'G'. A browser holding only that gift and no book word
    is a Gallery visitor on every load, in every tab. Its far door is the door to Vault I: a word from
    inside a book (or any true book word) turns this browser into an ordinary visitor and walks it in. */
-const GALLERY = (() => {
-  try {
-    const r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {};
-    const v = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {};
-    return !['I', 'II', 'III', 'IV'].some((a) => r[a] || v[a]) && !!r.G;
-  } catch (e) { return false; }
-})();
+const GALLERY = window.__psGallery === true;
 let galleryRoom = null;   // set near the end of this file when GALLERY (declared early: activate/overlayOpen read it)
 const GALLERY_ENTRY = 'The front room. Your fifty are on the end table. My study is through that door. It wants a word from inside a book.';
 const GUEST = (() => {
