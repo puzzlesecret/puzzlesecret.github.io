@@ -131,18 +131,24 @@ for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
 const vaultMarkup = fs.readFileSync('src/pages/vault.astro', 'utf8');
 const defaultHint = vaultMarkup.match(/data-default-hint="([^"]+)"/)[1];
 const fourthHint = vaultMarkup.match(/data-fourth-hint="([^"]+)"/)[1];
+const fourthBookLabel = vaultMarkup.match(/data-fourth-book-label="([^"]+)"/)[1];
+const fourthBookUrl = vaultMarkup.match(/data-fourth-book-url="([^"]+)"/)[1];
 assert.match(fourthHint, /only in the original Volume 1/);
 assert.match(fourthHint, /not included in the Large Print Gift Edition/);
 for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
   const text = fs.readFileSync(file, 'utf8');
   const start = text.indexOf('function setWordboxHint(');
   const end = text.indexOf('function closeWordbox(', start);
-  const nodes = new Map(), focusedHints = [];
+  const nodes = new Map(), focusedHints = [], focusedLinkCounts = [];
   const node = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
-  node('wbHint').dataset = { defaultHint, fourthHint };
-  node('wbInput').focus = () => focusedHints.push(node('wbHint').textContent);
+  const hint = node('wbHint');
+  hint.children = []; let hintText = '';
+  Object.defineProperty(hint,'textContent',{get(){ return hintText + this.children.map(c=>c.textContent).join(''); },set(v){ hintText = v; this.children = []; }});
+  hint.appendChild = child => { hint.children.push(child); };
+  hint.dataset = { defaultHint, fourthHint, fourthBookLabel, fourthBookUrl };
+  node('wbInput').focus = () => { focusedHints.push(hint.textContent); focusedLinkCounts.push(hint.children.filter(c=>c.className === 'wb-book').length); };
   const context = vm.createContext({
-    document: { getElementById: node }, $: node, window: {},
+    document: { getElementById: node, createElement: element, createTextNode: text => ({textContent:text}) }, $: node, window: {},
     wbMsg: node('wbMsg'), wordboxEl: node('wordbox'), wbInput: node('wbInput'),
     DOORS: Object.fromEntries(['first','door2','door3','fourth'].map(k => [k,{kicker:k,vo:k}])),
     VO: Object.fromEntries(['first','door2','door3','fourth'].map(k => [k,{text:'unchanged clue '+k}])),
@@ -150,12 +156,19 @@ for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
     PS_EV: { WORDBOX_OPEN: 'wordbox.open' }, GALLERY:false, GUEST:null,
   });
   vm.runInContext("let wbTarget=null,wbWord='',wbBusy=false;" + text.slice(start,end),context);
-  for (const key of ['fourth','first','fourth','door2','fourth','door3']) {
+  for (const key of ['fourth','fourth','first','fourth','door2','fourth','door3']) {
     vm.runInContext('openWordbox('+JSON.stringify(key)+')',context);
     const expected = key === 'fourth' ? fourthHint : defaultHint;
     assert.equal(node('wbHint').textContent,expected,file+': correct door guidance');
     assert.equal(focusedHints.at(-1),expected,file+': guidance exists before input focus');
     assert.equal(node('wbLine').textContent,'unchanged clue '+key,file+': original clue preserved');
+    const links = hint.children.filter(c=>c.className === 'wb-book');
+    assert.equal(links.length,key === 'fourth'?1:0,file+': one fourth-book link, none at other doors');
+    assert.equal(focusedLinkCounts.at(-1),key === 'fourth'?1:0,file+': link state exists before focus');
+    if (key === 'fourth') {
+      assert.equal(links[0].textContent,fourthBookLabel); assert.equal(links[0].href,'https://www.amazon.com/dp/B0HB9K8PXC');
+      assert.equal(links[0].target,'_blank'); assert.equal(links[0].rel,'noopener noreferrer');
+    }
   }
   console.log('PASS '+(file.includes('painted')?'painted':'3D')+' fourth-lock book note, all other doors reset, focus order, original clues');
 }
