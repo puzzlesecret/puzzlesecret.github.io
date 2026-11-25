@@ -1114,10 +1114,12 @@
     const rock = document.createElement('button');
     rock.type = 'button'; rock.className = 'gallery-cabin__rock'; rock.textContent = 'Examine The Rock';
     const showPassage = (scene) => { wrap.dataset.passage = scene; };
-    const restoreCabin = () => { delete wrap.dataset.passage; };
+    const restoreCabin = () => { delete wrap.dataset.passage; delete wrap.dataset.lighting; };
     rock.addEventListener('click', () => window.PSRock.open({
       unlock: () => showPassage('hatch'),
-      descend: () => showPassage('vault'),
+      painted: true,
+      descend: () => { wrap.dataset.lighting='arriving'; showPassage('landing'); },
+      walkTo: (place) => { delete wrap.dataset.lighting; showPassage(place); },
       returnToGallery: restoreCabin,
       close: restoreCabin,
     }));

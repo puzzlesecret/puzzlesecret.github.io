@@ -275,13 +275,28 @@
   }
   .gallery-cabin__actions a:focus-visible { outline: 3px solid white; outline-offset: 3px; }
   .gallery-cabin[data-passage="hatch"] { background-image: url('/art/gallery-open-hatch.webp'); }
-  .gallery-cabin[data-passage="vault"] { background-image: url('/art/gallery-below.webp'); }
+  .gallery-cabin[data-passage="landing"] { background-image: url('/art/keepers/room-landing.webp'); }
+  .gallery-cabin[data-passage="west"] { background-image: url('/art/keepers/room-west.webp'); }
+  .gallery-cabin[data-passage="east"] { background-image: url('/art/keepers/room-east.webp'); }
+  .gallery-cabin[data-passage="bench"] { background-image: url('/art/keepers/room-bench.webp'); }
+  .gallery-cabin[data-passage="desk"] { background-image: url('/art/keepers/room-desk.webp'); }
+  .gallery-cabin[data-lighting]::before,.gallery-cabin[data-lighting]::after {
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:0;
+    background:linear-gradient(90deg,#080603eb 25%,#080603c9 44%,transparent 62%);
+    animation:rk-lamplight 1.2s ease-out both;
+  }
+  .gallery-cabin[data-lighting]::after { transform:scaleX(-1); animation-delay:.35s; }
+  @keyframes rk-lamplight { from {opacity:1;} to {opacity:0;} }
+  @media(prefers-reduced-motion:reduce) {
+    .gallery-cabin[data-lighting]::before,.gallery-cabin[data-lighting]::after { animation:none; }
+  }
   .gallery-cabin[data-passage] { background-color: #211c17; }
   .gallery-cabin[data-passage] .gallery-cabin__card { visibility: hidden; }
   @media (max-width: 700px) {
     .gallery-cabin { display: block; padding: 0; background-size: auto max(270px, 40vh); background-position: center top; background-color: #211c17; }
     .gallery-cabin__card { width: 100%; margin: max(250px, 37vh) 0 0; border: 0; border-top: 1px solid #806e53; padding: 24px max(24px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)); background: #211c17; }
     .gallery-cabin[data-passage] { background-size: auto max(56dvh, 320px); }
+    .gallery-cabin[data-passage]:not([data-passage="hatch"]) { background-size:cover; background-position:center; }
   }
 </style>
 

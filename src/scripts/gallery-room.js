@@ -751,7 +751,7 @@ export function buildGallery(ctx) {
         player.pos.copy(player.target); look(1.75, 1.16, 3.76);
         document.body.classList.add('ps-rock-visit');
         window.PSRock.open({
-          lift: passage.lift, openStairs: passage.openStairs, descend: passage.descend, returnToRoom: passage.returnToRoom,
+          lift: passage.lift, openStairs: passage.openStairs, descend: passage.descend, walkTo: passage.walkTo, focusItem: passage.focusItem, returnToRoom: passage.returnToRoom,
           close: () => { passage.close(); document.body.classList.remove('ps-rock-visit'); bList.focus({ preventScroll: true }); }
         });
         return true;
@@ -814,13 +814,14 @@ export function buildGallery(ctx) {
     }
     // a quiet hint after three minutes without progress, naming the next place
     const now = Date.now();
-    if (!st.done && !(ctx.overlayOpen ? ctx.overlayOpen() : !overlay.hidden) && now - lastProgress > 180000 && now - hintAt > 180000) {
+    if (!passage.below && !st.done && !(ctx.overlayOpen ? ctx.overlayOpen() : !overlay.hidden) && now - lastProgress > 180000 && now - hintAt > 180000) {
       hintAt = now;
       ctx.showCaption(nextHint(), 7000);
     }
   }
 
   return {
+    get below(){return passage.below;},
     activate: (kind, obj) => act(kind, obj),
     tick,
     overlayOpen: () => !overlay.hidden || !!window.PSRock?.isOpen(),

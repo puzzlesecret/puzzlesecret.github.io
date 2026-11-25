@@ -2,6 +2,14 @@
   'use strict';
   let dialog, panel, hooks, previousFocus, triggerStage, busy = false, visit = 0;
   let hour, minute, downstairs, record, waitingForLatch = false;
+  let dock, station = 'landing', roomFocus, pendingSignature;
+  const stations = {
+    landing: {name:'The stair landing', items:[]},
+    west: {name:'West portrait wall', items:['k1','k2','k3','k4']},
+    east: {name:'East portrait wall', items:['k5','k6','k7']},
+    bench: {name:'The workbench', items:['disc','strip','box']},
+    desk: {name:'The writing desk', items:['register']}
+  };
   const node = (tag, text, cls) => {
     const n = document.createElement(tag);
     if (text != null) n.textContent = text;
@@ -58,7 +66,7 @@
   function leave() {
     if (busy && !waitingForLatch) return;
     waitingForLatch = false;
-    if (downstairs) { ascend(); return; }
+    if (downstairs) { roam(); return; }
     visit++;
     dialog.close();
     hooks.close?.();
@@ -69,7 +77,11 @@
     if (busy) return;
     busy = true;
     try { await transition(hooks.returnToGallery || hooks.returnToRoom); }
-    finally { downstairs = false; busy = false; leave(); }
+    finally {
+      downstairs = false;
+      document.body.classList.remove('rk-downstairs');
+      dock?.remove(); dock = null; busy = false; leave();
+    }
   }
   function stone() {
     page('stone','The Keeper’s shelf','The Rock','A smooth grey stone sits in a hollow worn to fit it. There is just room to get your fingers underneath.');
@@ -174,11 +186,14 @@
     actions(set,button('Back to the Gallery',leave));
   }
   function stairs() {
-    page('stairs','Beneath the Gallery','The floor gives way','A section of floor swings up. Stone steps lead down into a small room. Something brass catches the light at the foot of the stairs.');
+    page('stairs','Beneath the Gallery','The floor gives way','Stone steps disappear below the floorboards. Far below, a wick catches.');
     actions(button('Descend the stairs',async()=>{
       if(busy)return;
       busy=true;
-      try {await transition(hooks.descend);downstairs=true;vault();}
+      try {
+        await transition(hooks.descend); downstairs=true; station='landing'; roomFocus=null;
+        document.body.classList.add('rk-downstairs'); roam();
+      }
       finally{busy=false;}
     },true),button('Stay in the Gallery',leave));
   }
@@ -192,15 +207,101 @@
     document.body.append(a);a.click();a.remove();
     if(localUrl)setTimeout(()=>URL.revokeObjectURL(localUrl),60000);
   }
-  function viewRoom() {
-    page('look','Beneath The Rock','The room below');
-    actions(button('Open the register',vault,true),button('Return to the Gallery',ascend));
+  function entry(id) {
+    const catalog = window.PSCellarCatalog;
+    return catalog?.keepers.find(item=>item.id===id) || catalog?.objects.find(item=>item.id===id);
+  }
+  function roomSheet() {
+    if (!dialog.open) {
+      roomFocus=document.activeElement;
+      dialog.showModal();
+      if(dock) dock.hidden=true;
+    }
+  }
+  function roam(focusControls=true) {
+    triggerStage='room';
+    if(dialog.open) dialog.close();
+    if(!dock){
+      dock=node('section',null,'rk-dock');
+      dock.setAttribute('aria-label','Underground room controls');
+      document.body.append(dock);
+    }
+    dock.hidden=false;
+    const oldControl=(focusControls===false ? document.activeElement : roomFocus)?.dataset?.control;
+    dock.replaceChildren();
+    const heading=node('h2',stations[station].name);
+    const note=node('p', hooks.painted ? 'Choose a place to explore.' : 'Tap the floor to walk. Drag to look around, or use the room guide.');
+    const controls=node('div',null,'rk-dock-actions');
+    const guideButton=button('Room guide',guide); guideButton.dataset.control='guide';
+    controls.append(guideButton);
+    for(const id of stations[station].items){
+      const label=id==='register'?'Open the register':entry(id)?.name;
+      if(!label) continue;
+      const b=button(label,()=>inspect(id)); b.dataset.control=id; controls.append(b);
+    }
+    if(station==='landing'){
+      const up=button('Climb the stairs',askExit); up.dataset.control='stairs'; controls.append(up);
+    }
+    dock.append(heading,note,controls);
+    if(focusControls!==false || oldControl) {
+      (Array.from(controls.children).find(b=>b.dataset.control===oldControl)||guideButton).focus({preventScroll:true});
+    }
+  }
+  function setStation(id) {
+    if(!downstairs || busy || dialog.open || !Object.hasOwn(stations,id) || station===id) return;
+    station=id; roam(false);
+  }
+  function guide() {
+    if(!downstairs || busy) return;
+    roomSheet(); page('guide','Beneath The Rock','Room guide','Where would you like to walk?');
+    const paths=node('div',null,'rk-paths');
+    for(const [id,place] of Object.entries(stations)){
+      paths.append(button(place.name,async()=>{
+        if(busy) return;
+        busy=true;
+        try {await transition(()=>hooks.walkTo?.(id)); station=id; roam();}
+        finally {busy=false;}
+      }));
+    }
+    panel.append(paths); actions(button('Keep exploring',roam));
+  }
+  function askExit() {
+    if(!downstairs || busy) return;
+    roomSheet(); page('exit','The stair landing','Return to the Gallery?','The stairwell will be here when you come back.');
+    actions(button('Climb the stairs',ascend,true),button('Stay downstairs',roam));
+  }
+  function inspect(id) {
+    if(!downstairs || busy) return;
+    if(id==='stairs') {askExit();return;}
+    const place=Object.keys(stations).find(key=>stations[key].items.includes(id));
+    if(!place) return;
+    station=place;
+    roomSheet();
+    if(id==='register') {vault();return;}
+    const item=entry(id);
+    if(!item) {roam();return;}
+    const portrait=Boolean(item.story);
+    function show(reverse=false){
+      page('inspect',portrait?'The portrait wall':'From the workbench',item.name);
+      const art=node('img',null,'rk-inspect-art');
+      art.src=reverse?item.reverseImage:item.image; art.alt=reverse?item.reverseAlt:item.alt;
+      panel.append(art);
+      if(portrait) panel.append(node('p',item.trade+' · '+item.place,'rk-caption'));
+      panel.append(node('p',portrait?item.story:(reverse?item.back:item.front),'rk-copy'));
+      const back=button(portrait?'Step back':'Put it back',roam);
+      if(portrait) actions(back);
+      else {
+        const turn=id==='box' ? (reverse?'Close the case':'Open the case') : (reverse?'Turn it back':'Turn it over');
+        actions(button(turn,()=>show(!reverse),true),back);
+      }
+    }
+    show();
   }
   function vault() {
-    page('vault','The room below','The Keeper’s little vault','“I wondered who would think to lift it.” A bookplate lies beside the register. Take it for a book of your own.');
+    page('vault','The writing desk','The visitors’ register','“I wondered who would think to lift it.” A bookplate lies beside the register. Take it for a book of your own.');
     actions(button('Save my bookplate',prize,true));
     const box=node('section',null,'rk-register');box.setAttribute('aria-label','Solver register');panel.append(box);
-    actions(button('Look at the room',viewRoom),button('Return to the Gallery',ascend));
+    actions(button('Close the register',roam));
     const here=visit;
     const live=()=>dialog.open && here===visit && triggerStage==='vault' && box.isConnected;
     function draw(j,justSigned=false) {
@@ -222,25 +323,37 @@
       const msg=node('p','','rk-status');msg.setAttribute('role','status');
       form.append(label,sign);box.append(node('p','Your signature stays in this browser for up to a year. Save the signed bookplate to keep it.'),form,msg);
       form.addEventListener('submit',async e=>{
-        e.preventDefault();if(sign.disabled)return;
+        e.preventDefault();if(sign.disabled || pendingSignature)return;
         const initials=input.value.toUpperCase();sign.disabled=true;input.disabled=true;msg.textContent='Adding your mark…';
         try{
-          const reply=await api({action:'sign',initials});
+          pendingSignature=api({action:'sign',initials});
+          const reply=await pendingSignature;
+          if(reply.ok && here===visit) record={...record,...reply,signed:true,initials:reply.initials||initials};
           if(!live())return;
-          if(reply.ok){record={...record,...reply,signed:true,initials:reply.initials||initials};draw(record,true);}
+          if(reply.ok) draw(record,true);
           else if(reply.reason==='bad_initials') msg.textContent='Please choose a different set of two or three letters.';
           else if(reply.status===429) msg.textContent='Please wait a little before signing again.';
           else if(reply.status===403) msg.textContent='Reopen The Rock and set the dial again to sign.';
           else msg.textContent='The register could not save your mark. Please try again.';
         }catch{if(live())msg.textContent='The register is out of reach. Try again when you are connected.';}
-        finally{sign.disabled=false;input.disabled=false;}
+        finally{pendingSignature=null;sign.disabled=false;input.disabled=false;}
       });
     }
-    box.append(node('p','Opening the register…'));
-    api().then(j=>{if(live()){if(j.ok)record=j;draw(record || {});}}).catch(()=>{if(live())draw(record || {});});
+    const progress=node('p',pendingSignature?'Finishing your signature…':'Opening the register…');
+    progress.setAttribute('role','status');box.append(progress);
+    async function loadRegister() {
+      if(pendingSignature) await pendingSignature.catch(()=>{});
+      if(!live()) return;
+      try {
+        const latest=await api();
+        if(live() && latest.ok) record=latest;
+      } catch { /* The last known record can still be read offline. */ }
+      if(live()) draw(record || {});
+    }
+    loadRegister();
   }
   function open(callbacks={}) {
-    if(dialog?.open)return;
+    if(dialog?.open || downstairs)return;
     if(!dialog){
       dialog=node('dialog',null,'rk-dialog');dialog.setAttribute('aria-labelledby','rk-heading');
       panel=node('div',null,'rk-panel');dialog.append(panel);document.body.append(dialog);
@@ -252,5 +365,5 @@
     visit++;previousFocus=document.activeElement;hooks=callbacks;hour=12;minute=0;downstairs=false;record={};busy=false;
     dialog.showModal();stone();
   }
-  window.PSRock=Object.freeze({open,isOpen:()=>!!dialog?.open});
+  window.PSRock=Object.freeze({open,inspect,askExit,setStation,dismiss:leave,canWalk:()=>!!downstairs && !busy && !dialog?.open,isOpen:()=>!!dialog?.open});
 })();

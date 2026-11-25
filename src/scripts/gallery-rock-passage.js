@@ -1,3 +1,4 @@
+import { buildUndercroft } from './undercroft-room.js';
 /* The shelf and its concealed stair share the Gallery's world coordinates. The ordinary
    floor keeps its original walk target. Only during the visit do we reveal its cutout. */
 export function buildRockPassage(ctx, mats) {
@@ -30,7 +31,7 @@ export function buildRockPassage(ctx, mats) {
   });
   const dial = new THREE.Mesh(new THREE.CircleGeometry(0.156,40),new THREE.MeshStandardMaterial({map:dialTex,roughness:0.52}));
   dial.rotation.x=-Math.PI/2;dial.position.set(0,0.042,-0.015);shelf.add(dial);
-  const x0=1.50,x1=2.66,z0=-1.12,z1=1.90,cx=(x0+x1)*0.5,depth=2.54;
+  const x0=1.50,x1=2.66,z0=-1.12,z1=1.90,cx=(x0+x1)*0.5,depth=3.18;
   const room=new THREE.Group();room.name='Vault below the Gallery';room.visible=false;scene.add(room);
   const panel=new THREE.Group();panel.name='Concealed floor hatch';panel.position.set(x1,0,0);room.add(panel);
   // UVs in the same frame as the original uninterrupted 8.4 metre floor.
@@ -41,7 +42,7 @@ export function buildRockPassage(ctx, mats) {
     const part=new THREE.Mesh(geo,mats.boards);part.rotation.x=-Math.PI/2;
     part.position.set((left+right)/2-offset,0,(far+near)/2);parent.add(part);
   }
-  let built=false;
+  let built=false, hall;
   function revealGeometry() {
     if(built)return;
     built=true;
@@ -73,52 +74,8 @@ export function buildRockPassage(ctx, mats) {
       seams.setMatrixAt(n,seamPose);
     }
     room.add(seams);
-    const far=-5.64,left=cx-1.67,right=cx+1.67,length=z0-far;
-    shell(right-left+0.28,0.12,length+0.15,dark,cx,-depth-0.065,(z0+far)/2);
-    for(const x of [left,right])shell(0.14,2.45,length,rock,x,-depth+1.225,(z0+far)/2);
-    shell(right-left,2.45,0.14,rock,cx,-depth+1.225,far);
-    for(const x of [(left+x0)/2,(right+x1)/2])shell(x0-left,2.45,0.1,rock,x,-depth+1.225,z0);
-    shell(right-left,0.1,length,dark,cx,-0.065,(z0+far)/2);
-    // Receding dressed stone arches, drawn together as one instanced mesh.
-    const keystones = new THREE.InstancedMesh(new THREE.BoxGeometry(0.44,0.21,0.24),dark,33);
-    const transform=new THREE.Object3D();let idx=0;
-    for(const z of [z0-0.18,-3.48,far+0.12]){
-      for(let j=0;j<11;j++){
-        const a=(j+0.5)*Math.PI/11;
-        transform.position.set(cx+1.57*Math.cos(a),-depth+1.37+0.93*Math.sin(a),z);
-        transform.rotation.z=Math.atan2(0.93*Math.cos(a),-1.57*Math.sin(a));
-        transform.updateMatrix();keystones.setMatrixAt(idx++,transform.matrix);
-      }
-      for(const x of [left+0.1,right-0.1])shell(0.22,1.42,0.24,dark,x,-depth+0.71,z);
-    }
-    room.add(keystones);
-    const lamp=new THREE.MeshStandardMaterial({color:0xffd48d,emissive:0xffbb68,emissiveIntensity:1.35});
-    for(const [x,y,z] of [[x0-0.01,-0.46,0.65],[left+0.13,-1.22,-3.7],[right-0.13,-1.22,-4.75]]){
-      shell(0.12,0.24,0.13,lamp,x,y,z);
-      for(const dy of [-0.14,0.14])shell(0.20,0.045,0.20,M.iron,x,y+dy,z);
-      const glow=new THREE.PointLight(0xffb567,1.7,3.4,2);glow.position.set(x,y,z);room.add(glow);
-    }
-    // The open register and a brass pen on the table at the end of the aisle.
-    const plateMap=canvasTex(640,200,(g,w,h)=>{
-      g.fillStyle='#b99762';g.fillRect(0,0,w,h);g.strokeStyle='#594a35';g.lineWidth=3;
-      g.strokeRect(9,9,w-18,h-18);g.strokeRect(16,16,w-32,h-32);
-      g.fillStyle='#3a2a19';g.font='italic 49px Georgia,serif';g.textAlign='center';
-      g.fillText('For the one who',w/2,83);g.fillText('looked underneath.',w/2,144);
-    });
-    const plate=new THREE.Mesh(new THREE.PlaneGeometry(1.15,0.36),new THREE.MeshStandardMaterial({map:plateMap,roughness:0.6,metalness:0.12}));
-    plate.position.set(cx,-depth+1.48,far+0.075);room.add(plate);
-    const dz=far+0.79;
-    shell(1.48,0.10,0.68,mats.woodDark,cx,-depth+0.83,dz);
-    for(const dx of [-0.61,0.61])for(const dz2 of [-0.23,0.23])shell(0.09,0.83,0.09,mats.woodDark,cx+dx,-depth+0.41,dz+dz2);
-    const paper=canvasTex(512,256,(g,w,h)=>{
-      g.fillStyle='#e0cd9e';g.fillRect(0,0,w,h);g.strokeStyle='#8d784e';g.lineWidth=1;
-      for(const x of [18,274])for(let y=38;y<240;y+=20){g.beginPath();g.moveTo(x,y);g.lineTo(x+214,y);g.stroke();}
-      g.fillStyle='#9a865f';g.fillRect(253,0,5,h);
-    });
-    const bound=shell(0.75,0.065,0.44,mats.woodDark,cx,-depth+0.91,dz);
-    const page=new THREE.Mesh(new THREE.PlaneGeometry(0.70,0.40),new THREE.MeshStandardMaterial({map:paper,roughness:0.95}));
-    page.rotation.x=-Math.PI/2;page.position.copy(bound.position);page.position.y+=0.034;room.add(page);
-    const pen=shell(0.18,0.011,0.013,M.brass,cx+0.48,-depth+0.89,dz+0.10);pen.rotation.y=-0.75;
+    hall=buildUndercroft(ctx, room, cx, depth, mats);
+    hall.light(0,false);
   }
 
   // Each hook resolves once its movement is visible. The dialog can then offer the next action.
@@ -162,8 +119,9 @@ export function buildRockPassage(ctx, mats) {
   function eyeOnStairs(z) {
     return 1.6-depth*THREE.MathUtils.clamp((z1-z)/(z1-z0),0,1);
   }
+  let litAt=null, nearby=null;
   function descend() {
-    below=true;ctx.playCreak();
+    below=true;nearby=null;litAt=performance.now()+1000;ctx.playCreak();
     return animate(2350,t=>{
       // Step squarely onto the first tread before starting down.
       const turn=Math.min(1,t/0.17);
@@ -178,9 +136,11 @@ export function buildRockPassage(ctx, mats) {
     ctx.playCreak();
     // Turn away from the register before climbing. Keeping the landing in view
     // also lets the reader see the underside of the raised hatch on the way out.
-    const [fromYaw,fromPitch]=ctx.getView();
-    await animate(700,t=>pose(cx,bottomZ,eyeOnStairs(bottomZ),
-      fromYaw+(Math.PI-fromYaw)*t,fromPitch+(0.12-fromPitch)*t));
+    player.target.copy(player.pos);
+    const start=player.pos.clone(),[fromYaw,fromPitch]=ctx.getView();
+    const angle=Math.atan2(Math.sin(Math.PI-fromYaw),Math.cos(Math.PI-fromYaw));
+    await animate(1000,t=>pose(start.x+(cx-start.x)*t,start.z+(bottomZ-start.z)*t,eyeOnStairs(bottomZ),
+      fromYaw+angle*t,fromPitch+(0.12-fromPitch)*t));
     await animate(2400,t=>{
       const z=bottomZ+(landingZ-bottomZ)*t;
       const pitch=0.12+0.21*Math.sin(Math.PI*t)-0.25*t;
@@ -195,6 +155,104 @@ export function buildRockPassage(ctx, mats) {
     stone.position.set(0,0.136,-0.015);stone.rotation.z=0;
     opened=false;below=false;lifted=false;backOnLanding=false;
   }
-  return {lift,openStairs,descend,returnToRoom,close,
-    tick(){if(animation)animation.update();}};
+  const {canvas,camera}=ctx;
+  const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
+  let gesture=null;
+  const canWalk=()=>below && !animation && !!window.PSRock?.canWalk?.();
+  function bounded(x,z){
+    const b=hall.bounds;
+    return [THREE.MathUtils.clamp(x,b.left,b.right),THREE.MathUtils.clamp(z,b.far,b.near)];
+  }
+  function destination(x,z){
+    const [bx,bz]=bounded(x,z);
+    player.target.set(bx,0,bz);
+  }
+  function focusItem(id){
+    const anchor=hall?.anchors.get(id);
+    if(!below || !anchor)return;
+    const [x,z]=bounded(anchor.x,anchor.z);
+    const start=player.pos.clone(),[yaw,pitch]=ctx.getView();
+    const dy=Math.atan2(Math.sin(anchor.yaw-yaw),Math.cos(anchor.yaw-yaw));
+    return animate(650,t=>pose(start.x+(x-start.x)*t,start.z+(z-start.z)*t,1.6-depth,
+        yaw+dy*t,pitch+(anchor.pitch-pitch)*t));
+  }
+  const zones={west:'k2',east:'k6',bench:'strip',desk:'register',landing:'stairs'};
+  function walkTo(id){return focusItem(zones[id] || id);}
+  // Compare each wall at all of its portraits, so a reader at the far end
+  // of a wall is still offered the right set of people to inspect.
+  const stationItems={
+    landing:['stairs'],west:['k1','k2','k3','k4'],east:['k5','k6','k7'],
+    bench:['disc','strip','box'],desk:['register']
+  };
+  let lastX=NaN,lastZ=NaN;
+  function updateStation(){
+    if(!canWalk()){lastX=NaN;return;}
+    const {x,z}=player.pos;
+    if (Math.abs(x-lastX)+Math.abs(z-lastZ)<.045)return;
+    lastX=x;lastZ=z;
+    let closest=null, distance=Infinity;
+    for(const [station,ids] of Object.entries(stationItems)){
+      for(const id of ids){
+        const a=hall.anchors.get(id);
+        const d=Math.hypot(x-a.x,z-a.z)-(station===nearby?.16:0);
+        if(d<distance){closest=station;distance=d;}
+      }
+    }
+    nearby=closest;
+    window.PSRock.setStation?.(closest);
+  }
+  function pointAt(event){
+    const r=canvas.getBoundingClientRect();
+    pointer.set((event.clientX-r.left)/r.width*2-1,1-(event.clientY-r.top)/r.height*2);
+    ray.setFromCamera(pointer,camera);
+    return ray.intersectObjects([...hall.targets,hall.ground],false)[0];
+  }
+  canvas.addEventListener('pointerdown',event=>{
+    if(!below)return;
+    event.stopImmediatePropagation();
+    if(!canWalk() || !event.isPrimary || event.button!==0)return;
+    gesture={id:event.pointerId,x:event.clientX,y:event.clientY,view:ctx.getView(),drag:false};
+    canvas.setPointerCapture(event.pointerId);
+  },true);
+  canvas.addEventListener('pointermove',event=>{
+    if(!below)return;
+    event.stopImmediatePropagation();
+    if(!gesture || gesture.id!==event.pointerId || !canWalk())return;
+    const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y;
+    if(Math.hypot(dx,dy)>6)gesture.drag=true;
+    if(gesture.drag)ctx.setView(gesture.view[0]-dx*.005,
+      THREE.MathUtils.clamp(gesture.view[1]-dy*.004,-1.05,.84));
+  },true);
+  canvas.addEventListener('pointercancel',()=>{gesture=null;},true);
+  canvas.addEventListener('pointerup',event=>{
+    if(!below)return;
+    event.stopImmediatePropagation();
+    if(!gesture || event.pointerId!==gesture.id)return;
+    const tapped=!gesture.drag && canWalk();gesture=null;
+    if(!tapped)return;
+    const hit=pointAt(event);
+    if(!hit)return;
+    const id=hit.object.userData.exhibit;
+    if(!id){destination(hit.point.x,hit.point.z);return;}
+    player.target.copy(player.pos);
+    if(id==='stairs')window.PSRock.askExit();
+    else {focusItem(id);window.PSRock.inspect(id);}
+  },true);
+  window.addEventListener('keydown',event=>{
+    if(!below || !canWalk() || event.altKey || event.metaKey || event.ctrlKey)return;
+    const key=event.key.toLowerCase(),[yaw,pitch]=ctx.getView();
+    if(!['w','s','a','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key))return;
+    event.stopImmediatePropagation();event.preventDefault();
+    if(['a','arrowleft','d','arrowright'].includes(key)){
+      ctx.setView(yaw+(['a','arrowleft'].includes(key)?.18:-.18),pitch);return;
+    }
+    const step=['w','arrowup'].includes(key)?.78:-.65;
+    destination(player.target.x-Math.sin(yaw)*step,player.target.z-Math.cos(yaw)*step);
+  },true);
+  return {lift,openStairs,descend,returnToRoom,walkTo,focusItem,close,
+    get below(){return below;},
+    tick(){
+      if(animation)animation.update();
+      if(below && litAt!==null){hall.light((performance.now()-litAt)/1000,reduced);updateStation();}
+    }};
 }
