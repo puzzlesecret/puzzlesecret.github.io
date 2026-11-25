@@ -2663,6 +2663,16 @@ function setWordboxHint(key) {
   const hint = document.getElementById('wbHint');
   if (!hint || !hint.dataset) return;
   hint.textContent = key === 'fourth' ? hint.dataset.fourthHint : hint.dataset.defaultHint;
+  if (key !== 'fourth') return;
+  const label = hint.dataset.fourthBookLabel, url = hint.dataset.fourthBookUrl;
+  const full = hint.dataset.fourthHint, at = label ? full.indexOf(label) : -1;
+  if (at < 0 || !url) return;
+  const link = document.createElement('a');
+  link.textContent = label; link.href = url; link.className = 'wb-book';
+  link.target = '_blank'; link.rel = 'noopener noreferrer';
+  hint.textContent = full.slice(0, at);
+  hint.appendChild(link);
+  hint.appendChild(document.createTextNode(full.slice(at + label.length)));
 }
 let wbOpenFails = 0;                                  // misses since THIS box opened (wbFails drives the VO across the visit)
 function openWordbox(key) {
