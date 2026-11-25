@@ -2,7 +2,7 @@
   'use strict';
   let dialog, panel, hooks, previousFocus, triggerStage, busy = false, visit = 0;
   let hour, minute, downstairs, record, waitingForLatch = false;
-  let dock, station = 'landing', roomFocus;
+  let dock, station = 'landing', roomFocus, pendingSignature;
   const stations = {
     landing: {name:'The stair landing', items:[]},
     west: {name:'West portrait wall', items:['k1','k2','k3','k4']},
@@ -323,22 +323,34 @@
       const msg=node('p','','rk-status');msg.setAttribute('role','status');
       form.append(label,sign);box.append(node('p','Your signature stays in this browser for up to a year. Save the signed bookplate to keep it.'),form,msg);
       form.addEventListener('submit',async e=>{
-        e.preventDefault();if(sign.disabled)return;
+        e.preventDefault();if(sign.disabled || pendingSignature)return;
         const initials=input.value.toUpperCase();sign.disabled=true;input.disabled=true;msg.textContent='Adding your mark…';
         try{
-          const reply=await api({action:'sign',initials});
+          pendingSignature=api({action:'sign',initials});
+          const reply=await pendingSignature;
+          if(reply.ok && here===visit) record={...record,...reply,signed:true,initials:reply.initials||initials};
           if(!live())return;
-          if(reply.ok){record={...record,...reply,signed:true,initials:reply.initials||initials};draw(record,true);}
+          if(reply.ok) draw(record,true);
           else if(reply.reason==='bad_initials') msg.textContent='Please choose a different set of two or three letters.';
           else if(reply.status===429) msg.textContent='Please wait a little before signing again.';
           else if(reply.status===403) msg.textContent='Reopen The Rock and set the dial again to sign.';
           else msg.textContent='The register could not save your mark. Please try again.';
         }catch{if(live())msg.textContent='The register is out of reach. Try again when you are connected.';}
-        finally{sign.disabled=false;input.disabled=false;}
+        finally{pendingSignature=null;sign.disabled=false;input.disabled=false;}
       });
     }
-    box.append(node('p','Opening the register…'));
-    api().then(j=>{if(live()){if(j.ok)record=j;draw(record || {});}}).catch(()=>{if(live())draw(record || {});});
+    const progress=node('p',pendingSignature?'Finishing your signature…':'Opening the register…');
+    progress.setAttribute('role','status');box.append(progress);
+    async function loadRegister() {
+      if(pendingSignature) await pendingSignature.catch(()=>{});
+      if(!live()) return;
+      try {
+        const latest=await api();
+        if(live() && latest.ok) record=latest;
+      } catch { /* The last known record can still be read offline. */ }
+      if(live()) draw(record || {});
+    }
+    loadRegister();
   }
   function open(callbacks={}) {
     if(dialog?.open || downstairs)return;

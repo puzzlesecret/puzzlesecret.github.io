@@ -80,6 +80,16 @@ export function buildUndercroft(ctx, parent, cx, depth, mats) {
     block(felt,x,.948,z,w-.1,.018,d-.1);
   }
   table(2.52,-9.56,1.92,.91);
+  // A small shaded reading lamp lights the instruments from behind. Its warm
+  // pool also distinguishes this work surface from the visitors' register.
+  block(brass,2.77,.978,-9.89,.21,.045,.16);
+  block(brass,2.77,1.20,-9.89,.028,.43,.028);
+  block(brass,2.66,1.40,-9.89,.25,.028,.028);
+  mesh(new T.CylinderGeometry(.053,.17,.14,16,1,true),brass,2.55,1.35,-9.89);
+  const diffuser=new T.MeshStandardMaterial({color:0xffdf9c,emissive:0xffce87,emissiveIntensity:1.4});
+  mesh(new T.CylinderGeometry(.147,.147,.025,16),diffuser,2.55,1.28,-9.89);
+  const readingLight=new T.PointLight(0xffe1ad,2.1,2.8,2);
+  readingLight.position.set(2.55,1.31,-9.76);hull.add(readingLight);
   const disc=mesh(new T.CylinderGeometry(.235,.245,.055,48),brass,1.94,.995,-9.58);
   const dialMap=canvasTex(256,256,(g,w,h)=>{
     g.fillStyle='#c6a269';g.fillRect(0,0,w,h);g.translate(w/2,h/2);g.strokeStyle='#58442a';
