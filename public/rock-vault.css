@@ -49,8 +49,22 @@
 .rk-dialog .rk-dial-help {margin-top:.4rem;text-align:center;font-size:.91rem;}
 .rk-dialog a {color:#f1d39a;}
 
-.rk-dialog[data-stage=look] {margin:auto auto .75rem;}
-.rk-dialog[data-stage=look]::backdrop {background:transparent;}
-.rk-dialog[data-stage=look] h2,.rk-dialog[data-stage=look] .rk-eyebrow {position:absolute;clip-path:inset(50%);}
-.rk-dialog[data-stage=look] .rk-panel {padding:.5rem .85rem;}
-.rk-dialog[data-stage=look] .rk-actions {margin:0;}
+.rk-dock {
+  position:fixed; z-index:180; left:max(1rem,env(safe-area-inset-left));
+  bottom:max(1rem,env(safe-area-inset-bottom)); width:max-content;
+  max-width:min(32rem,calc(100vw - 2rem)); box-sizing:border-box;
+  color:#eee4d2; background:linear-gradient(110deg,#1f1914f7,#282019ef);
+  padding:.85rem 1rem; border:1px solid #997b50; border-radius:.35rem;
+  box-shadow:0 4px 24px #0009; font:1rem/1.35 Georgia,serif;
+}
+.rk-dock h2 { margin:0; font:normal 1.45rem/1.1 Georgia,serif; color:#ffedc8; }
+.rk-dock p { margin:.35rem 0 .55rem; font-size:.93rem; color:#dfd0ba; }
+.rk-dock-actions { display:flex; flex-wrap:wrap; gap:.35rem; }
+.rk-dock button { min-height:44px; padding:.35rem .72rem; border:1px solid #8d795d; border-radius:.25rem;
+  background:#302a23; color:#ffebc5; font:inherit; cursor:pointer; }
+.rk-dock button:focus-visible,.rk-dialog button:focus-visible {outline:2px solid #ffdb91;outline-offset:2px;}
+.rk-paths { display:grid; gap:.45rem; }
+.rk-paths button { text-align:left; }
+.rk-inspect-art { display:block; width:100%; height:clamp(8rem,33dvh,21rem); margin:.85rem 0 .6rem; object-fit:contain; background:#17130f; }
+.rk-dialog .rk-caption {color:#e6bf80; font-style:italic;}
+@media (max-height:430px) { .rk-dock { max-height:40dvh; overflow:auto; } }

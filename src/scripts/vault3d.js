@@ -2429,7 +2429,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 // a third of the old pace too. Trackpads and smooth-scroll mice send many small events, so each event's step is
 // scaled by its size (a standard notch is ~100 px) and a flick can't sprint. Taps, W/S keys and the ▲ button unchanged.
 addEventListener('wheel', (e) => {
-  if (overlayOpen()) return;
+  if (galleryRoom?.below || overlayOpen()) return;
   if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;                 // a sideways trackpad swipe is not a step
   const px = Math.abs(e.deltaY) * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 600 : 1);
   if (!px) return;
@@ -2437,7 +2437,7 @@ addEventListener('wheel', (e) => {
   wheelStep(e.deltaY < 0 ? 0.4 * s : -0.3 * s);
 }, { passive: true });
 addEventListener('keydown', (e) => {
-  if (overlayOpen()) return;   // typing a word must never walk the player
+  if (galleryRoom?.below || overlayOpen()) return;   // typing a word must never walk the player
   if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') stepForward(1.3);
   if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') stepForward(-1.0);
   if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') yaw += 0.22;
@@ -4382,7 +4382,7 @@ if (GALLERY) {
   psRoom = 'the gallery'; psRooms.clear(); psRooms.add('the gallery');
   renderer.toneMappingExposure = 1.05;
   try { galleryRoom = buildGallery({
-    THREE, scene, box, sprite, canvasTex, texLoader, M, interactables, OBSTACLES, floor, player, exitHit,
+    THREE, scene, camera, canvas:renderer.domElement, box, sprite, canvasTex, texLoader, M, interactables, OBSTACLES, floor, player, exitHit,
     paperBall: paperBallFn, paperMat: paperBallMat, EV: PS_EV,
     goThen, moveTo, showCaption, playCreak, playThud, playUnlock, burstConfetti, openReward, openWordbox, psEvent, activate,
     setView: (y, p) => { yaw = y; pitch = p; }, getView: () => [yaw, pitch], setEye: (h) => { eyeTarget = h; },
@@ -4530,7 +4530,7 @@ function tick(dt) {
     const k = REDUCED ? 1 : Math.min(1, dt * 2.4);
     player.pos.lerp(player.target, k);
   }
-  clampPos(player.pos);
+  if (!galleryRoom?.below) clampPos(player.pos);
   if (pendingAction && player.pos.distanceTo(player.target) < 0.18) {
     const a = pendingAction; pendingAction = null; a();
   }

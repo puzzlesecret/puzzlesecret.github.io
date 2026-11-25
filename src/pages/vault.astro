@@ -52,6 +52,7 @@ import Analytics from '@vercel/analytics/astro';
   <!-- Self-hosted fonts (the FAQ promises zero external font tracking - keep it true). -->
   <link rel="stylesheet" href="/fonts/fonts.css" />
   <link rel="stylesheet" href="/rock-vault.css" />
+  <script is:inline defer src="/js/cellar-catalog.js"></script>
   <script is:inline defer src="/js/rock-vault.js"></script>
     <link rel="stylesheet" href="/fonts/readability.css" />
 </head>
@@ -927,7 +928,7 @@ import Analytics from '@vercel/analytics/astro';
     (function () {
       var IDS = ['reward', 'pageview', 'wordbox', 'carvebox', 'desk', 'notebook', 'draft', 'pvGame', 'certPanel', 'lockbox', 'tilecard', 'roundEnd', 'farewell', 'globeView'];
       var el = function (id) { return document.getElementById(id); };
-      var anyOpen = function () { return IDS.some(function (id) { var e = el(id); return e && !e.hidden; }); };
+      var anyOpen = function () { return window.PSRock?.isOpen() || IDS.some(function (id) { var e = el(id); return e && !e.hidden; }); };
       var pushed = false, quiet = 0, warned = false, warnT = null;
       function say(text) {
         var painted = document.body.classList.contains('painted');
@@ -936,6 +937,7 @@ import Analytics from '@vercel/analytics/astro';
         var c = el(painted ? 'pvCap' : 'capText'); if (c) { c.classList.add('show'); setTimeout(function () { c.classList.remove('show'); }, 6500); }
       }
       function closeAll() {
+        if (window.PSRock?.isOpen()) { window.PSRock.dismiss(); return; }
         IDS.forEach(function (id) {
           var e = el(id); if (!e || e.hidden) return;
           if (window.__roomDismiss) { window.__roomDismiss(id); return; }
@@ -953,12 +955,20 @@ import Analytics from '@vercel/analytics/astro';
           var open = anyOpen();
           if (open && !pushed) { pushed = true; history.pushState({ vault: 1, ov: 1 }, ''); }
           else if (!open && pushed) { pushed = false; quiet++; history.back(); setTimeout(function () { quiet = Math.max(0, quiet - 1); }, 400); }
-        }).observe(document.documentElement, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['hidden','open'], subtree: true });
         window.addEventListener('popstate', function () {
           if (quiet > 0) { quiet--; return; }
-          if (anyOpen()) { pushed = false; closeAll(); return; }
+          if (anyOpen()) {
+            pushed = false; closeAll();
+            if (window.PSRock?.isOpen()) { pushed = true; history.pushState({ vault: 1, ov: 1 }, ''); }
+            return;
+          }
           pushed = false;
           if (history.state && history.state.base) {
+            if (window.PSRock?.canWalk()) {
+              history.pushState({ vault: 1, top: 1 }, '');
+              window.PSRock.askExit(); return;
+            }
             if (!warned) {
               warned = true; clearTimeout(warnT); warnT = setTimeout(function () { warned = false; }, 12000);
               history.pushState({ vault: 1, top: 1 }, '');
