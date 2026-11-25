@@ -166,7 +166,8 @@
         }
         else if(j.status===429) msg.textContent='Let the dial rest'+(j.retryAfter?' for '+Math.ceil(j.retryAfter/60)+' min':' a little')+' before trying again.';
         else if(j.status>=500) msg.textContent='The latch is out of reach. Please try again shortly.';
-        else msg.textContent='The latch stays shut. Check the two hands against your crossword.';
+        else if(j.reason==='wrong_time') msg.textContent='The latch stays shut. Check the two hands against your crossword.';
+        else msg.textContent='The clock could not check that setting. Reload the Gallery and try again.';
       } catch {msg.textContent='The connection slipped. Your hands are still set. Try again.';}
       finally{if(currentVisit===visit){waitingForLatch=false;busy=false;set.disabled=false;controls.inert=false;}}
     },true);
