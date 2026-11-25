@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   let dialog, panel, hooks, previousFocus, triggerStage, busy = false, visit = 0;
-  let hour, minute, downstairs, record;
+  let hour, minute, downstairs, record, waitingForLatch = false;
   const node = (tag, text, cls) => {
     const n = document.createElement(tag);
     if (text != null) n.textContent = text;
@@ -56,7 +56,8 @@
     finally {clearTimeout(timer);dialog.classList.remove('rk-moving');}
   }
   function leave() {
-    if (busy) return;
+    if (busy && !waitingForLatch) return;
+    waitingForLatch = false;
     if (downstairs) { ascend(); return; }
     visit++;
     dialog.close();
@@ -149,10 +150,14 @@
     panel.append(instrument,node('p','Drag a hand, or choose its value below.','rk-dial-help'),controls);
     const msg=status(), set=button('Set the dial',async()=>{
       if(busy)return;
-      busy=true;set.disabled=true;controls.inert=true;msg.textContent='Listening for the latch…';
+      const currentVisit=visit;
+      busy=true;waitingForLatch=true;set.disabled=true;controls.inert=true;msg.textContent='Listening for the latch…';
       try {
         const j=await api({action:'set',hour,minute});
+        if (currentVisit!==visit) return;
+        waitingForLatch=false;
         if(j.ok){
+          earnedPlate=j.bookplate; record=j;
           await transition(hooks.unlock || hooks.openStairs);
           stairs();
         } else if(j.reason==='no_gallery') {
@@ -163,7 +168,7 @@
         else if(j.status>=500) msg.textContent='The latch is out of reach. Please try again shortly.';
         else msg.textContent='The latch stays shut. Check the two hands against your crossword.';
       } catch {msg.textContent='The connection slipped. Your hands are still set. Try again.';}
-      finally{busy=false;set.disabled=false;controls.inert=false;}
+      finally{if(currentVisit===visit){waitingForLatch=false;busy=false;set.disabled=false;controls.inert=false;}}
     },true);
     actions(set,button('Back to the Gallery',leave));
   }
@@ -176,32 +181,40 @@
       finally{busy=false;}
     },true),button('Stay in the Gallery',leave));
   }
+  let earnedPlate;
   function prize() {
-    // Printable bookplate with a hand-drawn escutcheon, an open book and descending steps.
-    const initials = /^[A-Z]{2,3}$/.test(record?.initials) && record?.signed ? record.initials : '';
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 500" width="720" height="500">
-    <rect width="720" height="500" fill="#f4e9cf"/><g fill="none" stroke="#705338"><rect x="17" y="17" width="686" height="466" rx="8" stroke-width="3"/><rect x="25" y="25" width="670" height="450" rx="4"/>
-    <path d="M315 77Q360 69 405 77V122Q405 148 360 168Q315 148 315 122Z" stroke-width="3"/>
-    <path d="M329 104h15v11h15v11h15v11h16M332 94q15-7 28 0 13-7 28 0v10q-14-6-28 0-14-6-28 0zM360 94v10" stroke-width="2"/>
-    <path d="M80 200h160m240 0h160M135 325h450M175 397h370"/></g>
-    <g text-anchor="middle" fill="#403121" font-family="Georgia,serif"><text x="360" y="204" font-size="18" letter-spacing="4">EX LIBRIS</text>
-    <text x="360" y="266" font-size="44">Beneath The Rock</text><text x="360" y="304" font-size="19" font-style="italic">I found the room beneath the Keeper’s floor.</text>
-    <text x="360" y="365" font-size="16" letter-spacing="2">FROM THE LIBRARY OF</text><text x="360" y="390" font-size="22">${initials}</text><text x="360" y="451" font-size="15">PuzzleSecret · The Keeper’s Gallery</text></g></svg>`;
-    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
-    const a=node('a');a.href=url;a.download='keepers-bookplate.svg';document.body.append(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    const a=node('a');
+    let localUrl;
+    if(record?.solved === false && earnedPlate)
+      localUrl=URL.createObjectURL(new Blob([earnedPlate],{type:'image/svg+xml'}));
+    a.href=localUrl || '/api/rock?bookplate=1'; a.download='keepers-bookplate.svg';
+    document.body.append(a);a.click();a.remove();
+    if(localUrl)setTimeout(()=>URL.revokeObjectURL(localUrl),60000);
+  }
+  function viewRoom() {
+    page('look','Beneath The Rock','The room below');
+    actions(button('Open the register',vault,true),button('Return to the Gallery',ascend));
   }
   function vault() {
     page('vault','The room below','The Keeper’s little vault','“I wondered who would think to lift it.” A bookplate lies beside the register. Take it for a book of your own.');
     actions(button('Save my bookplate',prize,true));
     const box=node('section',null,'rk-register');box.setAttribute('aria-label','Solver register');panel.append(box);
-    actions(button('Return to the Gallery',ascend));
+    actions(button('Look at the room',viewRoom),button('Return to the Gallery',ascend));
     const here=visit;
     const live=()=>dialog.open && here===visit && triggerStage==='vault' && box.isConnected;
-    function draw(j) {
+    function draw(j,justSigned=false) {
       box.replaceChildren(node('h3','The register'));
+      if(j.solved===false){
+        box.append(node('p','This browser did not keep the completion cookie. You can save the blank bookplate now. Allow first-party cookies on this site to sign or return later.'));
+        return;
+      }
       if(Array.isArray(j.marks) && j.marks.length) box.append(node('p','Recent initials · '+j.marks.join(' · '),'rk-marks'));
-      if(j.signed){box.append(node('p','Signed '+(j.initials||'here')+'. Save your bookplate above to keep a copy with your initials.'));return;}
+      if(j.signed){
+        const confirmation=node('p','Signed '+(j.initials||'here')+'. Save your bookplate above to keep a copy with your initials.');
+        confirmation.tabIndex=-1; box.append(confirmation);
+        if(justSigned) confirmation.focus();
+        return;
+      }
       const form=node('form'),label=node('label','Leave your initials (2–3 letters)'),input=node('input');
       input.maxLength=3;input.pattern='[A-Za-z]{2,3}';input.required=true;input.autocomplete='off';input.autocapitalize='characters';input.spellcheck=false;
       label.append(input);const sign=button('Sign the register',()=>{});sign.type='submit';
@@ -213,7 +226,7 @@
         try{
           const reply=await api({action:'sign',initials});
           if(!live())return;
-          if(reply.ok){record={...record,...reply,signed:true,initials:reply.initials||initials};draw(record);}
+          if(reply.ok){record={...record,...reply,signed:true,initials:reply.initials||initials};draw(record,true);}
           else if(reply.reason==='bad_initials') msg.textContent='Please choose a different set of two or three letters.';
           else if(reply.status===429) msg.textContent='Please wait a little before signing again.';
           else if(reply.status===403) msg.textContent='Reopen The Rock and set the dial again to sign.';
@@ -223,7 +236,7 @@
       });
     }
     box.append(node('p','Opening the register…'));
-    api().then(j=>{if(live()){record=j;draw(record);}}).catch(()=>{if(live())draw(record || {});});
+    api().then(j=>{if(live()){if(j.ok)record=j;draw(record || {});}}).catch(()=>{if(live())draw(record || {});});
   }
   function open(callbacks={}) {
     if(dialog?.open)return;

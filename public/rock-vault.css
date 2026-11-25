@@ -48,3 +48,9 @@
 .rk-face:active {cursor:grabbing;}
 .rk-dialog .rk-dial-help {margin-top:.4rem;text-align:center;font-size:.91rem;}
 .rk-dialog a {color:#f1d39a;}
+
+.rk-dialog[data-stage=look] {margin:auto auto .75rem;}
+.rk-dialog[data-stage=look]::backdrop {background:transparent;}
+.rk-dialog[data-stage=look] h2,.rk-dialog[data-stage=look] .rk-eyebrow {position:absolute;clip-path:inset(50%);}
+.rk-dialog[data-stage=look] .rk-panel {padding:.5rem .85rem;}
+.rk-dialog[data-stage=look] .rk-actions {margin:0;}

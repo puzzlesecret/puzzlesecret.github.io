@@ -1113,7 +1113,14 @@
     if (typeof held.G === 'string' && held.G.indexOf('/api/reward') === 0) link(held.G, 'Download your 50 puzzles (PDF)', true, false);
     const rock = document.createElement('button');
     rock.type = 'button'; rock.className = 'gallery-cabin__rock'; rock.textContent = 'Examine The Rock';
-    rock.addEventListener('click', () => window.PSRock.open());
+    const showPassage = (scene) => { wrap.dataset.passage = scene; };
+    const restoreCabin = () => { delete wrap.dataset.passage; };
+    rock.addEventListener('click', () => window.PSRock.open({
+      unlock: () => showPassage('hatch'),
+      descend: () => showPassage('vault'),
+      returnToGallery: restoreCabin,
+      close: restoreCabin,
+    }));
     actions.append(rock);
     link('https://www.amazon.com/dp/B0HB9K8PXC', 'Volume 1 on Amazon', false, true);   // plain link: the cover word marks this browser as a guest (guest-key.js)
     if (window.__hasWebGL !== false) link('/vault?mode=3d&act=G', 'Walk the Gallery in 3D', false, false);

@@ -127,6 +127,12 @@ const FROM_DOOR = qs.get('from') === 'door';
    is a Gallery visitor on every load, in every tab. Its far door is the door to Vault I: a word from
    inside a book (or any true book word) turns this browser into an ordinary visitor and walks it in. */
 const GALLERY = window.__psGallery === true;
+function paintedDestination() {
+  const query=new URLSearchParams(location.search);
+  query.set('mode','painted');
+  query.set('flat','1');
+  return '/vault?' + query.toString();
+}
 let galleryRoom = null;   // set near the end of this file when GALLERY (declared early: activate/overlayOpen read it)
 const GALLERY_ENTRY = 'The front room. Your fifty are on the end table. My study is through that door. It wants a word from inside a book.';
 const GUEST = (() => {
@@ -4381,7 +4387,7 @@ if (GALLERY) {
     goThen, moveTo, showCaption, playCreak, playThud, playUnlock, burstConfetti, openReward, openWordbox, psEvent, activate,
     setView: (y, p) => { yaw = y; pitch = p; }, getView: () => [yaw, pitch], setEye: (h) => { eyeTarget = h; },
     isEntered: () => entered, overlayOpen: () => overlayOpen(),
-  }); } catch (e) { location.replace('/vault?flat=1'); throw e; }
+  }); } catch (e) { location.replace(paintedDestination()); throw e; }
   if (!DEBUG_CAM) { yaw = 0.2; pitch = -0.04; }   // the gold door in the first frame
 }
 
@@ -4489,8 +4495,9 @@ function offerFlat(fps) {
   bar.id = 'slowBar';
   bar.innerHTML = '<span>This is running at about ' + fps +
     ' frames a second on your device.</span>' +
-    '<a class="ghost-btn" href="/vault?flat=1">Switch to the illustrated vault</a>' +
+    '<a class="ghost-btn" id="slowPainted">Switch to the illustrated vault</a>' +
     '<button id="slowDismiss" aria-label="Keep the 3D vault">Stay in 3D</button>';
+  bar.querySelector('#slowPainted').href = paintedDestination();
   document.body.appendChild(bar);
   document.getElementById('slowDismiss').addEventListener('click', () => bar.remove());
 }

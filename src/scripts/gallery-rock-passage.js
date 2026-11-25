@@ -63,11 +63,16 @@ export function buildRockPassage(ctx, mats) {
     const deskLight=new THREE.PointLight(0xffe5ba,5.0,4,2);
     deskLight.position.set(cx,-0.62,-4.35);room.add(deskLight);
     const treadCount=13, run=(z1-z0)/treadCount, rise=depth/treadCount;
+    const seams=new THREE.InstancedMesh(new THREE.BoxGeometry(x1-x0-0.025,0.014,0.026),M.iron,treadCount);
+    const seamPose=new THREE.Matrix4();
     for(let n=0;n<treadCount;n++){
       const height=depth-(n+1)*rise+0.13;
       shell(x1-x0,height,run+0.002,dark,cx,-depth-0.13+height/2,z1-(n+0.5)*run);
       shell(x1-x0+0.02,0.06,run+0.025,dark,cx,-(n+1)*rise,z1-(n+0.5)*run);
+      seamPose.makeTranslation(cx,-(n+1)*rise+0.032,z1-(n+1)*run+0.018);
+      seams.setMatrixAt(n,seamPose);
     }
+    room.add(seams);
     const far=-5.64,left=cx-1.67,right=cx+1.67,length=z0-far;
     shell(right-left+0.28,0.12,length+0.15,dark,cx,-depth-0.065,(z0+far)/2);
     for(const x of [left,right])shell(0.14,2.45,length,rock,x,-depth+1.225,(z0+far)/2);
@@ -134,7 +139,7 @@ export function buildRockPassage(ctx, mats) {
   function pose(x,z,y,yaw,pitch) {
     player.pos.set(x,0,z);player.target.copy(player.pos);ctx.setEye(y);ctx.setView(yaw,pitch);
   }
-  const top={x:cx,z:z1+0.66,y:1.6};
+  const top={x:x0-0.18,z:z1+0.02,y:1.6,yaw:-0.52,pitch:-1.07};
   function lift(){
     if(lifted)return;
     lifted=true;ctx.playThud();
@@ -147,29 +152,49 @@ export function buildRockPassage(ctx, mats) {
     if(opened)return;
     opened=true;revealGeometry();floor.visible=false;room.visible=true;ctx.playCreak();
     const start=player.pos.clone(),[fromYaw,fromPitch]=ctx.getView();
-    const angle=Math.atan2(Math.sin(-fromYaw),Math.cos(-fromYaw));
+    const angle=Math.atan2(Math.sin(top.yaw-fromYaw),Math.cos(top.yaw-fromYaw));
     return animate(1400,t=>{
       panel.rotation.z=-1.43*t;
-      pose(start.x+(top.x-start.x)*t,start.z+(top.z-start.z)*t,1.6,fromYaw+angle*t,fromPitch+(-0.72-fromPitch)*t);
+      pose(start.x+(top.x-start.x)*t,start.z+(top.z-start.z)*t,1.6,fromYaw+angle*t,fromPitch+(top.pitch-fromPitch)*t);
     });
   }
-  function takeStairs(ascending) {
-    below=!ascending;ctx.playCreak();
-    return animate(2150,t=>{
-      const u=ascending?1-t:t;
-      const z=top.z+(-3.12-top.z)*u;
-      const onStairs=THREE.MathUtils.clamp((z1-z)/(z1-z0),0,1);
-      const pitch=-0.72+0.56*onStairs;
-      pose(cx,z,1.6-depth*onStairs,0,pitch);
+  const bottomZ=-3.12, bottomPitch=-0.21, landingZ=z1+0.64;
+  function eyeOnStairs(z) {
+    return 1.6-depth*THREE.MathUtils.clamp((z1-z)/(z1-z0),0,1);
+  }
+  function descend() {
+    below=true;ctx.playCreak();
+    return animate(2350,t=>{
+      // Step squarely onto the first tread before starting down.
+      const turn=Math.min(1,t/0.17);
+      const walk=Math.max(0,(t-0.17)/0.83);
+      const z=top.z+(bottomZ-top.z)*walk;
+      const pitch=top.pitch+(bottomPitch-top.pitch)*Math.min(1,walk*1.42);
+      pose(top.x+(cx-top.x)*turn,z,eyeOnStairs(z),top.yaw*(1-turn),pitch);
     });
+  }
+  let backOnLanding=false;
+  async function returnToRoom() {
+    ctx.playCreak();
+    // Turn away from the register before climbing. Keeping the landing in view
+    // also lets the reader see the underside of the raised hatch on the way out.
+    const [fromYaw,fromPitch]=ctx.getView();
+    await animate(700,t=>pose(cx,bottomZ,eyeOnStairs(bottomZ),
+      fromYaw+(Math.PI-fromYaw)*t,fromPitch+(0.12-fromPitch)*t));
+    await animate(2400,t=>{
+      const z=bottomZ+(landingZ-bottomZ)*t;
+      const pitch=0.12+0.21*Math.sin(Math.PI*t)-0.25*t;
+      pose(cx,z,eyeOnStairs(z),Math.PI-0.24*t,pitch);
+    });
+    below=false;backOnLanding=true;
   }
   function close(){
     if(animation)animation.finish();
-    if(opened||below)pose(top.x,top.z,1.6,0,-0.27);
+    if((opened||below)&&!backOnLanding)pose(cx,landingZ,1.6,0,-0.27);
     floor.visible=true;room.visible=false;panel.rotation.z=0;
     stone.position.set(0,0.136,-0.015);stone.rotation.z=0;
-    opened=false;below=false;lifted=false;
+    opened=false;below=false;lifted=false;backOnLanding=false;
   }
-  return {lift,openStairs,descend:()=>takeStairs(false),returnToRoom:()=>takeStairs(true),close,
+  return {lift,openStairs,descend,returnToRoom,close,
     tick(){if(animation)animation.update();}};
 }
