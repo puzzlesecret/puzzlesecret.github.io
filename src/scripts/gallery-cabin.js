@@ -1,3 +1,5 @@
+import { buildBackWall } from './gallery-stone-wall.js';
+
 /* The Gallery shares the study's painted surfaces. Log grain follows the length of
    each timber. Rectangular cuts preserve the original door and window reveals. */
 export function buildCabin(ctx, B) {
@@ -105,9 +107,8 @@ export function buildCabin(ctx, B) {
     }
   }
   section('z', 1, -4.09, -4.22, 4.18, 0, 3.6);
-  const north = (a,b,low=0) => section('x',1,-4.01,a,b,low,3.6);
-  north(-4.2,-3.25); north(0.41,4.2);
-  // A masonry bay wraps the study entrance from floor to ceiling.
+  scene.add(buildBackWall(ctx, B));
+  // The stove hearth retains its original masonry finish.
   const stoneMap = canvasTex(512,512,(g,w,h)=>{
     g.fillStyle='#6f6a60';g.fillRect(0,0,w,h);
     for(let row=0;row<4;row++){
@@ -128,9 +129,6 @@ export function buildCabin(ctx, B) {
   stoneMap.anisotropy=8;
   const stone=standard({map:stoneMap,roughness:0.98});
   const masonry = (w,h,d,x,y,z) => {const m=B(w,h,d,M.wall,x,y,z);m.material=stone;return m;};
-  masonry(0.9,3.6,0.22,-2.8,1.8,-4.01);
-  masonry(1.7,1.1,0.22,-1.5,3.05,-4.01);
-  masonry(1.06,3.6,0.22,-0.12,1.8,-4.01);
   const south = (a,b,low=0) => section('x',-1,4.01,a,b,low,3.6);
   south(-4.2,-3.6); south(-3.6,-2.6,2.4); south(-2.6,-1.2); south(-1.2,1.2,3.2); south(1.2,4.2);
   const east = (a,b,low=0,top=3.6) => section('z',-1,4.09,a,b,low,top);
@@ -152,10 +150,6 @@ export function buildCabin(ctx, B) {
     }
   }
   for (const x of [-4.01,4.01]) B(0.14,0.15,8.15,trim,x,3.35,0);
-  // Rough stone courses share the study wall's world-space texel scale.
-  for (const x of [-2.52,-0.48]) masonry(0.32,2.53,0.24,x,1.265,-3.96);
-  masonry(2.36,0.32,0.27,-1.5,2.66,-3.96);
-  B(2.42,0.085,0.32,trim,-1.5,2.855,-3.94);
   masonry(1.64,0.016,0.38,-1.5,0.008,-3.79);
   masonry(1.55,0.13,1.32,3.15,0.013,3.29);
   masonry(1.64,2.02,0.26,3.1,1.0,3.85);
