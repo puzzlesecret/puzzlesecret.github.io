@@ -53,6 +53,8 @@ for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
   vm.runInContext("wbTarget = 'first'; wbSet('');", context);
   keyboard.keydown({key: 'Enter', target: node('wbInput'), preventDefault() {}, stopPropagation() {}});
   assert.match(node('wbMsg').textContent, /4–12 letters/, 'short entry has a live explanation');
+  vm.runInContext("wbTarget = 'fourth'; wbSet(''); submitWord();", context);
+  assert.match(node('wbMsg').textContent, /original Volume 1/, 'fourth short entry keeps the edition restriction');
   vm.runInContext("wbSet(' ab-cd ');", context);
   assert.equal(node('wbInput').value, 'ABCD', 'paste normalizes whitespace and punctuation');
   vm.runInContext("wbTarget = 'first'; wbSet('ABCD'); globalThis.pending = submitWord();", context);
@@ -123,4 +125,37 @@ for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
   assert.equal(game.hidden, false);
   assert.equal(awards, 0, 'stale painted win cannot replace new lock with award panel');
   console.log('PASS painted final-tumbler close/reopen preserves award without stale UI');
+}
+
+// Fourth-lock edition guidance must be set before focus and reset on every other door.
+const vaultMarkup = fs.readFileSync('src/pages/vault.astro', 'utf8');
+const defaultHint = vaultMarkup.match(/data-default-hint="([^"]+)"/)[1];
+const fourthHint = vaultMarkup.match(/data-fourth-hint="([^"]+)"/)[1];
+assert.match(fourthHint, /only in the original Volume 1/);
+assert.match(fourthHint, /not included in the Large Print Gift Edition/);
+for (const file of ['src/scripts/vault3d.js', 'public/js/painted-vault.js']) {
+  const text = fs.readFileSync(file, 'utf8');
+  const start = text.indexOf('function setWordboxHint(');
+  const end = text.indexOf('function closeWordbox(', start);
+  const nodes = new Map(), focusedHints = [];
+  const node = id => { if (!nodes.has(id)) nodes.set(id, element()); return nodes.get(id); };
+  node('wbHint').dataset = { defaultHint, fourthHint };
+  node('wbInput').focus = () => focusedHints.push(node('wbHint').textContent);
+  const context = vm.createContext({
+    document: { getElementById: node }, $: node, window: {},
+    wbMsg: node('wbMsg'), wordboxEl: node('wordbox'), wbInput: node('wbInput'),
+    DOORS: Object.fromEntries(['first','door2','door3','fourth'].map(k => [k,{kicker:k,vo:k}])),
+    VO: Object.fromEntries(['first','door2','door3','fourth'].map(k => [k,{text:'unchanged clue '+k}])),
+    invalidateWordbox() {}, psEvent() {}, psTouch() {}, keeper() {},
+    PS_EV: { WORDBOX_OPEN: 'wordbox.open' }, GALLERY:false, GUEST:null,
+  });
+  vm.runInContext("let wbTarget=null,wbWord='',wbBusy=false;" + text.slice(start,end),context);
+  for (const key of ['fourth','first','fourth','door2','fourth','door3']) {
+    vm.runInContext('openWordbox('+JSON.stringify(key)+')',context);
+    const expected = key === 'fourth' ? fourthHint : defaultHint;
+    assert.equal(node('wbHint').textContent,expected,file+': correct door guidance');
+    assert.equal(focusedHints.at(-1),expected,file+': guidance exists before input focus');
+    assert.equal(node('wbLine').textContent,'unchanged clue '+key,file+': original clue preserved');
+  }
+  console.log('PASS '+(file.includes('painted')?'painted':'3D')+' fourth-lock book note, all other doors reset, focus order, original clues');
 }
