@@ -117,7 +117,9 @@ export function GET({ request }) {
 export async function POST({ request, clientAddress }) {
   if (!secret) return fail('unavailable', 503);
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) return fail('bad_request', 403);
+  // The hosting adapter can give this handler an internal URL on the custom domain.
+  const siteOrigin = import.meta.env?.SITE && new URL(import.meta.env.SITE).origin;
+  if (origin && origin !== siteOrigin && origin !== new URL(request.url).origin) return fail('bad_request', 403);
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) return fail('bad_request', 415);
   let body;
   try { body = await request.json(); } catch { return fail('bad_request', 400); }
