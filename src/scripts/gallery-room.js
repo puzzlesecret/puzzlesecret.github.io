@@ -1,3 +1,6 @@
+import { buildCabin } from './gallery-cabin.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+
 /* THE KEEPER'S GALLERY — the front room (Dan, 2026-11-24).
    The Gift Edition's cover word opens this room instead of Vault I. It is the Keeper's bright front room on the
    snowy evening the Gift story ends: a couch, his copies of the shelf of four on the wall, the kettle, the chair
@@ -54,13 +57,13 @@ const BOOKS = [   // the picture rail, south to north. Only Volume 1 carries a l
   { key: 'v1', z: 1.5, img: '/art/cover-v1-360.webp', mat: 0xd8b25a, kicker: 'VOLUME 1 · CRACK THE KEEPER’S VAULT', lit: true,
     text: 'Volume 1. The gold door I sealed, and the vault behind it. Two hundred puzzles, in three acts. If you would rather hold the whole of it, it is here.',
     link: AMAZON_V1, linkText: 'Volume 1 on Amazon' },
-  { key: 'v2', z: 0.3, sketch: 'chart', mat: 0x2e7d55, kicker: 'VOLUME 2 · THE CORSAIR’S CHART',
+  { key: 'v2', z: 0.3, sketch: 'chart', mat: 0x6b7864, kicker: 'VOLUME 2 · THE CORSAIR’S CHART',
     text: 'My copy of something on the shelf above my desk: a sea chart in pieces. I copied it larger. One corner stays empty.' },
-  { key: 'v3', z: -0.9, sketch: 'letters', mat: 0xb56a82, kicker: 'VOLUME 3 · THE LOST LOVE LETTERS',
+  { key: 'v3', z: -0.9, sketch: 'letters', mat: 0x937877, kicker: 'VOLUME 3 · THE LOST LOVE LETTERS',
     text: 'My copy of something on the shelf above my desk: letters tied with rose ribbon. Some still sealed. Some came back unopened. The replies are missing.' },
-  { key: 'v4', z: -2.1, sketch: 'notebook', mat: 0x2f8f9c, kicker: 'VOLUME 4 · THE SILENT SIGNAL',
+  { key: 'v4', z: -2.1, sketch: 'notebook', mat: 0x658285, kicker: 'VOLUME 4 · THE SILENT SIGNAL',
     text: 'My copy of something on the shelf above my desk: a notebook of numbers in my own young hand. I copied every digit and never the gaps. And the radio in the hall.' },
-  { key: 'v5', z: -3.25, sketch: 'rubbing', mat: 0xb7822e, kicker: 'VOLUME 5 · THE HOLLOW OAK',
+  { key: 'v5', z: -3.25, sketch: 'rubbing', mat: 0x998054, kicker: 'VOLUME 5 · THE HOLLOW OAK',
     text: 'My copy of something on the shelf above my desk: the oldest thing on it. A rubbing of notches cut along the edge of an old standing stone. I do not know where it stands.' },
 ];
 const TAG_LINE = 'Planned, one shelf puzzle at a time.';
@@ -81,38 +84,9 @@ export function buildGallery(ctx) {
 
   /* ---------- materials and textures ---------- */
   const R = (() => { let s = 20261124; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
-  const plasterTex = canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = '#e8e3d8'; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 220; i++) {
-      g.fillStyle = `rgba(${R() > 0.5 ? '255,255,250' : '185,176,158'},${0.015 + R() * 0.02})`;
-      g.beginPath(); g.arc(R() * w, R() * h, 4 + R() * 14, 0, PI * 2); g.fill();
-    }
-  }, 3, 2);
-  const boardsTex = canvasTex(512, 512, (g, w, h) => {
-    const n = 8, bw = w / n;
-    for (let i = 0; i < n; i++) {
-      const l = 64 + R() * 8;
-      g.fillStyle = `hsl(34, 22%, ${l}%)`; g.fillRect(i * bw, 0, bw, h);
-      g.fillStyle = 'rgba(80,60,40,0.10)';
-      for (let k = 0; k < 6; k++) g.fillRect(i * bw + R() * bw, 0, 1, h);
-      g.fillStyle = 'rgba(70,52,34,0.45)'; g.fillRect(i * bw, 0, 2, h);
-      const cut = R() * h; g.fillRect(i * bw, cut, bw, 2);
-    }
-  }, 4, 4);
-  const ceilTex = canvasTex(256, 256, (g, w, h) => {
-    g.fillStyle = '#efece6'; g.fillRect(0, 0, w, h);
-    g.fillStyle = 'rgba(150,140,125,0.35)'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 2, h);
-  }, 4, 4);
+  const B = (w, h, d, mat, x, y, z, ry = 0, parent = scene) => box(w, h, d, mat, x, y, z, ry, parent);
   const mats = {
-    plaster: new THREE.MeshStandardMaterial({ map: plasterTex, roughness: 0.95 }),
-    dado: new THREE.MeshStandardMaterial({ color: 0x5f7384, roughness: 0.8 }),
-    trim: new THREE.MeshStandardMaterial({ color: 0xf1eee6, roughness: 0.6 }),
-    boards: new THREE.MeshStandardMaterial({ map: boardsTex, roughness: 0.75 }),
-    ceil: new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.9 }),
-    fabric: new THREE.MeshStandardMaterial({ color: 0x5d7590, roughness: 0.95 }),
-    fabric2: new THREE.MeshStandardMaterial({ color: 0x6b83a0, roughness: 0.95 }),
-    wood: new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.7 }),
-    woodDark: new THREE.MeshStandardMaterial({ color: 0x5a4330, roughness: 0.7 }),
+    ...buildCabin(ctx, B),
     paper: new THREE.MeshStandardMaterial({ color: 0xf4efe3, roughness: 0.9 }),
     iron: new THREE.MeshStandardMaterial({ color: 0x2f2c2a, roughness: 0.6, metalness: 0.5 }),
     enamel: new THREE.MeshStandardMaterial({ color: 0xdfe5ea, roughness: 0.35, metalness: 0.1 }),
@@ -124,62 +98,68 @@ export function buildGallery(ctx) {
 
   // the hit-box helper: everything you can tap gets a kind, a label and goes on the tap list
   const tap = (obj, kind, label, extra) => { obj.userData = Object.assign({ kind, label }, extra || {}); interactables.push(obj); return obj; };
-  const B = (w, h, d, mat, x, y, z, ry = 0, parent = scene) => box(w, h, d, mat, x, y, z, ry, parent);
-
-  /* ---------- the shell: plaster walls, slate-blue panelling, white ceiling ---------- */
   const H = 3.6;
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 8.4), mats.ceil);
-  ceiling.rotation.x = PI / 2; ceiling.position.y = H; scene.add(ceiling);
-  [-2.2, 1.6].forEach((z) => B(8.4, 0.18, 0.22, mats.trim, 0, H - 0.09, z));
-  B(0.2, H, 8.4, mats.plaster, -4.1, H / 2, 0);                                  // west
-  // north, with the study door's opening (x -2.35..-0.65, h 2.5)
-  B(1.85, H, 0.2, mats.plaster, -3.275, H / 2, -4);
-  B(1.7, H - 2.5, 0.2, mats.plaster, -1.5, 2.5 + (H - 2.5) / 2, -4);
-  B(4.85, H, 0.2, mats.plaster, 1.775, H / 2, -4);
-  // east, with the window (z -1.3..0.3, y 0.9..2.9)
-  B(0.2, H, 2.9, mats.plaster, 4.1, H / 2, -2.75);
-  B(0.2, H, 3.9, mats.plaster, 4.1, H / 2, 2.25);
-  B(0.2, 0.9, 1.6, mats.plaster, 4.1, 0.45, -0.5);
-  B(0.2, H - 2.9, 1.6, mats.plaster, 4.1, 2.9 + (H - 2.9) / 2, -0.5);
-  // south: the front door (x -1.2..1.2, h 3.2) and the open doorway to the hall (x -3.6..-2.6, h 2.4)
-  B(0.6, H, 0.2, mats.plaster, -3.9, H / 2, 4);
-  B(1.0, H - 2.4, 0.2, mats.plaster, -3.1, 2.4 + (H - 2.4) / 2, 4);
-  B(1.4, H, 0.2, mats.plaster, -1.9, H / 2, 4);
-  B(2.4, H - 3.2, 0.2, mats.plaster, 0, 3.2 + (H - 3.2) / 2, 4);
-  B(3.0, H, 0.2, mats.plaster, 2.7, H / 2, 4);
-  // panelling to waist height + a white rail, kept clear of the openings
-  const dado = (w, d, x, z) => { B(w, 0.9, d, mats.dado, x, 0.45, z); B(w + 0.01, 0.05, d + 0.03, mats.trim, x, 0.92, z); };
-  dado(0.04, 7.9, -3.98, 0);
-  dado(1.6, 0.04, -3.15, -3.88); dado(4.5, 0.04, 1.9, -3.88);
-  dado(0.04, 2.7, 3.98, -2.6); dado(0.04, 3.6, 3.98, 2.1);
-  dado(0.35, 0.04, -3.78, 3.88); dado(1.3, 0.04, -1.9, 3.88); dado(2.7, 0.04, 2.6, 3.88);
-  B(0.03, 0.04, 7.9, mats.trim, -3.98, 2.45, 0);                                // the picture rail
   // the rug: five book colours, muted, between the chair and the couch
   const rugTex = canvasTex(256, 512, (g, w, h) => {
-    const cols = ['#b59a5a', '#4f7a62', '#a8788a', '#5a8c95', '#b48a52'];
-    g.fillStyle = '#d9d0bf'; g.fillRect(0, 0, w, h);
-    for (let y = 0, i = 0; y < h; y += 40, i++) { g.fillStyle = cols[i % 5]; g.globalAlpha = 0.55; g.fillRect(14, y + 10, w - 28, 22); }
-    g.globalAlpha = 1; g.strokeStyle = 'rgba(90,70,50,.5)'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12);
+    // A flatwoven wool runner with stepped medallions and narrow selvedges.
+    g.fillStyle = '#894f43'; g.fillRect(0, 0, w, h);
+    for (const [margin, color, width] of [[6,'#564438',7],[14,'#c4a17a',4],[22,'#53635b',8],[30,'#d2b892',2]]) {
+      g.strokeStyle = color; g.lineWidth = width; g.strokeRect(margin,margin,w-2*margin,h-2*margin);
+    }
+    const lozenge = (x,y,r,color) => {
+      g.fillStyle = color;
+      for(let k=-4;k<=4;k++) g.fillRect(x-(5-Math.abs(k))*r/5,y+k*r/5,(5-Math.abs(k))*r*2/5,r/5+1);
+    };
+    for (let y = 87; y < h-45; y += 112) {
+      lozenge(128,y,49,'#4d5953'); lozenge(128,y,32,'#c7aa7b'); lozenge(128,y,18,'#865849');
+      for (const x of [61,195]) lozenge(x,y,12,'#bf9869');
+    }
+    g.fillStyle='rgba(36,24,18,.11)'; for(let y=0;y<h;y+=3) g.fillRect(0,y,w,1);
   });
   const rug = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 4.2), new THREE.MeshStandardMaterial({ map: rugTex, roughness: 1 }));
   rug.rotation.x = -PI / 2; rug.position.set(-0.55, 0.004, 0.3); rug.raycast = () => {}; scene.add(rug);
 
   /* ---------- light: cool window light, one warm stove ---------- */
-  scene.add(new THREE.AmbientLight(0xdde4ee, 0.55));
-  scene.add(new THREE.HemisphereLight(0xe6edf8, 0x7a6a58, 0.8));
-  const sun = new THREE.DirectionalLight(0xcad9ff, 1.5); sun.position.set(9, 3.2, -0.5); sun.target.position.set(0, 0.5, -0.5);
+  scene.add(new THREE.AmbientLight(0xf5e7d7, 0.76));
+  scene.add(new THREE.HemisphereLight(0xefeae3, 0xaa9179, 1.16));
+  const sun = new THREE.DirectionalLight(0xd7dfea, 1.42); sun.position.set(9, 3.2, -0.5); sun.target.position.set(0, 0.5, -0.5);
   scene.add(sun); scene.add(sun.target);
-  const stoveLight = new THREE.PointLight(0xff9a50, 4, 5, 2); stoveLight.position.set(3.0, 0.7, 2.95); scene.add(stoveLight);
+  const stoveLight = new THREE.PointLight(0xffa257, 10, 5.5, 2); stoveLight.position.set(3.02, 0.83, 2.82); scene.add(stoveLight);
   scene.background = new THREE.Color(0x1c2433);
-  scene.fog = new THREE.FogExp2(0xd7dde5, 0.004);
+  scene.fog = new THREE.FogExp2(0x493c35, 0.009);
 
   /* ---------- the gold door to the study (Vault I) — the only gold in the room ---------- */
   const door = new THREE.Group(); door.position.set(-1.5, 0, -3.93); scene.add(door);
   // a gold that reads in daylight (the vault's metal gold needs candlelight to show)
-  const goldDay = new THREE.MeshStandardMaterial({ color: 0xd6a842, metalness: 0.25, roughness: 0.4, emissive: 0x3a2606, emissiveIntensity: 0.5 });
-  const goldPanel = new THREE.MeshStandardMaterial({ color: 0xebc565, metalness: 0.25, roughness: 0.35, emissive: 0x4a320a, emissiveIntensity: 0.5 });
+  const brassPatina = canvasTex(256,256,(g,w,h)=>{
+    g.fillStyle='#e3dbc9';g.fillRect(0,0,w,h);
+    for(let i=0;i<330;i++){
+      const x=(i*97)%w,y=(i*133)%h,r=3+(i%19);
+      const wash=g.createRadialGradient(x,y,0,x,y,r);
+      wash.addColorStop(0,'rgba(93,90,63,.07)');wash.addColorStop(1,'rgba(93,90,63,0)');
+      g.fillStyle=wash;g.fillRect(x-r,y-r,r*2,r*2);
+    }
+  });
+  const goldDay = new THREE.MeshStandardMaterial({ map: brassPatina, color: 0xbba16a, metalness: 0.25, roughness: 0.4, emissive: 0x3a2606, emissiveIntensity: 0.5 });
+  const oakPanel = mats.woodDark.clone(); oakPanel.color.set(0x937452);
   B(1.66, 2.46, 0.08, goldDay, 0, 1.23, 0, 0, door);
-  [[-0.38, 1.75], [0.38, 1.75], [-0.38, 0.65], [0.38, 0.65]].forEach(([x, y]) => B(0.56, y > 1 ? 0.9 : 0.8, 0.03, goldPanel, x, y, 0.05, 0, door));
+  const molding = new THREE.MeshStandardMaterial({map:brassPatina,color:0xb29860,metalness:0.28,roughness:0.58});
+  for(const [x,y] of [[-0.38,1.75],[0.38,1.75],[-0.38,0.65],[0.38,0.65]]){
+    const h=y>1?0.9:0.8;
+    B(0.60,h+0.04,0.029,molding,x,y,0.055,0,door);
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.26,-h/2+0.024);shape.lineTo(0.26,-h/2+0.024);
+    shape.lineTo(0.26,h/2-0.024);shape.lineTo(-0.26,h/2-0.024);shape.closePath();
+    const relief = new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:0.012,bevelThickness:0.012,bevelSize:0.018,bevelSegments:1}),oakPanel);
+    // Extruded face UVs follow the timber vertically inside the brass molding.
+    const uv=relief.geometry.attributes.uv;
+    for(let i=0;i<uv.count;i++){const u=uv.getX(i);uv.setXY(i,uv.getY(i),u);}
+    relief.position.set(x,y,0.073);door.add(relief);
+  }
+  for (const y of [0.23,1.23,2.24]) {
+    B(0.13,0.048,0.025,M.brass,-0.74,y,0.063,0,door);
+  }
+  B(0.083,0.23,0.02,M.brass,0.66,1.13,0.064,0,door);
   const knob = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), M.brass); knob.position.set(0.66, 1.15, 0.09); door.add(knob);
   const plateTex = canvasTex(256, 64, (g, w, h) => { g.fillStyle = '#3a2a10'; g.fillRect(0, 0, w, h); g.fillStyle = '#f3d68a'; g.font = 'bold 34px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('VAULT  I', w / 2, h / 2 + 2); });
   const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.11), new THREE.MeshStandardMaterial({ map: plateTex, roughness: 0.5, metalness: 0.4 }));
@@ -210,18 +190,29 @@ export function buildGallery(ctx) {
       const sky = g.createLinearGradient(0, 0, 0, h * 0.5);
       sky.addColorStop(0, '#22324f'); sky.addColorStop(1, '#5d7395');
       g.fillStyle = sky; g.fillRect(0, 0, w, h * 0.5);
-      g.fillStyle = '#26303d'; g.beginPath(); g.moveTo(0, h * 0.5);
-      for (let x = 0; x <= w; x += 20) g.lineTo(x, h * 0.44 + Math.sin(x * 0.05) * 6 + (x % 40 ? 3 : -2));
-      g.lineTo(w, h * 0.5); g.fill();
+      // Layered spruce silhouettes, a pale horizon and a sheltered snow bank.
+      for (let layer = 0; layer < 3; layer++) {
+        g.fillStyle = ['#586984','#45566e','#304357'][layer];
+        for (let i = -1; i <= 29; i++) {
+          const x = i*17 + Math.sin(i*7+layer)*12;
+          const base = h*(0.48+layer*0.014);
+          const height = (25+19*Math.cos(i*5.2+layer))*(0.65+layer*0.48);
+          for (let tier=0; tier<4; tier++) {
+            const half=height*(0.07+tier*0.038), y=base-height+tier*height*0.17;
+            g.beginPath(); g.moveTo(x,y); g.lineTo(x+half,y+height*0.46);
+            g.lineTo(x-half,y+height*0.46); g.fill();
+          }
+        }
+      }
       const snow = g.createLinearGradient(0, h * 0.5, 0, h);
-      snow.addColorStop(0, '#c9d5e4'); snow.addColorStop(1, '#eef3f9');
+      snow.addColorStop(0, '#acbcd2'); snow.addColorStop(1, '#d1dbe9');
       g.fillStyle = snow; g.fillRect(0, h * 0.5, w, h * 0.5);
       // the path: from the step (bottom) to the gate
       g.fillStyle = 'rgba(170,186,206,0.55)';
       g.beginPath(); g.moveTo(w * 0.58, h); g.lineTo(w * 0.92, h); g.lineTo(w * 0.79, h * 0.52); g.lineTo(w * 0.73, h * 0.52); g.fill();
       g.fillStyle = '#3a3128'; g.fillRect(w * 0.7, h * 0.47, 6, h * 0.06); g.fillRect(w * 0.82, h * 0.47, 6, h * 0.06);
       g.fillRect(w * 0.7, h * 0.48, w * 0.12 + 6, 4);
-      g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 60; i++) g.fillRect(R() * w, R() * h * 0.5, 1.5, 1.5);
+      g.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 60; i++) g.fillRect(((i*137)%397), ((i*71)%194), 1.2, 1.2);
       if (prints) {
         g.fillStyle = 'rgba(52,66,90,0.85)';
         for (let k = 0; k < 11; k++) {
@@ -255,6 +246,13 @@ export function buildGallery(ctx) {
   ];
   const highCushion = B(0.64, 0.12, 0.98, mats.fabric2, 0.66, 0.53, 0.82, 0, couch);
   highCushion.rotation.z = 0.06; cparts.push(highCushion);
+  // Preserve the interaction boxes and hinge animation while rounding the upholstery.
+  const hiddenUpholstery = new THREE.MeshBasicMaterial({ visible: false });
+  for (const part of cparts) {
+    const { width, height, depth } = part.geometry.parameters;
+    const pad = new THREE.Mesh(new RoundedBoxGeometry(width, height, depth, 2, Math.min(height / 3, 0.065)), part.material);
+    part.material = hiddenUpholstery; part.add(pad);
+  }
   [[0.42, -0.72], [1.16, -0.72], [0.42, 1.32], [1.16, 1.32]].forEach(([x, z]) => B(0.06, 0.06, 0.06, mats.woodDark, x, 0.03, z, 0, couch));
   cparts.forEach((m) => tap(m, 'gcouch', 'The couch', { stand: [-0.15, 0.55], look: [0.7, 0.5, 0.6] }));
   // end table
@@ -285,7 +283,7 @@ export function buildGallery(ctx) {
   chParts.push(B(0.045, 0.55, 0.045, mats.woodDark, -0.19, 0.76, 0.19, 0, chair), B(0.045, 0.55, 0.045, mats.woodDark, 0.19, 0.76, 0.19, 0, chair), B(0.42, 0.08, 0.03, mats.wood, 0, 0.98, 0.19, 0, chair));
   chParts.forEach((m) => tap(m, 'gchair', 'The chair. It creaks.'));
   const sheetTex = canvasTex(64, 64, (g, w, h) => {
-    g.fillStyle = '#f6f2e8'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#ded4bd'; g.fillRect(0, 0, w, h);
     g.strokeStyle = 'rgba(120,110,95,0.35)'; g.lineWidth = 1;
     for (let i = 1; i < 9; i++) { g.beginPath(); g.moveTo(6 + i * 52 / 9, 6); g.lineTo(6 + i * 52 / 9, 58); g.moveTo(6, 6 + i * 52 / 9); g.lineTo(58, 6 + i * 52 / 9); g.stroke(); }
     g.strokeStyle = 'rgba(80,70,60,0.6)'; g.strokeRect(6, 6, 52, 52);
@@ -304,7 +302,7 @@ export function buildGallery(ctx) {
   sheets.instanceMatrix.needsUpdate = true; scene.add(sheets);
   tap(sheets, 'gfield', 'Seventy-five grids');
   const tickTex = canvasTex(64, 64, (g, w, h) => {
-    g.fillStyle = '#f6f2e8'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#ded4bd'; g.fillRect(0, 0, w, h);
     g.strokeStyle = 'rgba(120,110,95,0.35)'; g.lineWidth = 1;
     for (let i = 1; i < 9; i++) { g.beginPath(); g.moveTo(6 + i * 52 / 9, 6); g.lineTo(6 + i * 52 / 9, 58); g.moveTo(6, 6 + i * 52 / 9); g.lineTo(58, 6 + i * 52 / 9); g.stroke(); }
     g.strokeStyle = 'rgba(80,70,60,0.6)'; g.strokeRect(6, 6, 52, 52);
@@ -413,18 +411,32 @@ export function buildGallery(ctx) {
   lbParts.forEach((m) => tap(m, 'gsay', 'A tin of pencil stubs', { say: 'pencils', stand: [-2.7, -2.85], look: [-2.85, 1.05, -3.74] }));
 
   /* ---------- the stove ---------- */
-  const stove = new THREE.Group(); stove.position.set(3.15, 0, 3.15); scene.add(stove);
+  const stove = new THREE.Group(); stove.position.set(3.15, 0.078, 3.15); scene.add(stove);
   const sParts = [B(0.6, 0.62, 0.5, M.iron, 0, 0.36, 0, 0, stove), B(0.66, 0.05, 0.56, M.iron, 0, 0.69, 0, 0, stove)];
   [[-0.24, -0.19], [0.24, -0.19], [-0.24, 0.19], [0.24, 0.19]].forEach(([x, z]) => sParts.push(B(0.05, 0.06, 0.05, M.iron, x, 0.03, z, 0, stove)));
   const fire = B(0.3, 0.12, 0.02, M.glowStrip, 0, 0.36, -0.26, 0, stove); fire.raycast = () => {};
+  const embers = canvasTex(128,48,(g,w,h) => {
+    const glow = g.createLinearGradient(0,0,0,h);
+    glow.addColorStop(0,'#28160f'); glow.addColorStop(0.62,'#ad3e15'); glow.addColorStop(0.85,'#ffb448'); glow.addColorStop(1,'#693015');
+    g.fillStyle=glow; g.fillRect(0,0,w,h);
+    for(let k=0;k<9;k++){
+      const x=k*15,tip=8+13*Math.sin(k*2.3);
+      g.fillStyle=k%2?'#dd6325':'#f7a745'; g.beginPath(); g.moveTo(x-7,h-8);
+      g.quadraticCurveTo(x+8,h-23,x+4,tip); g.quadraticCurveTo(x+16,h-19,x+9,h-5); g.fill();
+    }
+  });
+  fire.material = new THREE.MeshBasicMaterial({map:embers});
   const flue = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, H - 0.7, 12), M.iron); flue.position.set(0, 0.7 + (H - 0.7) / 2, 0.05); stove.add(flue);
-  sParts.push(flue);
+  const firebox = B(0.44,0.29,0.028,mats.iron,0,0.36,-0.255,0,stove);
+  fire.position.z = -0.277;
+  for (const x of [-0.09,0,0.09]) B(0.013,0.13,0.016,mats.iron,x,0.36,-0.293,0,stove);
+  B(0.08,0.018,0.045,M.brass,0.16,0.36,-0.286,0,stove);
+  sParts.push(flue,firebox);
   sParts.forEach((m) => tap(m, 'gsay', 'The stove', { say: 'stove', stand: [2.4, 2.55], look: [3.15, 0.4, 3.15] }));
   const stoveGlow = sprite(0.9, 3.15, 0.4, 2.85, scene, 0.4); stoveGlow.raycast = () => {};
 
   /* ---------- the hall, through the doorway: the slow clock and the radio ---------- */
   const hallF = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.6), mats.boards); hallF.rotation.x = -PI / 2; hallF.position.set(-3.15, 0.002, 4.85); hallF.raycast = () => {}; scene.add(hallF);
-  B(0.2, H, 1.6, mats.plaster, -4.1, H / 2, 4.85); B(0.2, H, 1.6, mats.plaster, -2.2, H / 2, 4.85); B(2.1, H, 0.2, mats.plaster, -3.15, H / 2, 5.7);
   const hallC = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.6), mats.ceil); hallC.rotation.x = PI / 2; hallC.position.set(-3.15, 2.6, 4.85); scene.add(hallC);
   B(1.9, H - 2.6, 1.6, mats.plaster, -3.15, 2.6 + (H - 2.6) / 2, 4.85);
   const runner = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.3), new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 1 }));
@@ -653,7 +665,12 @@ export function buildGallery(ctx) {
     ctx.playCreak(); pendAnim = { t: 0 };
     setTimeout(() => {
       winMat.map = winTexB; winMat.needsUpdate = true;
-      ctx.goThen(2.6, -0.5, () => { turnAnim = { from: ctx.getView(), to: [-PI / 2, -0.05], t: 0, then: endCard }; });
+      // From the hall, follow the aisle past the end of the couch before turning to the window.
+      ctx.moveTo(2.25, 2.15, () => {
+        ctx.moveTo(2.6, -0.5, () => {
+          turnAnim = { from: ctx.getView(), to: [-PI / 2, -0.05], t: 0, then: endCard };
+        });
+      });
     }, 1400);
   }
   let bookmarkURL = null, bookmarkCanvas = null, endShown = false;
@@ -776,7 +793,7 @@ export function buildGallery(ctx) {
     if (hud.hidden && ctx.isEntered && ctx.isEntered()) hud.hidden = false;
     parcelGlow.material.opacity = 0.25 + 0.15 * Math.sin(t * 2.2);
     doorGlow.material.opacity = 0.4 + 0.12 * Math.sin(t * 1.7);
-    stoveLight.intensity = 4 * (0.9 + 0.12 * Math.sin(t * 7.1) + 0.06 * Math.sin(t * 13));
+    stoveLight.intensity = 10 * (0.9 + 0.12 * Math.sin(t * 7.1) + 0.06 * Math.sin(t * 13));
     if (pendAnim) { pendAnim.t += dt; pendHinge.rotation.y = -1.3 * Math.min(1, pendAnim.t / 1.2); if (pendAnim.t > 1.2) pendAnim = null; }
     if (turnAnim) {
       turnAnim.t += dt; const k = Math.min(1, turnAnim.t / 1.4), e = k * k * (3 - 2 * k);
