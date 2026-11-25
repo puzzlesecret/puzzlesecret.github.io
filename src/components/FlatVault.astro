@@ -249,6 +249,35 @@
     .pv-motes i, #pvEnter, .sc-lamp .body b, .sc-tome .book { animation: none !important; }
     .pv-art { animation: none !important; }
   }
+
+  .gallery-cabin {
+    position: fixed; inset: 0; z-index: 50; overflow: auto;
+    background: #171411 url('/art/rooms/cabin.webp') center / cover no-repeat;
+    color: #f2ebdf; font: 18px/1.55 Georgia, serif; display: flex;
+    padding: clamp(24px, 5vw, 88px); box-sizing: border-box;
+  }
+  .gallery-cabin__card {
+    box-sizing: border-box; width: min(100%, 440px); margin: auto 0 auto auto;
+    padding: clamp(24px, 3vw, 44px); background: #211c17f5;
+    border: 1px solid #806e53; box-shadow: 0 12px 55px #08070599;
+  }
+  .gallery-cabin__eyebrow {
+    color: #d6ba85; font: 600 13px/1.4 Georgia, serif;
+    text-transform: uppercase; letter-spacing: .15em; margin: 0 0 10px;
+  }
+  .gallery-cabin h1 { font: 500 clamp(32px, 4vw, 50px)/1.05 Georgia, serif; color: #f9efdc; margin: 0 0 18px; }
+  .gallery-cabin__note { margin: 12px 0 0; font-size: 16px; color: #d4c7b4; }
+  .gallery-cabin__actions { display: flex; flex-wrap: wrap; gap: 5px 17px; margin-top: 18px; }
+  .gallery-cabin__actions a { display: inline-flex; align-items: center; min-height: 44px; color: #f0d8a6; font-size: 16px; text-underline-offset: 4px; }
+  .gallery-cabin__actions .gallery-cabin__gift {
+    width: 100%; justify-content: center; text-decoration: none; color: #211b12;
+    background: #d8bc88; border: 1px solid #eee0bf; font-weight: bold; margin-bottom: 4px;
+  }
+  .gallery-cabin__actions a:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+  @media (max-width: 700px) {
+    .gallery-cabin { display: block; padding: 0; background-size: auto max(270px, 40vh); background-position: center top; background-color: #211c17; }
+    .gallery-cabin__card { width: 100%; margin: max(250px, 37vh) 0 0; border: 0; border-top: 1px solid #806e53; padding: 24px max(24px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)); background: #211c17; }
+  }
 </style>
 
 <script is:inline>

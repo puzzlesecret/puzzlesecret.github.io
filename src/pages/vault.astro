@@ -77,6 +77,7 @@ import Analytics from '@vercel/analytics/astro';
           var book = ['I', 'II', 'III', 'IV'].some(function (a) { return r[a] || v[a]; });
           if (book || !r.G) return;
           window.__psGallery = true;
+          document.documentElement.classList.add('keepers-gallery');
           // the Gallery is never an outlet's guest room: drop a stale one so its title, exits and farewell stay the Gallery's
           try { sessionStorage.removeItem('ps_guest_room_v1'); } catch (e) {}
           document.title = "The Keeper's Gallery · PuzzleSecret";
@@ -284,6 +285,10 @@ import Analytics from '@vercel/analytics/astro';
     </div>
   </div>
 
+  <script is:inline>
+    if (window.__psGallery) document.querySelector('#gate h1').textContent = 'The Keeper’s Gallery';
+  </script>
+
   <!-- Reward panel (dynamic — serves all three vaults) -->
   <div id="reward" hidden>
     <div class="reward-card">
@@ -474,6 +479,11 @@ import Analytics from '@vercel/analytics/astro';
     }
     /* the gate is the painted study the door revealed (arriving from the door skips it entirely) */
     #gate, #fade.from-door { background: #070402 url(/art/rooms/study.webp) center 55% / cover no-repeat; }
+    .keepers-gallery #gate, .keepers-gallery #fade.from-door {
+      background-image: url(/art/rooms/cabin.webp);
+      background-position: center;
+    }
+    .keepers-gallery #gate h1 { font-size: clamp(34px, 7vw, 68px); letter-spacing: .045em; }
     #gate::before { content: ''; position: absolute; inset: 0; background: rgba(4,2,0,.55); }
     #gate .gate-inner { position: relative; }
     #gate.gone { opacity: 0; pointer-events: none; }
