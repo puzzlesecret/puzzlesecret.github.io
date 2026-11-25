@@ -6,6 +6,7 @@
 export const prerender = false;
 
 import crypto from 'node:crypto';
+import { rewardToken as tokenForAct } from '../../lib/reward-token.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { notify, place, solverTag } from '../../lib/keeper-telegram.js';
@@ -37,7 +38,7 @@ const FILES = {
   // cover-only browser never holds Vault I's download pass.
   G: 'PuzzleSecret-Vault-I-50-Easy.pdf',
 };
-export const rewardToken = (act) => (SALT ? crypto.createHash('sha256').update(SALT + '|reward-v1|' + act).digest('hex').slice(0, 40) : '');
+export const rewardToken = (act) => tokenForAct(act, SALT);
 // vid is optional and opaque — the Telegram line uses it for the solver tag only. Missing vid = anonymous.
 export const rewardUrl = (act, vid) => {
   const tail = vid ? '&vid=' + encodeURIComponent(String(vid).replace(/[^a-z0-9]/gi, '').slice(0, 8)) : '';

@@ -51,6 +51,8 @@ import Analytics from '@vercel/analytics/astro';
   <meta name="robots" content="noindex" />
   <!-- Self-hosted fonts (the FAQ promises zero external font tracking - keep it true). -->
   <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/rock-vault.css" />
+  <script is:inline defer src="/js/rock-vault.js"></script>
     <link rel="stylesheet" href="/fonts/readability.css" />
 </head>
 <body>
@@ -75,7 +77,7 @@ import Analytics from '@vercel/analytics/astro';
         try {
           var r = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {}, v = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {};
           var book = ['I', 'II', 'III', 'IV'].some(function (a) { return r[a] || v[a]; });
-          if (book || !r.G) return;
+          if (!r.G || (book && new URLSearchParams(location.search).get('act') !== 'G')) return;
           window.__psGallery = true;
           document.documentElement.classList.add('keepers-gallery');
           // the Gallery is never an outlet's guest room: drop a stale one so its title, exits and farewell stay the Gallery's

@@ -876,9 +876,7 @@ const HOME_LD = {
         const say = () => {
           // caption only: the vault is seconds away, and the Keeper speaks first INSIDE it, on the
           // visitor's first tap — a line started here would be cut off by the hand-off
-          // a reader who already holds a book word goes on to their own vaults, not the Gallery
-          let bookHeld = false; try { const rw = JSON.parse(localStorage.getItem('ps_rewards_v1') || '{}') || {}, vs = JSON.parse(localStorage.getItem('ps_vaults_v1') || '{}') || {}; bookHeld = ['I', 'II', 'III', 'IV'].some((a) => rw[a] || vs[a]); } catch (e) {}
-          typeCaption(act === 'G' && bookHeld ? 'The cover was true. Its gift is yours, and your vaults are waiting.' : (successLines[act] || 'The vault opens.'), true);
+          typeCaption(successLines[act] || 'The vault opens.', true);
           const p = document.getElementById('rewardPanel');
           if (p) p.querySelector('.r-body').textContent = 'The door swings wide. Step inside…';
         };

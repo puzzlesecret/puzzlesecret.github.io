@@ -1098,7 +1098,7 @@
     add('p', "The Keeper’s Gallery", 'gallery-cabin__eyebrow');
     add('h1', 'The front room.');
     add('p', 'Your fifty easy puzzles are below. My study is through the brass-bound door, and it wants a word from inside a book, not off the back of one. Type it at the front door.');
-    add('p', window.__hasWebGL === false ? 'The room itself, with its little game, needs a device that can show 3D.' : 'The room itself, with its little game, is in the 3D view.', 'gallery-cabin__note');
+    add('p', 'The Rock sits on its shelf beside the front door.', 'gallery-cabin__note');
     const actions = document.createElement('div');
     actions.className = 'gallery-cabin__actions';
     card.appendChild(actions);
@@ -1111,8 +1111,19 @@
       actions.appendChild(a);
     };
     if (typeof held.G === 'string' && held.G.indexOf('/api/reward') === 0) link(held.G, 'Download your 50 puzzles (PDF)', true, false);
+    const rock = document.createElement('button');
+    rock.type = 'button'; rock.className = 'gallery-cabin__rock'; rock.textContent = 'Examine The Rock';
+    const showPassage = (scene) => { wrap.dataset.passage = scene; };
+    const restoreCabin = () => { delete wrap.dataset.passage; };
+    rock.addEventListener('click', () => window.PSRock.open({
+      unlock: () => showPassage('hatch'),
+      descend: () => showPassage('vault'),
+      returnToGallery: restoreCabin,
+      close: restoreCabin,
+    }));
+    actions.append(rock);
     link('https://www.amazon.com/dp/B0HB9K8PXC', 'Volume 1 on Amazon', false, true);   // plain link: the cover word marks this browser as a guest (guest-key.js)
-    if (window.__hasWebGL !== false) link('/vault?mode=3d', 'Walk the Gallery in 3D', false, false);
+    if (window.__hasWebGL !== false) link('/vault?mode=3d&act=G', 'Walk the Gallery in 3D', false, false);
     link('/', 'Back to the front door', false, false);
     wrap.appendChild(card); document.body.appendChild(wrap);
   }

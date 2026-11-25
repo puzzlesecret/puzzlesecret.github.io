@@ -1,3 +1,4 @@
+import { buildRockPassage } from './gallery-rock-passage.js';
 import { buildCabin } from './gallery-cabin.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
@@ -25,7 +26,6 @@ const SAY = {
   arrival: 'The front room. Your fifty are on the end table. I dropped something on the way in. My study is through that door. It wants a word from inside a book.',
   window: 'The snow has stopped. No prints on the path yet. I have looked more often than I need to.',
   windowAfter: 'There are prints on the path now. Yours, I expect.',
-  stone: 'This is where the stone lives. It is out on the step tonight, holding a book down.',
   kettle: 'Boiled. No tea again. The kettle does not mind.',
   couch: 'From here I can see all of them. One cushion sits higher than the other.',
   chair: 'Seventy-five grids, three rows. From up here they look like a field after snow. The chair creaked. It still does.',
@@ -92,7 +92,6 @@ export function buildGallery(ctx) {
     enamel: new THREE.MeshStandardMaterial({ color: 0xdfe5ea, roughness: 0.35, metalness: 0.1 }),
     brownPaper: new THREE.MeshStandardMaterial({ color: 0xb48a5c, roughness: 0.9 }),
     string: new THREE.MeshStandardMaterial({ color: 0xece2c8, roughness: 0.9 }),
-    stoneMark: new THREE.MeshStandardMaterial({ color: 0x9f8c74, roughness: 0.9 }),
   };
   floor.material = mats.boards;
 
@@ -176,13 +175,10 @@ export function buildGallery(ctx) {
   B(2.3, 3.1, 0.08, mats.woodDark, 0, 1.55, 3.95);
   B(0.18, 0.05, 0.05, M.iron, 0.9, 1.15, 3.89);
   const mat = B(1.1, 0.02, 0.6, new THREE.MeshStandardMaterial({ color: 0x6d5236, roughness: 1 }), 0, 0.01, 3.5); mat.raycast = () => {};
-  // the stone's place: a little shelf by the door with a clean oval where it sits
-  B(0.5, 0.04, 0.18, mats.wood, 1.75, 1.15, 3.86);
-  const mark = new THREE.Mesh(new THREE.CircleGeometry(0.07, 18), mats.stoneMark); mark.scale.set(1.4, 1, 1);
-  mark.rotation.x = -PI / 2; mark.position.set(1.75, 1.173, 3.84); scene.add(mark);
-  const stoneHit = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.3), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
-  stoneHit.position.set(1.75, 1.2, 3.82); scene.add(stoneHit);
-  tap(stoneHit, 'gsay', 'Where the stone lives', { say: 'stone', stand: [1.5, 2.9], look: [1.75, 1.15, 3.86] });
+  const passage = buildRockPassage(ctx, mats);
+  const stoneHit = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.42, 0.52), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+  stoneHit.position.set(1.75, 1.24, 3.76); scene.add(stoneHit);
+  tap(stoneHit, 'grock', 'The Rock');
 
   /* ---------- the window: snow, a path, and (after the game) footprints ---------- */
   function drawWindow(prints) {
@@ -506,6 +502,7 @@ export function buildGallery(ctx) {
   css.textContent = `
     body.ps-gallery #studyCount { display: none !important; }
     #gHud[hidden] { display: none; }
+    body.ps-rock-visit :is(#gHud,#brand,#fwdBtn,#caption,#hint,#slowBar) { visibility:hidden; }
     #gHud { position: fixed; top: 58px; left: 12px; z-index: 12; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
     #gHud button { pointer-events: auto; font: 600 13px/1 Georgia, serif; letter-spacing: .04em; color: #f3e6c8; background: rgba(18,22,30,.72);
       border: 1px solid rgba(246,178,60,.55); border-radius: 999px; padding: 10px 14px; min-height: 40px; cursor: pointer; }
@@ -722,7 +719,8 @@ export function buildGallery(ctx) {
     ['The kettle' + (st.found.includes('kettle') ? ' ✓' : ''), () => act('gkettle', kettleHit)], ['The chair' + (st.found.includes('chair') ? ' ✓' : ''), () => act('gchair', chParts[0])],
     ['Volume 1', () => act('gframe', frames[1])], ['The shelf pictures', () => act('gframe', frames[2])],
     ['The clock (hall)', () => act('gclock', clockParts[0])], ['The radio (hall)', () => act('gradio', radio)],
-    ['By the front door', () => (st.found.includes('floor') ? act('gsay', stoneHit) : act('gscrap', ballHit))],
+    ['The Rock', () => act('grock', stoneHit)],
+    ['By the front door', () => st.found.includes('floor') ? ctx.showCaption('You found the scrap by the front door.', 4500) : act('gscrap', ballHit)],
     ['The bookcase', () => act('gsay', bcParts[0])], ['The upside-down book', () => act('gupside', upside)],
     ['The pencil tin', () => act('gsay', lbParts[0])], ['The stove', () => act('gsay', sParts[0])],
     ['Leave the house', () => card('LEAVE THE HOUSE?', null, ['Back to the front page. Your scraps and the path stay as they are.'], [{ text: 'Leave', gold: true, fn: () => { close(); ctx.activate('exit', ctx.exitHit); } }, { text: 'Stay', fn: close }])],
@@ -746,6 +744,18 @@ export function buildGallery(ctx) {
   function act(kind, obj) {
     const u = (obj && obj.userData) || {};
     switch (kind) {
+      case 'grock': {
+        if (!window.PSRock) { ctx.showCaption('The clock could not load. Please reload the Gallery.', 6000); return true; }
+        // Inspecting the shelf from the list works even across the couch or the rug.
+        onChair = false; ctx.setEye(1.6); ctx.moveTo(1.73, 3.08);
+        player.pos.copy(player.target); look(1.75, 1.16, 3.76);
+        document.body.classList.add('ps-rock-visit');
+        window.PSRock.open({
+          lift: passage.lift, openStairs: passage.openStairs, descend: passage.descend, returnToRoom: passage.returnToRoom,
+          close: () => { passage.close(); document.body.classList.remove('ps-rock-visit'); bList.focus({ preventScroll: true }); }
+        });
+        return true;
+      }
       case 'gdoor': ctx.goThen(-1.5, -2.95, () => { look(-1.5, 1.4, -3.9); ctx.openWordbox('first'); }); return true;
       case 'ggift': go(u, () => ctx.openReward('G')); return true;
       case 'gwindow': go(u, () => ctx.showCaption(st.done ? SAY.windowAfter : SAY.window, 6500)); return true;
@@ -789,6 +799,7 @@ export function buildGallery(ctx) {
   /* ---------- per frame ---------- */
   let hintAt = 0;
   function tick(dt, t) {
+    passage.tick();
     if (onChair && Math.hypot(player.pos.x - CHAIR.x, player.pos.z - CHAIR.z) > 0.35) { onChair = false; ctx.setEye(1.6); ctx.showCaption(SAY.chairDown, 2500); if (!st.found.includes('chair')) { tickMat.map = sheetTex; tickMat.needsUpdate = true; } }
     if (hud.hidden && ctx.isEntered && ctx.isEntered()) hud.hidden = false;
     parcelGlow.material.opacity = 0.25 + 0.15 * Math.sin(t * 2.2);
@@ -812,7 +823,7 @@ export function buildGallery(ctx) {
   return {
     activate: (kind, obj) => act(kind, obj),
     tick,
-    overlayOpen: () => !overlay.hidden,
+    overlayOpen: () => !overlay.hidden || !!window.PSRock?.isOpen(),
     arrival: SAY.arrival,
   };
 }
