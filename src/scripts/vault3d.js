@@ -2659,6 +2659,11 @@ function invalidateWordbox() {
   wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
   if (wordMicrophone) wordMicrophone.stop();
 }
+function setWordboxHint(key) {
+  const hint = document.getElementById('wbHint');
+  if (!hint || !hint.dataset) return;
+  hint.textContent = key === 'fourth' ? hint.dataset.fourthHint : hint.dataset.defaultHint;
+}
 let wbOpenFails = 0;                                  // misses since THIS box opened (wbFails drives the VO across the visit)
 function openWordbox(key) {
   invalidateWordbox();
@@ -2666,6 +2671,7 @@ function openWordbox(key) {
   document.getElementById('wbKicker').textContent = DOORS[key].kicker;
   document.getElementById('wbLine').textContent = VO[DOORS[key].vo].text;
   wbMsg.textContent = '';
+  setWordboxHint(key);
   wordboxEl.hidden = false;
   wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; wbInput.focus();
   // Which door's word box this is (first/door2/door3/fourth) is high-signal — Dan wants
@@ -2705,7 +2711,7 @@ addEventListener('keydown', (e) => {
 async function submitWord() {
   if (wbBusy || !wbTarget || wordboxEl.hidden || document.hidden) return;
   if (wbWord.length < 4) {
-    wbMsg.textContent = 'Enter one word of 4–12 letters from your book or cover.';
+    wbMsg.textContent = wbTarget === 'fourth' ? 'Enter one word of 4–12 letters from the original Volume 1.' : 'Enter one word of 4–12 letters from your book or cover.';
     wbInput.focus();
     wordboxEl.classList.remove('shake'); void wordboxEl.offsetWidth; wordboxEl.classList.add('shake');
     return;

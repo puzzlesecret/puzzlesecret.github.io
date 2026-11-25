@@ -633,12 +633,17 @@
     wbRequest = null; wbBusy = false; wbSubmit.textContent = 'Open the door';
     if (wordMicrophone) wordMicrophone.stop();
   }
+  function setWordboxHint(key) {
+    const hint = document.getElementById('wbHint');
+    if (!hint || !hint.dataset) return;
+    hint.textContent = key === 'fourth' ? hint.dataset.fourthHint : hint.dataset.defaultHint;
+  }
   let wbOpenFails = 0;                                // misses since THIS box opened (wbFails drives the VO across the visit)
   function openWordbox(key) {
     invalidateWordbox();
     wbTarget = key; wbWord = ''; wbBusy = false; wbOpenFails = 0;
     $('wbKicker').textContent = DOORS[key].kicker; $('wbLine').textContent = VO[DOORS[key].vo].text;
-    wbMsg.textContent = ''; wordboxEl.hidden = false;
+    wbMsg.textContent = ''; setWordboxHint(key); wordboxEl.hidden = false;
     wbInput.value = ''; wbInput.style.pointerEvents = 'auto'; try { wbInput.focus({ preventScroll: true }); } catch (err) {}
     try { window.psEvent && window.psEvent('wordbox.open', key); } catch (e) {}
     if (GUEST && key === 'door2') {
@@ -667,7 +672,7 @@
   }, true);
   async function submitWord() {
     if (wbBusy || !wbTarget || wordboxEl.hidden || document.hidden) return;
-    if (wbWord.length < 4) { wbMsg.textContent = 'Enter one word of 4–12 letters from your book or cover.'; wbInput.focus(); shake(wordboxEl); return; }
+    if (wbWord.length < 4) { wbMsg.textContent = wbTarget === 'fourth' ? 'Enter one word of 4–12 letters from the original Volume 1.' : 'Enter one word of 4–12 letters from your book or cover.'; wbInput.focus(); shake(wordboxEl); return; }
     const key = wbTarget, word = wbWord, generation = wbGeneration;
     if (wordMicrophone) wordMicrophone.stop();
     const request = wbRequest = new AbortController();

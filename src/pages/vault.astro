@@ -315,7 +315,7 @@ import Analytics from '@vercel/analytics/astro';
       <div class="reward-kicker" id="wbKicker">THE SECOND DOOR</div>
       <p class="word-line" id="wbLine">Say the word.</p>
       <label class="word-label" for="wbInput">Your decoded word</label>
-      <p id="wbHint" class="word-hint">Use the word from your book or cover. Either edition belongs here.</p>
+      <p id="wbHint" class="word-hint" data-default-hint="Use the word from your book or cover. Either edition belongs here." data-fourth-hint="The answer to this lock is found only in the original Volume 1: Crack the Keeper’s Vault. It is not included in the Large Print Gift Edition.">Use the word from your book or cover. Either edition belongs here.</p>
       <input id="wbInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" aria-describedby="wbHint wbMsg" />
       <div class="word-actions">
         <button id="speakBtn" class="ghost-btn" type="button" aria-pressed="false" aria-describedby="wbMicStatus">🎙 <span data-mic-label>Use microphone</span></button>
